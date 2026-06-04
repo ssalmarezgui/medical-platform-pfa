@@ -1,0 +1,28 @@
+# Fichiers SYS ET IDE
+
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Backend Spring Boot
+
+backend/target/
+backend/bin/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Frontend React w Node.js
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*

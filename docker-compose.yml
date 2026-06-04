@@ -1,0 +1,19 @@
+# pour avoir MYSQL et Neo4j en même temps prets
+services:
+  mysql-db:
+    image: mysql:8
+    container_name: medical-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: azerty # Mot de passe pour l'utilisateur root
+      MYSQL_DATABASE: medical_db
+    ports:
+      - "3308:3306" # Port 3308 pour mon PC -> 3306 interne
+
+  neo4j-db:
+    image: neo4j:5
+    container_name: medical-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/***REMOVED*** # Nom d'utilisateur et mot de passe pour Neo4j
+    ports:
+      - "7474:7474" # Interface web
+      - "7687:7687" # Connexion Java (Bolt)
