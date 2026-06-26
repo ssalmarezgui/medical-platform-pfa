@@ -33,12 +33,12 @@ export const patientService = {
     await axios.delete(`${API_URL}/${id}`);
   },
 
-  assignToService: async (patientId: number, serviceId: number): Promise<Patient> => {
+  assignToService: async (patientId: string, serviceId: number): Promise<Patient> => {
     const { data } = await axios.post<Patient>(`${API_URL}/${patientId}/services/${serviceId}`);
     return data;
   },
 
-  removeFromService: async (patientId: number, serviceId: number): Promise<Patient> => {
+  removeFromService: async (patientId: string, serviceId: number): Promise<Patient> => {
     const { data } = await axios.delete<Patient>(`${API_URL}/${patientId}/services/${serviceId}`);
     return data;
   }

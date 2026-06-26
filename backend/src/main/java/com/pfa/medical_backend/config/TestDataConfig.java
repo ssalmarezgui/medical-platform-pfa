@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import com.pfa.medical_backend.repositories.GreffeRepository;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -30,7 +29,6 @@ public class TestDataConfig {
         NephropathieInitialeRepository nephropathieRepo,
         GreffeRepository greffeRepo,
         BilanPreGreffeRepository bilanPreGreffeRepo,
-        BilanGreffeRepository bilanGreffeRepo,
         TraitementImmunoSuppresseurRepository tisRepo,
         MedicamentRepository medicamentRepo,
         EffetSecondaireRepository effetSecondaireRepo,
@@ -228,134 +226,23 @@ public class TestDataConfig {
             d2.setStatut("Décédé");
             Donneur savedD2 = donneurRepo.save(d2);
 
-            // Transplantation
-            Transplantation t1 = new Transplantation();
-            t1.setPatient(savedP1);
-            t1.setDonneur(savedD1);
-            t1.setDateTr(LocalDate.of(2022, 3, 15));
-            t1.setLieuDeLaGreffe("CHU de Tunis - Bloc opératoire B");
-            t1.setLieuDeSuivi("Service de Néphrologie");
-            t1.setNbTransplantation("1ère transplantation");
-            t1.setRein("Gauche");
-            t1.setKystes(false);
-            t1.setSondeEnDoubleJ(true);
-            t1.setTypeAnastomoseArterielle("Termino-terminale");
-            t1.setTypeAnastomoseVeineuse("Termino-latérale");
-            t1.setLiquideDeConservation("Eurocollins");
-            t1.setLiquideDeRincage("Sérum physiologique");
-            t1.setMachineAPerfusion(false);
-            Transplantation savedT1 = transplantationRepo.save(t1);
 
-            Transplantation t2 = new Transplantation();
-            t2.setPatient(savedP3);
-            t2.setDonneur(savedD2);
-            t2.setDateTr(LocalDate.of(2023, 7, 20));
-            t2.setLieuDeLaGreffe("CHU de Tunis - Bloc opératoire A");
-            t2.setLieuDeSuivi("Service de Transplantation");
-            t2.setNbTransplantation("1ère transplantation");
-            t2.setRein("Droit");
-            t2.setKystes(true);
-            t2.setSondeEnDoubleJ(true);
-            t2.setTypeAnastomoseArterielle("Termino-latérale");
-            t2.setTypeAnastomoseVeineuse("Termino-latérale");
-            t2.setLiquideDeConservation("HTK (Custodiol)");
-            t2.setLiquideDeRincage("Sérum physiologique");
-            t2.setMachineAPerfusion(true);
-            Transplantation savedT2 = transplantationRepo.save(t2);
-
-            // Néphropathies initiales
-            NephropathieInitiale ni1 = new NephropathieInitiale();
-            ni1.setTypeCliniqueNI("Syndrome néphrotique");
-            ni1.setCauseNI("Glomérulonéphrite focale segmentaire");
-            ni1.setTypeCliniqueNI("HSF");
-            ni1.setStadeMaladieNI("Stade 5");
-            NephropathieInitiale savedNi1 = nephropathieRepo.save(ni1);
-
-            NephropathieInitiale ni2 = new NephropathieInitiale();
-            ni2.setTypeCliniqueNI("Néphropathie diabétique");
-            ni2.setCauseNI("Diabète type 2 évoluant depuis 15 ans");
-            ni2.setTypeCliniqueNI("Kimmelstiel-Wilson");
-            ni2.setStadeMaladieNI("Stade 4");
-            NephropathieInitiale savedNi2 = nephropathieRepo.save(ni2);
-
-            // Greffes 
-            Greffe g1 = new Greffe();
-            g1.setDateG(LocalDate.of(2022, 3, 15));
-            g1.setDescriptionG("Greffe rénale de donneur vivant apparenté");
-            g1.setAutresObservationsG("Bonne reprise fonctionnelle immédiate à J1");
-            Greffe savedG1 = greffeRepo.save(g1);
-
-            Greffe g2 = new Greffe();
-            g2.setDateG(LocalDate.of(2023, 7, 20));
-            g2.setDescriptionG("Greffe rénale de donneur décédé");
-            g2.setAutresObservationsG("Reprise fonctionnelle retardée observée à J5");
-            Greffe savedG2 = greffeRepo.save(g2);
-
-            //  Bilans pré-greffe
-            BilanPreGreffeNI bpg1 = new BilanPreGreffeNI();
-            bpg1.setNephropathies(new HashSet<>(Set.of(savedNi1))); 
-            bpg1.setDateBilanB(LocalDate.of(2021, 11, 10));
-            bpg1.setDescriptionBilanB("Bilan complet pré-greffe : cardio, hémato, immuno");
-            bpg1.setResultatBilanB("Patient éligible à la transplantation rénale");
-            bilanPreGreffeRepo.save(bpg1);
-
-            BilanPreGreffeNI bpg2 = new BilanPreGreffeNI();
-            bpg2.setNephropathies(new HashSet<>(Set.of(savedNi2)));
-            bpg2.setDateBilanB(LocalDate.of(2023, 2, 5));
-            bpg2.setDescriptionBilanB("Bilan pré-greffe avec évaluation cardiologique approfondie");
-            bpg2.setResultatBilanB("Éligible avec réserves cardiaques — suivi cardiologique requis");
-            bilanPreGreffeRepo.save(bpg2);
-
-            // Bilans post-greffe
-            BilanGreffe bg1 = new BilanGreffe();
-            bg1.setGreffe(savedG1);
-            bg1.setDateBG(LocalDate.of(2022, 6, 15));
-            bg1.setDescriptionBG("Bilan de contrôle à 3 mois post-transplantation");
-            bg1.setResultatBG("Fonction rénale stable — créatininémie 120 µmol/L");
-            bilanGreffeRepo.save(bg1);
-
-            BilanGreffe bg2 = new BilanGreffe();
-            bg2.setGreffe(savedG2);
-            bg2.setDateBG(LocalDate.of(2023, 10, 20));
-            bg2.setDescriptionBG("Bilan de contrôle à 3 mois post-transplantation");
-            bg2.setResultatBG("Légère dégradation — créatininémie 180 µmol/L");
-            bilanGreffeRepo.save(bg2);
-
-            // Traitements immunosuppresseurs
-            TisInduction tis1 = new TisInduction();
-            tis1.setPatient(savedP1);
-            tis1.setDciTIS("Tacrolimus");
-            tis1.setDureeTraitementTIS("À vie");
-            tisRepo.save(tis1);
-
-            TisEntretien tis2 = new TisEntretien();
-            tis2.setPatient(savedP3);
-            tis2.setDciTIS("Ciclosporine");
-            tis2.setDureeTraitementTIS("À vie");
-            tisRepo.save(tis2);
 
             
             // Médicaments
             Medicament med1 = new Medicament();
             med1.setNomCommercialMed("Prograf");
-            med1.setDescriptionMed("Inhibiteur de la calcineurine — immunosuppresseur de référence");
-            med1.setTypeMed("Immunosuppresseur");
-            med1.setPosologieMed("0.1 mg/kg/jour en 2 prises orales");
+            med1.setTypeMed("Anticalcineurine (Tacrolimus)");
+            med1.setPosologieMed("1mg");
+            med1.setDescriptionMed("Prévention du rejet de greffe rénale.");
             medicamentRepo.save(med1);
 
-            Medicament med2 = new Medicament();
+            Medicament med2 = new Medicament(); 
             med2.setNomCommercialMed("CellCept");
-            med2.setDescriptionMed("Acide mycophénolique — inhibiteur de la synthèse des purines");
-            med2.setTypeMed("Immunosuppresseur");
-            med2.setPosologieMed("750 mg deux fois par jour");
+            med2.setTypeMed("Antimétabolite (MMF)");
+            med2.setPosologieMed("500mg");
+            med2.setDescriptionMed("Traitement d'entretien.");
             medicamentRepo.save(med2);
-
-            Medicament med3 = new Medicament();
-            med3.setNomCommercialMed("Solupred");
-            med3.setDescriptionMed("Prednisolone — corticoïde anti-inflammatoire");
-            med3.setTypeMed("Corticoïde");
-            med3.setPosologieMed("5 mg/jour en maintenance");
-            medicamentRepo.save(med3);
 
             // Effets secondaires
             EffetSecondaire es1 = new EffetSecondaire();
@@ -369,51 +256,7 @@ public class TestDataConfig {
             es2.setDescriptionEFS("Hyperglycémie induite par les immunosuppresseurs");
             es2.setRecommendationEFS("Contrôle glycémique strict, adapter le traitement corticoïde");
             effetSecondaireRepo.save(es2);
-            /*
-            //  Hospitalisations
-            HospitalisationPostTransplantation hosp1 = new HospitalisationPostTransplantation();
-            hosp1.setNumeroTr(savedT1.getNumeroTr());
-            hosp1.setDateEntree(LocalDate.of(2022, 4, 10));
-            hosp1.setDateSortie(LocalDate.of(2022, 4, 17));
-            hosp1.setTypeHospitalisation("Rejet aigu cellulaire");
-            hosp1.setRejetAiguCellulaire("Oui — grade IIA");
-            hosp1.setRejetAiguHumorale("Non");
-            hosp1.setRejetChroniqueCellulaire("Non");
-            hosp1.setThromboseArterielle("Non");
-            hosp1.setThromboseVeineuse("Non");
-            hospitalisationRepo.save(hosp1);
-
-            HospitalisationPostTransplantation hosp2 = new HospitalisationPostTransplantation();
-            hosp2.setNumeroTr(savedT2.getNumeroTr());
-            hosp2.setDateEntree(LocalDate.of(2023, 9, 5));
-            hosp2.setDateSortie(LocalDate.of(2023, 9, 12));
-            hosp2.setTypeHospitalisation("Infection urinaire");
-            hosp2.setRejetAiguCellulaire("Non");
-            hosp2.setRejetAiguHumorale("Non");
-            hosp2.setFistuleUrinaire("Non");
-            hosp2.setThromboseArterielle("Non");
-            hosp2.setThromboseVeineuse("Non");
-            hospitalisationRepo.save(hosp2);
-            */
-/* 
-            // Évolution
-            EvolutionRenale er1 = new EvolutionRenale();
-            er1.setDateCreation(LocalDate.of(2022, 6, 1));
-            er1.setNumeroTr(savedT1.getNumeroTr());
-            er1.setSeanceDeDialyse(false);
-            er1.setRepriseFonctionGreffon("Immédiate");
-            evolutionRenaleRepo.save(er1);
-
-            EvolutionRenale er2 = new EvolutionRenale();
-            er2.setDateCreation(LocalDate.of(2023, 8, 15));
-            er2.setNumeroTr(savedT2.getNumeroTr());
-            er2.setSeanceDeDialyse(true);
-            er2.setDateSeance(LocalDate.of(2023, 8, 16));
-            er2.setRepriseFonctionGreffon("Retardée");
-            er2.setCauseDeRetardDeReprise("Nécrose tubulaire aiguë");
-            evolutionRenaleRepo.save(er2);
-
-*/
+   
             // Comorbidités
             Comorbidite c1 = new Comorbidite();
             c1.setDiabete(false);
@@ -434,23 +277,10 @@ public class TestDataConfig {
             dl2.setTypeDialyse("Dialyse péritonéale ambulatoire continue");
             dialyseRepo.save(dl2);
 
-            // Antécédents médicaux
-            AntecedentMedical am1 = new AntecedentMedical();
-            am1.setDescriptionAM("Hypertension artérielle traitée par Amlodipine depuis 5 ans");
-            antecedentMedRepo.save(am1);
+            
 
-            AntecedentMedical am2 = new AntecedentMedical();
-            am2.setDescriptionAM("Diabète de type 2 sous insulinothérapie depuis 8 ans");
-            antecedentMedRepo.save(am2);
-
-            // Antécédents chirurgicaux
-            AntecedentChirurgical ac1 = new AntecedentChirurgical();
-            ac1.setDescription("Appendicectomie à l'âge de 20 ans (2005) sans complication");
-            antecedentChirRepo.save(ac1);
-
-            AntecedentChirurgical ac2 = new AntecedentChirurgical();
-            ac2.setDescription("Cholécystectomie laparoscopique en 2018 pour lithiase biliaire");
-            antecedentChirRepo.save(ac2);
+            
+            
 
             System.out.println("[TestData] ✓ Données insérées : 2 hôpitaux, 3 services, 3 médecins, " +
                 "4 patients, 2 donneurs, 2 transplantations, et toutes les entités cliniques associées.");

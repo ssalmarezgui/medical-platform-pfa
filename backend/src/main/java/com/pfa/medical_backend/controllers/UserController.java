@@ -1,83 +1,47 @@
 package com.pfa.medical_backend.controllers;
 
-import com.pfa.medical_backend.entities.User;
+import com.pfa.medical_backend.dto.UserRequestDTO;
+import com.pfa.medical_backend.dto.UserResponseDTO;
 import com.pfa.medical_backend.services.UserService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
 
 @RestController
-@RequestMapping("/api/users")
-@Slf4j
-@CrossOrigin(origins = "*")
-@PreAuthorize("hasAuthority('ADMIN')")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    private static final Set<String> ALLOWED_ROLES = Set.of(
-        "ADMIN", "MEDECIN_INVESTIGATEUR", "MEDECIN_SUIVI", 
-        "AGENT_LABORATOIRE", "AGENT_IMMUNO"
-    );
-
-    @GetMapping
-    public List<User> getAll() {
-        return userService.getAllUsers();
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getById(@PathVariable Integer id) {
-        return userService.getUserById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
+    // Seul l'ADMIN technique peut créer des comptes utilisateurs
     @PostMapping
-    public ResponseEntity<User> create(
-            @RequestBody User user,
-            @RequestParam(required = false) Integer serviceId,
-            @RequestParam(required = false) Integer medecinId) {
-        
-        validateRole(user.getRoleU());
-        log.info("Création de l'utilisateur : {}", user.getLoginU());
-        
-        return new ResponseEntity<>(
-            userService.createUser(user, serviceId, medecinId), 
-            HttpStatus.CREATED
-        );
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
+        UserResponseDTO response = userService.createUser(userRequestDTO);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}")
-    public User update(
-            @PathVariable Integer id,
-            @RequestBody User userDetails,
-            @RequestParam(required = false) Integer serviceId,
-            @RequestParam(required = false) Integer medecinId) {
-        
-        if (userDetails.getRoleU() != null) {
-            validateRole(userDetails.getRoleU());
-        }
-        
-        return userService.updateUser(id, userDetails, serviceId, medecinId);
+    // Seul l'ADMIN peut lister l'ensemble des comptes de la plateforme
+    @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        List<UserResponseDTO> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        log.warn("Suppression de l'utilisateur ID : {}", id);
-        userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    private void validateRole(String role) {
-        if (role == null || !ALLOWED_ROLES.contains(role)) {
-            throw new IllegalArgumentException("Rôle non reconnu par le système médical.");
-        }
+    // Un utilisateur authentifié peut consulter son propre profil ou un profil ciblé selon les règles RBAC
+    @GetMapping("/{uuid}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MEDECIN_INVESTIGATEUR', 'ROLE_MEDECIN_SUIVI')")
+    public ResponseEntity<UserResponseDTO> getUserByUuid(@PathVariable String uuid) {
+        UserResponseDTO user = userService.getUserByUuid(uuid);
+        return ResponseEntity.ok(user);
     }
 }

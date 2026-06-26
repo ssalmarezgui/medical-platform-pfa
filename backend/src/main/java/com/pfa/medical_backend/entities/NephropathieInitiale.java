@@ -1,68 +1,35 @@
 package com.pfa.medical_backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-
 import lombok.*;
-
-import java.util.HashSet;
-import java.util.Set;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "nephropathie_initiale")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class NephropathieInitiale {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "IdentifiantNI")
-    private Integer identifiantNI; 
+    private Integer identifiantNI;
 
-    @Column(name = "TypeCliniqueNI")
-    private String typeCliniqueNI; 
+    @Column(name = "TypeCliniqueNI", length = 256)
+    private String typeCliniqueNI;
 
-    @Column(name = "CauseNI")
-    private String causeNI;       
+    @Column(name = "CauseNI", length = 256)
+    private String causeNI;
 
-    @Column(name = "TypeHistologiqueNI")
+    @Column(name = "TypeHistologiqueNI", length = 256)
     private String typeHistologiqueNI;
 
-    @Column(name = "StadeMaladieNI")
-    private String stadeMaladieNI;  
-    
-    // Relation 
-    @ManyToMany
-    @JoinTable(
-        name = "nephro_engendre_greffe",
-        joinColumns = @JoinColumn(name = "IdentifiantNI"),
-        inverseJoinColumns = @JoinColumn(name = "IdentifiantG")
-    )
-    private Set<Greffe> greffes = new HashSet<>();
+    @Column(name = "StadeMaladiNI", length = 256)
+    private String stadeMaladiNI;
 
-    @ManyToMany
-    @JoinTable(
-        name = "dialyse_conduit_nephro",
-        joinColumns = @JoinColumn(name = "IdentifiantNI"),
-        inverseJoinColumns = @JoinColumn(name = "IdentifiantD")
-    )
-    private Set<Dialyse> dialyses = new HashSet<>();
-
-
-    @ManyToMany(mappedBy = "nephropathies")
-    @JsonIgnore
-    private Set<PatientIdAdmin> patients = new HashSet<>();
-    
-
+    // Relation
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IdentifiantB", nullable = false)
-    private BilanPreGreffeNI bilanPreGreffe;
-
+    @JoinColumn(name = "IdentifiantP", nullable = false)
+    private PatientIdAdmin patient;
     
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IdentifiantPB", nullable = false)
-    private ParametresBiopsiques parametresBiopsiques;
-
 }

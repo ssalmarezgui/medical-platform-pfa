@@ -9,9 +9,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "medicament")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
 public class Medicament {
 
     @Id
@@ -19,35 +18,28 @@ public class Medicament {
     @Column(name = "IdentifiantMed")
     private Integer identifiantMed;
 
-    @Column(name = "NomCommercialMed")
+    @Column(name = "NomCommercialMed", length = 256)
     private String nomCommercialMed;
 
     @Column(name = "DescriptionMed", columnDefinition = "TEXT")
-    private String descriptionMed; 
+    private String descriptionMed;
 
-    @Column(name = "TypeMed")
+    @Column(name = "TypeMed", length = 256)
     private String typeMed;
 
-    @Column(name = "PosologieMed")
+    @Column(name = "PosologieMed", length = 256)
     private String posologieMed;
-    
-
-    // RELATION
 
     @ManyToMany
     @JoinTable(
-        name = "medicament_interactions",
-        joinColumns = @JoinColumn(name = "IdentifiantMed_Source"),
-        inverseJoinColumns = @JoinColumn(name = "IdentifiantMed_Cible")
+        name = "interaction_medicament",
+        joinColumns = @JoinColumn(name = "IdentifiantMed_1"),
+        inverseJoinColumns = @JoinColumn(name = "IdentifiantMed_2")
     )
     @JsonIgnore
-    private Set<Medicament> interactions = new HashSet<>();
+    private Set<Medicament> interactionsSource = new HashSet<>();
 
-    @OneToMany(mappedBy = "medicament")
+    @ManyToMany(mappedBy = "interactionsSource")
     @JsonIgnore
-    private Set<Prescription> prescriptions = new HashSet<>();
-    
-    @OneToMany(mappedBy = "medicament")
-    @JsonIgnore
-    private Set<DosageMedSang> dosages = new HashSet<>();
+    private Set<Medicament> interactionsCible = new HashSet<>();
 }

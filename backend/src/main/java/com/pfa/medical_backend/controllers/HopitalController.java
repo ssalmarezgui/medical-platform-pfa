@@ -31,7 +31,7 @@ public class HopitalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'MEDECIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public List<HopitalStructureSoin> getAll() {
         log.info("Consultation de la liste des hôpitaux");
         return hopitalService.getAllHopitaux();

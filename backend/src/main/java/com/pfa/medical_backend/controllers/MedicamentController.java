@@ -1,41 +1,66 @@
 package com.pfa.medical_backend.controllers;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import com.pfa.medical_backend.dto.MedicamentDTO;
 import com.pfa.medical_backend.entities.Medicament;
 import com.pfa.medical_backend.services.MedicamentService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/medicaments")
 @CrossOrigin(origins = "*")
 public class MedicamentController {
 
-    @Autowired private MedicamentService medicamentService;
+    @Autowired
+    private MedicamentService medicamentService;
+
+    // Convertisseur d'Entité vers DTO
+    private MedicamentDTO toDTO(Medicament m) {
+        MedicamentDTO dto = new MedicamentDTO();
+        dto.setIdentifiantMed(m.getIdentifiantMed());
+        dto.setNomCommercialMed(m.getNomCommercialMed());
+        dto.setDescriptionMed(m.getDescriptionMed());
+        dto.setTypeMed(m.getTypeMed());
+        dto.setPosologieMed(m.getPosologieMed());
+        return dto;
+    }
 
     @GetMapping
-    public List<Medicament> getAll() {
-        return medicamentService.getAll();
-    }
-    
-    @GetMapping("/{id}/interactions")
-    public List<Medicament> getInteractions(@PathVariable Integer id) {
-        return medicamentService.getInteractions(id);
+    public List<MedicamentDTO> getAll(@RequestParam(required = false) String type) {
+        List<Medicament> list = (type != null) 
+            ? medicamentService.getByType(type) 
+            : medicamentService.getAll();
+            
+        return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    @PostMapping("/{id1}/lier-interaction/{id2}")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Void> lier(@PathVariable Integer id1, @PathVariable Integer id2) {
-        medicamentService.ajouterInteraction(id1, id2);
-        return ResponseEntity.ok().build();
+    @GetMapping("/{id}")
+    public ResponseEntity<MedicamentDTO> getById(@PathVariable Integer id) {
+        return medicamentService.getById(id)
+            .map(this::toDTO)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<MedicamentDTO> create(@RequestBody Medicament m) {
+        Medicament created = medicamentService.create(m);
+        return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MedicamentDTO> update(@PathVariable Integer id, @RequestBody Medicament details) {
+        Medicament updated = medicamentService.update(id, details);
+        return ResponseEntity.ok(toDTO(updated));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        medicamentService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

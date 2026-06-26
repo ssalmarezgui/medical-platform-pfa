@@ -2,73 +2,80 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Optional;
 
 @Service
-@Slf4j
 public class TransplantationService {
 
-    @Autowired private TransplantationRepository transplantationRepo;
-    @Autowired private PatientIdAdminRepository patientRepo;
-    @Autowired private DonneurRepository donneurRepo;
+    @Autowired
+    private TransplantationRepository tRepository;
 
-    @Transactional("transactionManager")
-    public Transplantation enregistrerGreffe(Transplantation trans, String patientId, Integer donneurId) {
-        PatientIdAdmin patient = patientRepo.findById(patientId)
-            .orElseThrow(() -> new RuntimeException("Patient introuvable (ID: " + patientId + ")"));
-            
-        Donneur donneur = donneurRepo.findById(donneurId)
-            .orElseThrow(() -> new RuntimeException("Donneur introuvable (ID: " + donneurId + ")"));
+    @Autowired
+    private PatientIdAdminRepository patientRepository;
 
-        trans.setPatient(patient);
-        trans.setDonneur(donneur);
-        
-        log.info("Nouvelle transplantation enregistrée : Patient {} <-> Donneur {}", patientId, donneurId);
-        return transplantationRepo.save(trans);
-    }
-
-
-    public List<Transplantation> getAll() {
-        return transplantationRepo.findAll();
-    }
-
-
-    public Optional<Transplantation> getById(Integer id) {
-        return transplantationRepo.findById(id);
-    }
-
+    @Autowired
+    private DonneurRepository donneurRepository;
 
     public List<Transplantation> getByPatient(String patientId) {
-        return transplantationRepo.findByPatient_IdentifiantP(patientId);
+        return tRepository.findByPatient_IdentifiantP(patientId);
     }
 
+    public List<Transplantation> getAll() {
+        return tRepository.findAll();
+    }
+
+    public Optional<Transplantation> getById(Integer id) {
+        return tRepository.findById(id);
+    }
+
+    @Transactional("transactionManager")
+    public Transplantation create(Transplantation t, String patientId, Integer donneurId) {
+        PatientIdAdmin patient = patientRepository.findById(patientId)
+            .orElseThrow(() -> new RuntimeException("Patient non trouvé"));
+            
+        Donneur donneur = donneurRepository.findById(donneurId)
+            .orElseThrow(() -> new RuntimeException("Donneur non trouvé"));
+
+        t.setPatient(patient);
+        t.setDonneur(donneur);
+        return tRepository.save(t);
+    }
 
     @Transactional("transactionManager")
     public Transplantation update(Integer id, Transplantation details) {
-        Transplantation existing = transplantationRepo.findById(id)
-            .orElseThrow(() -> new RuntimeException("Acte de transplantation introuvable"));
+        Transplantation t = tRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
 
-        if (details.getRein() != null) existing.setRein(details.getRein());
-        if (details.getLieuDeLaGreffe() != null) existing.setLieuDeLaGreffe(details.getLieuDeLaGreffe());
-        if (details.getSondeEnDoubleJ() != null) existing.setSondeEnDoubleJ(details.getSondeEnDoubleJ());
-        if (details.getRejetAigu1ereAnnee() != null) existing.setRejetAigu1ereAnnee(details.getRejetAigu1ereAnnee());
-        
-        log.info("Mise à jour de la transplantation ID: {}", id);
-        return transplantationRepo.save(existing);
+        if (details.getDateTR() != null) t.setDateTR(details.getDateTR());
+        if (details.getLieuDeLaGreffe() != null) t.setLieuDeLaGreffe(details.getLieuDeLaGreffe());
+        if (details.getLieuDeSuivi() != null) t.setLieuDeSuivi(details.getLieuDeSuivi());
+        if (details.getNbTransplantation() != null) t.setNbTransplantation(details.getNbTransplantation());
+        if (details.getNbUretere() != null) t.setNbUretere(details.getNbUretere());
+        if (details.getRein() != null) t.setRein(details.getRein());
+        if (details.getNbArtereVeine() != null) t.setNbArtereVeine(details.getNbArtereVeine());
+        if (details.getKystes() != null) t.setKystes(details.getKystes());
+        if (details.getTypeAnomalie() != null) t.setTypeAnomalie(details.getTypeAnomalie());
+        if (details.getDureeIschemieFroide() != null) t.setDureeIschemieFroide(details.getDureeIschemieFroide());
+        if (details.getDureeIschemieChaude() != null) t.setDureeIschemieChaude(details.getDureeIschemieChaude());
+        if (details.getLiquideConservation() != null) t.setLiquideConservation(details.getLiquideConservation());
+        if (details.getLiquideRincage() != null) t.setLiquideRincage(details.getLiquideRincage());
+        if (details.getMachineAPerfusion() != null) t.setMachineAPerfusion(details.getMachineAPerfusion());
+        if (details.getTypeAnastomoseArterielle() != null) t.setTypeAnastomoseArterielle(details.getTypeAnastomoseArterielle());
+        if (details.getTypeAnastomoseVeineuse() != null) t.setTypeAnastomoseVeineuse(details.getTypeAnastomoseVeineuse());
+        if (details.getTypeAnastomoseUreteroVesicale() != null) t.setTypeAnastomoseUreteroVesicale(details.getTypeAnastomoseUreteroVesicale());
+        if (details.getSondeEnDoubleJJ() != null) t.setSondeEnDoubleJJ(details.getSondeEnDoubleJJ());
+
+        return tRepository.save(t);
     }
 
     @Transactional("transactionManager")
     public void delete(Integer id) {
-        if (!transplantationRepo.existsById(id)) {
-            throw new RuntimeException("Impossible de supprimer : Acte introuvable");
-        }
-        transplantationRepo.deleteById(id);
-        log.warn("L'acte de transplantation ID: {} a été supprimé de la base.", id);
+        Transplantation t = tRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
+        tRepository.delete(t);
     }
 }

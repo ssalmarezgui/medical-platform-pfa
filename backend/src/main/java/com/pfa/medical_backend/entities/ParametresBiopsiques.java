@@ -1,14 +1,13 @@
 package com.pfa.medical_backend.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.Set;
 
 @Entity
 @Table(name = "parametres_biopsiques")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ParametresBiopsiques {
 
     @Id
@@ -16,9 +15,9 @@ public class ParametresBiopsiques {
     @Column(name = "IdentifiantPB")
     private Integer identifiantPB;
 
-
-    // Relation
-    @OneToMany(mappedBy = "parametresBiopsiques")
-    @JsonIgnore
-    private Set<NephropathieInitiale> nephropathies;
+    // --- RELATION CONFORME AUX CARDINALITÉS MCD ---
+    // Les paramètres de biopsie appartiennent à une néphropathie initiale d'origine de patient
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "IdentifiantNI", nullable = false, unique = true) // Liaison unique
+    private NephropathieInitiale nephropathie;
 }

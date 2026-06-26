@@ -16,11 +16,8 @@ export const PatientPage = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   
-
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  
-
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
   // export CSV
@@ -83,7 +80,7 @@ export const PatientPage = () => {
   if (isLoading) return <div className="flex justify-center p-20"><div className="animate-spin h-10 w-10 border-b-2 border-[#2B5296] rounded-full"></div></div>;
 
   return (
-    <div className="max-w-[1440px] mx-auto p-6">
+    <div className="max-w-[1440px] mx-auto p-6 text-xs">
       <div className="flex justify-between items-center mb-8">
         <div>
             <h1 className="text-3xl font-bold text-slate-900">Registre des Patients</h1>
@@ -167,7 +164,15 @@ export const PatientPage = () => {
       </div>
 
       <AddPatientModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
-      {selectedPatient && <EditPatientModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} patient={selectedPatient} />}
+
+      {selectedPatient && (
+        <EditPatientModal 
+          isOpen={isEditOpen} 
+          onClose={() => { setIsEditOpen(false); setSelectedPatient(null); }} 
+          patient={selectedPatient} 
+        />
+      )}
+      
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleConfirmDelete} title="Supprimer ?" message="Supprimer le dossier ?" />
 
       <ImportPatientsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />

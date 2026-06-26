@@ -1,32 +1,32 @@
 package com.pfa.medical_backend.entities;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 import lombok.*;
 
 @Entity
-@Table(name = "tis_entretien")
-@PrimaryKeyJoinColumn(name = "IdentifiantTIS_E")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
-public class TisEntretien extends TraitementImmunoSuppresseur {
+@DiscriminatorValue("ENTRETIEN")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class TISEntretien extends TraitementImmunoSuppresseur {
 
     @Column(name = "MMFTIS_E")
-    private Boolean mmf;
+    private Boolean mmfTISE;
 
     @Column(name = "AzathioprineTIS_E")
-    private Boolean azathioprine;
+    private Boolean azathioprineTISE;
 
     @Column(name = "CyclusporineTIS_E")
-    private Boolean cyclusporine;
+    private Boolean cyclusporineTISE;
 
     @Column(name = "TacrolimusTIS_E")
-    private Boolean tacrolimus;
+    private Boolean tacrolimusTISE;
 
     @Column(name = "PrednisoleTIS_E")
-    private Boolean prednisole;
+    private Boolean prednisoleTISE;
 
     @Column(name = "PrednisoluneTIS_E")
-    private Boolean prednisolune;
+    private Boolean prednisoluneTISE;
 
     @Column(name = "Sirolimus")
     private Boolean sirolimus;

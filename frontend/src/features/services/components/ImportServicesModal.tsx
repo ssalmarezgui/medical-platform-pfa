@@ -23,7 +23,6 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  // Réinitialisation automatique du modal à son ouverture
   useEffect(() => {
     if (isOpen) {
       resetModal();
@@ -32,7 +31,7 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
 
   if (!isOpen) return null;
 
-  // Téléchargement du modèle de fichier CSV vierge pour les services
+
   const handleDownloadTemplate = () => {
     const headers = [
       "libelleS", "nbLitsS", "nbChambresS", "idHopital"
@@ -148,7 +147,6 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
           </div>
 
           <div className="space-y-6">
-            {/* Zone Drag & Drop */}
             <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-[#A7C0E4]/50 rounded-[20px] p-8 text-center hover:bg-blue-50/30 hover:border-[#2B5296]/50 cursor-pointer transition-all flex flex-col items-center justify-center">
               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".csv" className="hidden" />
               <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#2B5296] mb-4">
@@ -158,7 +156,6 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
               <p className="text-[10px] font-semibold text-[#6588BB]">Format accepté : .csv uniquement</p>
             </div>
 
-            {/* Message d'erreur */}
             {errorMsg && (
               <div className="p-4 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-start gap-2.5">
                 <IconAlertCircle className="shrink-0" size={18} />
@@ -166,7 +163,6 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
               </div>
             )}
 
-            {/* Infos du fichier sélectionné */}
             {file && previewData.length > 0 && (
               <div className="space-y-3 bg-slate-50 p-4 rounded-[16px] border border-slate-100">
                 <div className="flex justify-between items-center">
@@ -178,7 +174,6 @@ export const ImportServicesModal = ({ isOpen, onClose }: ImportModalProps) => {
               </div>
             )}
 
-            {/* Pied de modal avec uniquement les deux boutons d'action */}
             <div className="flex gap-3 pt-4 border-t border-slate-100 justify-end">
               <button 
                 type="button" 

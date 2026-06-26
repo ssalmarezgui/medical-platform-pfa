@@ -66,7 +66,7 @@ public class Donneur {
     private Boolean adulteD; 
 
     @Column(name = "CIND")
-    private Integer cinD;
+    private String cinD;
 
     @Column(name = "Statut")
     private String statut;

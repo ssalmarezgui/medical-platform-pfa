@@ -9,10 +9,11 @@ Thumbs.db
 # Backend Spring Boot
 
 backend/target/
-backend/bin/
-backend/.classpath
-backend/.project
+backend/.idea/
+backend/*.iml
+backend/.metadata/
 backend/.settings/
+backend/bin/
 
 # Frontend React w Node.js
 

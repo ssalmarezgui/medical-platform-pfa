@@ -74,7 +74,7 @@ public class PatientIdAdmin {
     private Boolean adulteP;
 
     @Column(name = "NUMEROCIN")
-    private Integer numeroCin;
+    private String numeroCin;
 
     @Column(name = "STATUT")
     private String statut;

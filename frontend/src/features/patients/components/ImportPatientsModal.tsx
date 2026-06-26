@@ -84,7 +84,7 @@ export const ImportPatientsModal = ({ isOpen, onClose }: ImportModalProps) => {
           nomP: String(row.nomP || '').trim(), 
           prenomP: String(row.prenomP || '').trim(), 
           indexHopitalP: String(row.indexHopitalP || '').trim(),
-          numeroCin: Number(row.numeroCin),
+          numeroCin: String(row.numeroCin || '').trim(),
           dateNaissP: String(row.dateNaissP || '').trim(),
           sexeP: (row.sexeP || 'M') as 'M' | 'F', 
           nationaliteP: String(row.nationaliteP || '').trim(),

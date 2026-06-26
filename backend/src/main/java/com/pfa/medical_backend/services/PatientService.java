@@ -2,19 +2,19 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.pfa.medical_backend.dto.PatientDTO;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Transactional("transactionManager") // Applique la transaction à l'échelle de la classe
 public class PatientService {
 
     @Autowired
@@ -26,7 +26,6 @@ public class PatientService {
     @Autowired
     private ServiceRepository serviceRepository;
 
-    @Transactional("transactionManager")
     public PatientIdAdmin affecterPatientAuService(String patientId, Integer serviceId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
@@ -47,10 +46,9 @@ public class PatientService {
         throw new RuntimeException("Patient ou service non trouve");
     }
 
-    @Transactional("transactionManager")
     public PatientIdAdmin desaffecterPatientDuService(String patientId, Integer serviceId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
-        Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
+        Optional<ServiceMedical> service = serviceRepository.findById(serviceId); // <-- RESTAURÉ D'ORIGINE
 
         if (patient.isPresent() && service.isPresent()) {
             PatientIdAdmin p = patient.get();
@@ -60,7 +58,6 @@ public class PatientService {
         throw new RuntimeException("Patient ou service non trouve");
     }
 
-    @Transactional("transactionManager")
     public PatientIdAdmin assignerMedecinAuPatient(String patientId, Integer medecinId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
@@ -75,7 +72,6 @@ public class PatientService {
         throw new RuntimeException("Patient ou medecin non trouve");
     }
 
-    @Transactional("transactionManager")
     public PatientIdAdmin retirerMedecinDuPatient(String patientId, Integer medecinId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
@@ -111,30 +107,75 @@ public class PatientService {
         return patientRepository.findById(patientId);
     }
 
+    // --- ENREGISTREMENT ET ENQUÊTE D'IDENTITÉ UNIQUES AVEC TYPES STRICTS ---
     @Transactional("transactionManager")
     public PatientIdAdmin createPatient(PatientIdAdmin incoming) {
         if (incoming == null) {
             throw new IllegalArgumentException("Les données du patient sont manquantes.");
         }
 
-        System.out.println("=== DEBUT CREATION PATIENT ===");
-        System.out.println("Incoming indexHopitalP: " + incoming.getIndexHopitalP());
-        System.out.println("Incoming numeroCin: " + incoming.getNumeroCin());
+        System.out.println("=== ENQUÊTE D'IDENTITO-VIGILANCE EN BASE ===");
+        
+        boolean isAdulte = incoming.getAdulteP() != null ? incoming.getAdulteP() : true;
+        
+        // Conversion de Integer vers String pour le CIN et le Carnet
+        String checkCin = incoming.getNumeroCin() != null ? String.valueOf(incoming.getNumeroCin()).trim() : "";
+        String checkCarnet = incoming.getNumCarnetP() != null ? String.valueOf(incoming.getNumCarnetP()).trim() : "";
+        
+        LocalDate checkDate = incoming.getDateNaissP();
+        
+        String checkNom = incoming.getNomP() != null ? incoming.getNomP().trim().toLowerCase() : "";
+        String checkPrenom = incoming.getPrenomP() != null ? incoming.getPrenomP().trim().toLowerCase() : "";
 
+        if (checkCin.isEmpty()) {
+            throw new IllegalArgumentException("Le numéro CIN ou CIN du parent est requis.");
+        }
+
+        // --- ÉTAPE 1 : RECHERCHE STRICTE DE DOUBLONS EN BASE (SANS BLOQUER LE CARNET FAMILIAL) ---
+        Optional<PatientIdAdmin> doublon = Optional.empty();
+
+        if (isAdulte) {
+            // Scénario Adulte : Même CIN ET même Date de Naissance
+            doublon = patientRepository.findAll().stream()
+                .filter(p -> (p.getAdulteP() != null && p.getAdulteP()) 
+                    && (p.getNumeroCin() != null && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin) && p.getDateNaissP().equals(checkDate)))
+                .findFirst();
+        } else {
+            // Scénario Enfant : Même CIN Parent (numeroCin) AND même Date de Naissance AND même Nom AND même Prénom
+            doublon = patientRepository.findAll().stream()
+                .filter(p -> (p.getAdulteP() != null && !p.getAdulteP())
+                    && p.getNumeroCin() != null && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin)
+                    && p.getDateNaissP() != null && p.getDateNaissP().equals(checkDate)
+                    && p.getNomP() != null && p.getNomP().trim().toLowerCase().equals(checkNom)
+                    && p.getPrenomP() != null && p.getPrenomP().trim().toLowerCase().equals(checkPrenom))
+                .findFirst();
+        }
+
+        if (doublon.isPresent()) {
+            throw new IllegalArgumentException("DOUBLON_DETECTED:" + doublon.get().getIdentifiantP());
+        }
+
+        // --- ÉTAPE 2 : CALCUL CONFORME DE L'IDENTIFIANT CLINIQUE (AVEC SUFFIXES) ---
         PatientIdAdmin patient = copyBaseFields(incoming, new PatientIdAdmin());
         
         if (patient.getIndexHopitalP() == null || patient.getIndexHopitalP().trim().isEmpty()) {
-            throw new IllegalArgumentException("L'index de l'hôpital (indexHopitalP) est requis pour générer l'identifiant.");
-        }
-        if (patient.getNumeroCin() == null) {
-            throw new IllegalArgumentException("Le numéro CIN (numeroCin) est requis pour générer l'identifiant.");
+            throw new IllegalArgumentException("L'index de l'hôpital est requis.");
         }
 
-        String codeCalcule = patient.getIndexHopitalP().trim() + patient.getNumeroCin();
-        patient.setIdentifiantP(codeCalcule);
+        // Code hôpital tronqué à 3 lettres
+        String codeHopital = patient.getIndexHopitalP().trim().substring(0, 3).toUpperCase();
+        String partCIN = checkCin.length() >= 4 ? checkCin.substring(checkCin.length() - 4) : "0000";
+        String partCarnet = checkCarnet.length() >= 4 ? checkCarnet.substring(checkCarnet.length() - 4) : "0000";
+        String suffixe = isAdulte ? "A" : "E"; 
 
-        System.out.println("Identifiant généré avec succès : " + patient.getIdentifiantP());
-        System.out.println("=============================");
+        int sequence = patientRepository.findByIndexHopitalP(patient.getIndexHopitalP()).size() + 1;
+        String sequenceStr = String.format("%03d", sequence);
+
+        // Assemblage final de l'identifiant clinique unique (ex: "FAT_4563_7894_E_002")
+        String customId = codeHopital + "_" + partCIN + "_" + partCarnet + "_" + suffixe + "_" + sequenceStr;
+        patient.setIdentifiantP(customId);
+
+        System.out.println("Identifiant unique généré avec succès en base : " + patient.getIdentifiantP());
 
         if (incoming.getMedecinInvestigateur() != null) {
             attachInvestigateur(patient, incoming.getMedecinInvestigateur());
@@ -349,16 +390,26 @@ public class PatientService {
         }
         return service.getIdHopital();
     }
-public List<PatientDTO> getPatientsAsDTO(String hopitalId) {
-    List<PatientIdAdmin> patients;
-    
-    if (hopitalId != null && !hopitalId.trim().isEmpty()) {
-        patients = patientRepository.findByIndexHopitalP(hopitalId);
-    } else {
-        patients = patientRepository.findAll();
+
+    public List<PatientDTO> getPatientsAsDTO(String hopitalId, Integer medecinInvestigateurId) {
+        List<PatientIdAdmin> patients;
+        
+        if (medecinInvestigateurId != null) {
+            patients = medecinRepository.findById(medecinInvestigateurId)
+                    .map(patientRepository::findByMedecinInvestigateur)
+                    .orElse(List.of());
+        } else if (hopitalId != null && !hopitalId.trim().isEmpty()) {
+            patients = patientRepository.findByIndexHopitalP(hopitalId);
+        } else {
+            patients = patientRepository.findAll();
+        }
+        
+        return patients.stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
     }
-    
-    return patients.stream().map(p -> {
+
+    private PatientDTO convertToDTO(PatientIdAdmin p) {
         PatientDTO dto = new PatientDTO();
         dto.setIdentifiantP(p.getIdentifiantP());
         dto.setNomP(p.getNomP());
@@ -387,7 +438,5 @@ public List<PatientDTO> getPatientsAsDTO(String hopitalId) {
             dto.setMedecinInvestigateurNom(p.getMedecinInvestigateur().getPrenomM() + " " + p.getMedecinInvestigateur().getNomM());
         }
         return dto;
-    }).collect(java.util.stream.Collectors.toList());
+    }
 }
-}
-

@@ -10,7 +10,7 @@ public class PatientDTO {
     
     private String identifiantP;
     private String indexHopitalP;
-    private Integer numeroCin;
+    private String numeroCin;
 
 
     private String nomP;

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export interface Patient {
   identifiantP: string;       
   indexHopitalP: string;       
-  numeroCin: number;           
+  numeroCin: string;         
   nomP: string;
   prenomP: string;
   dateNaissP: string;          
@@ -37,8 +37,10 @@ export const patientSchema = z.object({
   indexHopitalP: z.string().min(1, { message: "Veuillez associer un établissement." }),
   
   numeroCin: z.string()
-    .regex(/^\d{8}$/, { message: "Le CIN doit comporter exactement 8 chiffres." })
-    .transform((val) => parseInt(val, 10)),
+    .refine(
+      (val) => val === "xxxxxxxx" || /^\d{8}$/.test(val),
+      { message: "Le CIN doit contenir exactement 8 chiffres (ou 'xxxxxxxx' pour un mineur)." }
+    ),
 
   dateNaissP: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "La date de naissance est requise." }),
   sexeP: z.enum(['M', 'F'], { errorMap: () => ({ message: "Le genre est requis." }) }),

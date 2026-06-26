@@ -7,81 +7,75 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "transplantation")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Transplantation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "NUMEROTR")
-    private Integer numeroTr;
+    @Column(name = "NumeroTR")
+    private Integer numeroTR;
 
-    @Column(name = "DATETR")
-    private LocalDate dateTr;
+    @Column(name = "DateTR")
+    private LocalDate dateTR;
 
-    @Column(name = "LIEUDELAGREFFE")
+    @Column(name = "LieuDeLaGreffe", length = 256)
     private String lieuDeLaGreffe;
 
-    @Column(name = "LIEUDESUIVI")
+    @Column(name = "LieuDeSuivi", length = 256)
     private String lieuDeSuivi;
 
-    @Column(name = "NBTRANSPLANTATION")
-    private String nbTransplantation;
+    @Column(name = "NbTransplantation")
+    private Integer nbTransplantation;
 
+    @Column(name = "NbUretere")
+    private Integer nbUretere;
 
-    @Column(name = "NBURETRE")
-    private String nbUretre;
+    @Column(name = "Rein", length = 64)
+    private String rein;
 
-    @Column(name = "REIN")
-    private String rein; 
+    @Column(name = "NbArtereVeine")
+    private Integer nbArtereVeine;
 
-    @Column(name = "NBARTERES_VEINES")
-    private String nbArteresVeines;
-
-    @Column(name = "KYSTES")
+    @Column(name = "Kystes")
     private Boolean kystes;
 
-    @Column(name = "DUREEDYSCHESIE")
-    private String dureeDyschesie;
+    @Column(name = "TypeAnomalie", length = 256)
+    private String typeAnomalie;
 
-    @Column(name = "DUREEDYSCHESIECHAUDE")
-    private String dureeDyschesieChaude;
+    @Column(name = "DureeIschemieFroide")
+    private Integer dureeIschemieFroide;
 
-    @Column(name = "LIQUIDEDECONSERVATION")
-    private String liquideDeConservation;
+    @Column(name = "DureeIschemieChaude")
+    private Integer dureeIschemieChaude;
 
-    @Column(name = "LIQUIDEDERINCAGE")
-    private String liquideDeRincage;
+    @Column(name = "LiquideConservation", length = 256)
+    private String liquideConservation;
 
-    @Column(name = "MACHINEAPERFUSION")
+    @Column(name = "LiquideRincage", length = 256)
+    private String liquideRincage;
+
+    @Column(name = "MachineAPerfusion")
     private Boolean machineAPerfusion;
 
-    @Column(name = "TYPEANASTOMOSEARTERIELLE")
+    @Column(name = "TypeAnastomoseArterielle", length = 256)
     private String typeAnastomoseArterielle;
 
-    @Column(name = "TYPEANASTOMOSEVEINEUSE")
+    @Column(name = "TypeAnastomoseVeineuse", length = 256)
     private String typeAnastomoseVeineuse;
 
-    @Column(name = "TYPEANASTOMOSEURETEROVESICALE")
+    @Column(name = "TypeAnastomoseUreteroVesicale", length = 256)
     private String typeAnastomoseUreteroVesicale;
 
-    @Column(name = "SONDEENDOUBLEJ")
-    private Boolean sondeEnDoubleJ;
+    @Column(name = "SondeEnDoubleJJ")
+    private Boolean sondeEnDoubleJJ;
 
-    // Relations 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IDENTIFIANTP", nullable = false)
+    @JoinColumn(name = "IdentifiantP", nullable = false)
     private PatientIdAdmin patient;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IDENTIFIANTD", nullable = false)
+    @JoinColumn(name = "IdentifiantD", nullable = false)
     private Donneur donneur;
-    
-    @Column(name = "REJET_AIGU_1ERE_ANNEE")
-    private Boolean rejetAigu1ereAnnee;
-
-    @Column(name = "VIVANT_GREFFON")
-    private Boolean vivantGreffon;
 }

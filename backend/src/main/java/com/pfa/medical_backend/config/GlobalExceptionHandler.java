@@ -37,8 +37,7 @@ public class GlobalExceptionHandler {
     // Intercepte toutes les autres erreurs imprévues (500 Internal Server Error)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneric(Exception ex) {
-        // En production, on affiche un message générique pour ne pas exposer la structure du code
-        ex.printStackTrace(); // Utile pour les logs serveur
+        ex.printStackTrace(); 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Map.of("error", "Une erreur interne est survenue sur le serveur"));
     }

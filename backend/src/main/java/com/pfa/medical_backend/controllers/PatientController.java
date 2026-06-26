@@ -48,14 +48,28 @@ public class PatientController {
 
     @GetMapping
     public ResponseEntity<List<PatientDTO>> getAllPatients(
-        @RequestParam(name = "hopitalId", required = false) String hopitalId
+        @RequestParam(name = "hopitalId", required = false) String hopitalId,
+        Authentication auth
     ) {
-        List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId);
+        Integer medecinInvestigateurId = null;
+
+        if (auth != null) {
+            Optional<com.pfa.medical_backend.entities.User> loggedInUser = userRepository.findByLoginU(auth.getName());
+            if (loggedInUser.isPresent()) {
+                com.pfa.medical_backend.entities.User user = loggedInUser.get();
+                // Si l'utilisateur est investigateur, on filtre sur son profil médecin
+                if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
+                    medecinInvestigateurId = user.getMedecin().getIdentifiantM();
+                }
+            }
+        }
+
+        List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId, medecinInvestigateurId);
         return ResponseEntity.ok(patients);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','INVESTIGATEUR','SUIVI')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<PatientIdAdmin> getById(@PathVariable String id, Authentication auth) {
         Optional<PatientIdAdmin> patient = patientService.getPatientById(id);
         
@@ -72,13 +86,23 @@ public class PatientController {
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR')")
-    public ResponseEntity<PatientIdAdmin> create(@RequestBody PatientIdAdmin patient) {
-        log.info("Création d'un nouveau dossier patient par l'investigateur");
+    public ResponseEntity<PatientIdAdmin> create(@RequestBody PatientIdAdmin patient, Authentication auth) {
+        log.info("Création d'un nouveau dossier patient");
+
+        if (auth != null) {
+            userRepository.findByLoginU(auth.getName()).ifPresent(user -> {
+                if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
+                    // On injecte le médecin lié à l'utilisateur connecté
+                    patient.setMedecinInvestigateur(user.getMedecin());
+                }
+            });
+        }
+
         return new ResponseEntity<>(patientService.createPatient(patient), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','INVESTIGATEUR','SUIVI')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public PatientIdAdmin update(@PathVariable String id, @RequestBody PatientIdAdmin details) {
         return patientService.updatePatient(id, details);
     }
@@ -108,14 +132,14 @@ public class PatientController {
     }
 
     @PostMapping("/{patientId}/medecins/{medecinId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','INVESTIGATEUR','SUIVI')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public PatientIdAdmin assignerMedecin(@PathVariable String patientId, @PathVariable Integer medecinId) {
         return patientService.assignerMedecinAuPatient(patientId, medecinId);
     }
 
 
     @DeleteMapping("/{patientId}/medecins/{medecinId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','INVESTIGATEUR','SUIVI')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<PatientIdAdmin> retirerMedecinDuPatient(
             @PathVariable String patientId, @PathVariable Integer medecinId) {
         try {

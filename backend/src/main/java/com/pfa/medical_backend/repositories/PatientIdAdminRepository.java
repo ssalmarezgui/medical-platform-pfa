@@ -25,6 +25,8 @@ public interface PatientIdAdminRepository extends JpaRepository<PatientIdAdmin, 
 
     List<PatientIdAdmin> findByAdultePFalse();
 
+    List<PatientIdAdmin> findByMedecinInvestigateur(Medecin medecin);
+
     @Query("SELECT DISTINCT p FROM PatientIdAdmin p JOIN p.affectations a WHERE a.service = :service")
     List<PatientIdAdmin> findByService(@Param("service") ServiceMedical service);
 

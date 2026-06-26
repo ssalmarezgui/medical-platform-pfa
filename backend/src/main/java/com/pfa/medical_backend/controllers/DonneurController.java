@@ -19,7 +19,7 @@ public class DonneurController {
     private DonneurService donneurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public List<Donneur> getAll(@RequestParam(required = false) String type) {
         if (type != null) {
             return donneurService.getByType(type);
@@ -28,7 +28,7 @@ public class DonneurController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<Donneur> getById(@PathVariable Integer id) {
         return donneurService.getById(id)
                 .map(ResponseEntity::ok)
@@ -36,14 +36,14 @@ public class DonneurController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<Donneur> create(@RequestBody Donneur donneur) {
         // Remarque n°10 : L'objet reçu est l'équivalent exact du patient
         return new ResponseEntity<>(donneurService.create(donneur), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public Donneur update(@PathVariable Integer id, @RequestBody Donneur details) {
         return donneurService.update(id, details);
     }

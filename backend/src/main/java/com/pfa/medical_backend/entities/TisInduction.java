@@ -1,24 +1,24 @@
 package com.pfa.medical_backend.entities;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 import lombok.*;
 
 @Entity
-@Table(name = "tis_induction")
-@PrimaryKeyJoinColumn(name = "IdentifiantTIS_I")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
-public class TisInduction extends TraitementImmunoSuppresseur {
+@DiscriminatorValue("INDUCTION")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class TISInduction extends TraitementImmunoSuppresseur {
 
     @Column(name = "GrafalonTIS_I")
-    private Boolean grafalon;
+    private Boolean grafalonTISI;
 
     @Column(name = "ATGTIS_I")
-    private Boolean atg;
+    private Boolean atgTISI;
 
     @Column(name = "TymoglobulineTIS_I")
-    private Boolean tymoglobuline;
+    private Boolean tymoglobulineTISI;
 
     @Column(name = "SimulectTIS_I")
-    private Boolean simulect;
+    private Boolean simulectTISI;
 }

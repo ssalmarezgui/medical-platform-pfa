@@ -24,9 +24,36 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PatientFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema) as any,
   });
+
+  const watchedAdulte = watch('adulteP');
+  
+  const isAdulteSelected = watchedAdulte !== undefined 
+    ? (watchedAdulte === true || String(watchedAdulte) === 'true')
+    : (patient?.adulteP === true);
+
+  const watchedDateNaiss = watch('dateNaissP');
+  useEffect(() => {
+    if (watchedDateNaiss) {
+      const birthDate = new Date(watchedDateNaiss);
+      const today = new Date();
+      
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+
+      if (calculatedAge < 18 && calculatedAge >= 0) {
+        setValue('adulteP', false);
+      } else {
+        setValue('adulteP', true);
+      }
+    }
+  }, [watchedDateNaiss, setValue]);
 
   useEffect(() => {
     if (patient) {
@@ -51,18 +78,50 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         evolution: patient.evolution,
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
-        medecinInvestigateurId: patient.medecinInvestigateur?.identifiantM || undefined,
+        medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
       });
     }
   }, [patient, reset]);
 
+  const handleCloseAndCancel = () => {
+    if (patient) {
+      reset({
+        nomP: patient.nomP,
+        prenomP: patient.prenomP,
+        indexHopitalP: patient.indexHopitalP,
+        numeroCin: patient.numeroCin ? String(patient.numeroCin) : '' as any,
+        dateNaissP: patient.dateNaissP,
+        sexeP: patient.sexeP,
+        nationaliteP: patient.nationaliteP,
+        origineGeogP: patient.origineGeogP,
+        adresseP: patient.adresseP,
+        telephoneP: patient.telephoneP,
+        adressEmailP: patient.adressEmailP,
+        telephoneWhatsAppP: patient.telephoneWhatsAppP,
+        personneAcontacterP: patient.personneAcontacterP,
+        typeCarnetP: patient.typeCarnetP,
+        numCarnetP: patient.numCarnetP,
+        adulteP: patient.adulteP,
+        statut: patient.statut,
+        evolution: patient.evolution,
+        niveauEducation: patient.niveauEducation,
+        enEtatActivite: patient.enEtatActivite,
+        medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
+      });
+    }
+    onClose();
+  };
+
   const onSubmit = async (data: PatientFormValues) => {
     if (!patient || patient.identifiantP === undefined) return;
+
+    const finalCin = data.numeroCin; 
 
     try {
       const formattedData = {
         ...data,
-        adulteP: typeof data.adulteP === 'string' ? data.adulteP === 'true' : !!data.adulteP,
+        numeroCin: finalCin, 
+        adulteP: isAdulteSelected,
         enEtatActivite: typeof data.enEtatActivite === 'string' ? data.enEtatActivite === 'true' : !!data.enEtatActivite,
         medecinInvestigateur: data.medecinInvestigateurId 
           ? { identifiantM: Number(data.medecinInvestigateurId) } 
@@ -98,7 +157,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
           
           <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
             <h2 className="text-xl font-bold text-[#2B5296]">Modifier le Dossier d'Admission</h2>
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer">
+            <button type="button" onClick={handleCloseAndCancel} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer">
               <IconX size={20} />
             </button>
           </div>
@@ -139,9 +198,18 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Date Naissance *</label>
                 <input type="date" {...register('dateNaissP')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
+              
               <div>
-                <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Numéro CIN *</label>
-                <input type="text" maxLength={8} placeholder="Ex: 01234567" {...register('numeroCin')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
+                <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">
+                  {isAdulteSelected ? "Numéro CIN *" : "CIN du Parent *"}
+                </label>
+                <input 
+                  type="text" 
+                  maxLength={8} 
+                  placeholder={isAdulteSelected ? "Ex: 01234567" : "CIN du tuteur legal"} 
+                  {...register('numeroCin')} 
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" 
+                />
               </div>
             </div>
 
@@ -161,7 +229,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Type Patient *</label>
                 <select 
                   {...register('adulteP', { setValueAs: (v) => v === 'true' })} 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold outline-none"
                 >
                   <option value="true">Adulte</option>
                   <option value="false">Pédiatrique</option>
@@ -171,7 +239,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">En activité *</label>
                 <select 
                   {...register('enEtatActivite', { setValueAs: (v) => v === 'true' })} 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold outline-none"
                 >
                   <option value="true">Oui</option>
                   <option value="false">Non</option>
@@ -259,7 +327,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100 justify-end">
-              <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-slate-500 hover:bg-slate-100 text-xs font-bold border-none bg-transparent cursor-pointer">Annuler</button>
+              <button type="button" onClick={handleCloseAndCancel} className="px-5 py-3 rounded-xl text-slate-500 hover:bg-slate-100 text-xs font-bold border-none bg-transparent cursor-pointer">Annuler</button>
               <button 
                 type="submit" 
                 disabled={updatePatientMutation.isPending} 
