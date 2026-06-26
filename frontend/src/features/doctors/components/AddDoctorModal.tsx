@@ -129,7 +129,7 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
                 {errors.numTelM && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.numTelM.message}</p>}
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Téléphone WhatsApp (Optionnel)</label>
+                <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Téléphone WhatsApp</label>
                 <input {...register('numTelWhapAPPM')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Ex: 55 123 456" />
               </div>
             </div>

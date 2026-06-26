@@ -30,6 +30,12 @@ public class HopitalController {
         this.hopitalService = hopitalService;
     }
 
+    @GetMapping("/public")
+    public List<HopitalStructureSoin> getAllPublic() {
+        log.info("Consultation publique de la liste des hôpitaux pour le login");
+        return hopitalService.getAllHopitaux();
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public List<HopitalStructureSoin> getAll() {

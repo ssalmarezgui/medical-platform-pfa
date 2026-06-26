@@ -4,13 +4,14 @@ interface User {
   loginU: string;
   roleU: 'ADMIN' | 'MEDECIN_INVESTIGATEUR' | 'MEDECIN_SUIVI' | 'AGENT_LABORATOIRE' | 'AGENT_IMMUNO';
   identifiantS?: number;
+  hopitalId?: string;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (loginU: string, roleU: User['roleU'], token: string) => void;
+  login: (loginU: string, roleU: User['roleU'], token: string, hopitalId?:string) => void;
   logout: () => void;
 }
 
@@ -18,8 +19,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  login: (loginU, roleU, token) => set({
-    user: { loginU, roleU },
+  login: (loginU, roleU, token, hopitalId) => set({
+    user: { loginU, roleU , hopitalId},
     token,
     isAuthenticated: true
   }),

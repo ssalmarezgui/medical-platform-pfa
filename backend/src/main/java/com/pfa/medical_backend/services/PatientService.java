@@ -391,13 +391,34 @@ public class PatientService {
         return service.getIdHopital();
     }
 
-    public List<PatientDTO> getPatientsAsDTO(String hopitalId, Integer medecinInvestigateurId) {
+    public List<PatientDTO> getPatientsAsDTO(String hopitalId, Integer medecinInvestigateurId, Integer medecinSuiviId) {
         List<PatientIdAdmin> patients;
         
         if (medecinInvestigateurId != null) {
-            patients = medecinRepository.findById(medecinInvestigateurId)
+            List<PatientIdAdmin> patientsDeLInvestigateur = medecinRepository.findById(medecinInvestigateurId)
                     .map(patientRepository::findByMedecinInvestigateur)
                     .orElse(List.of());
+            
+            if (hopitalId != null && !hopitalId.trim().isEmpty()) {
+                patients = patientsDeLInvestigateur.stream()
+                        .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
+                        .collect(Collectors.toList());
+            } else {
+                patients = patientsDeLInvestigateur;
+            }
+            
+        } else if (medecinSuiviId != null) {
+            List<PatientIdAdmin> patientsDuMedecin = medecinRepository.findById(medecinSuiviId)
+                    .map(patientRepository::findByMedecinSuiveur)
+                    .orElse(List.of());
+            
+            if (hopitalId != null && !hopitalId.trim().isEmpty()) {
+                patients = patientsDuMedecin.stream()
+                        .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
+                        .collect(Collectors.toList());
+            } else {
+                patients = patientsDuMedecin;
+            }
         } else if (hopitalId != null && !hopitalId.trim().isEmpty()) {
             patients = patientRepository.findByIndexHopitalP(hopitalId);
         } else {

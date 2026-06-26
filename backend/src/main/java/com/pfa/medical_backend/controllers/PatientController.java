@@ -44,27 +44,35 @@ public class PatientController {
                 && auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ADMIN"));
     }
 
-
-
     @GetMapping
     public ResponseEntity<List<PatientDTO>> getAllPatients(
         @RequestParam(name = "hopitalId", required = false) String hopitalId,
         Authentication auth
     ) {
         Integer medecinInvestigateurId = null;
+        Integer medecinSuiviId = null;
 
         if (auth != null) {
             Optional<com.pfa.medical_backend.entities.User> loggedInUser = userRepository.findByLoginU(auth.getName());
             if (loggedInUser.isPresent()) {
                 com.pfa.medical_backend.entities.User user = loggedInUser.get();
-                // Si l'utilisateur est investigateur, on filtre sur son profil médecin
+                
+                if ("MEDECIN_SUIVI".equals(user.getRoleU()) && user.getMedecin() != null) {
+                    medecinSuiviId = user.getMedecin().getIdentifiantM();
+                    
+                    if ((hopitalId == null || hopitalId.trim().isEmpty()) && user.getService() != null && user.getService().getHopital() != null) {
+                        hopitalId = user.getService().getHopital().getIdentifiantH();
+                    }
+                }
+
                 if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
                     medecinInvestigateurId = user.getMedecin().getIdentifiantM();
                 }
             }
         }
 
-        List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId, medecinInvestigateurId);
+        // Appel de la méthode de service mise à jour avec les 3 paramètres de filtrage
+        List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId, medecinInvestigateurId, medecinSuiviId);
         return ResponseEntity.ok(patients);
     }
 
@@ -75,7 +83,6 @@ public class PatientController {
         
         if (patient.isPresent() && isSuiviOnly(auth)) {
             String userHopitalId = getHopitalId(auth);
-            // EST CE QUE le patient appartient à l'hop de med ?????????????
             if (!patient.get().getIndexHopitalP().equals(userHopitalId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -83,17 +90,33 @@ public class PatientController {
         return patient.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<PatientIdAdmin> create(@RequestBody PatientIdAdmin patient, Authentication auth) {
         log.info("Création d'un nouveau dossier patient");
 
         if (auth != null) {
             userRepository.findByLoginU(auth.getName()).ifPresent(user -> {
+                String hopitalMedecin = null;
+                if (user.getService() != null && user.getService().getHopital() != null) {
+                    hopitalMedecin = user.getService().getHopital().getIdentifiantH();
+                }
+
+                if (hopitalMedecin != null) {
+                    patient.setIndexHopitalP(hopitalMedecin);
+                } else {
+                    throw new IllegalArgumentException("Le médecin connecté n'est rattaché à aucun hôpital.");
+                }
+
                 if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
-                    // On injecte le médecin lié à l'utilisateur connecté
                     patient.setMedecinInvestigateur(user.getMedecin());
+                }
+                
+                if ("MEDECIN_SUIVI".equals(user.getRoleU()) && user.getMedecin() != null) {
+                    if (patient.getMedecinsSuivi() == null) {
+                        patient.setMedecinsSuivi(new java.util.HashSet<>());
+                    }
+                    patient.getMedecinsSuivi().add(user.getMedecin());
                 }
             });
         }
@@ -137,7 +160,6 @@ public class PatientController {
         return patientService.assignerMedecinAuPatient(patientId, medecinId);
     }
 
-
     @DeleteMapping("/{patientId}/medecins/{medecinId}")
     @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
     public ResponseEntity<PatientIdAdmin> retirerMedecinDuPatient(
@@ -156,6 +178,8 @@ public class PatientController {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception e) {
+        log.error("Une erreur interne est survenue lors du traitement de la requête :", e);
+        
         return ResponseEntity.badRequest().body(Map.of("message",
                 e.getMessage() != null ? e.getMessage() : "Erreur inattendue"));
     }

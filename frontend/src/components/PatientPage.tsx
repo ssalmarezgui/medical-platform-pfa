@@ -7,8 +7,14 @@ import { EditPatientModal } from '../features/patients/components/EditPatientMod
 import { ImportPatientsModal } from '../features/patients/components/ImportPatientsModal';
 import { useHospitals } from '../features/hospitals/hooks/useHospitals';
 import { Patient } from '../features/patients/types/patients';
+// Importation du store d'authentification globale
+import { useAuthStore } from '../store/useAuthStore';
 
 export const PatientPage = () => {
+  // Récupération de l'utilisateur connecté et de son hôpital de rattachement choisi à la connexion
+  const { user } = useAuthStore();
+  const userHopitalId = user?.hopitalId;
+
   const { data: hospitals } = useHospitals();
   const deletePatientMutation = useDeletePatient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,10 +58,11 @@ export const PatientPage = () => {
 
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
+  // Appel de la requête avec l'hôpital de connexion ou le filtre de recherche de l'administrateur
   const { data: patients, isLoading } = usePatients(
     undefined, 
     undefined, 
-    selectedHospitalFilter || undefined
+    userHopitalId || selectedHospitalFilter || undefined
   );
 
   const sansAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -88,16 +95,19 @@ export const PatientPage = () => {
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
   
-        <select 
-          className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
-          value={selectedHospitalFilter}
-          onChange={(e) => setSelectedHospitalFilter(e.target.value)}
-        >
-          <option value="">Tous les établissements</option>
-          {hospitals?.map(h => (
-            <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
-          ))}
-        </select>
+        {/* Seul l'administrateur global peut voir et manipuler ce filtre d'établissement */}
+        {user?.roleU === 'ADMIN' && (
+          <select 
+            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
+            value={selectedHospitalFilter}
+            onChange={(e) => setSelectedHospitalFilter(e.target.value)}
+          >
+            <option value="">Tous les établissements</option>
+            {hospitals?.map(h => (
+              <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
+            ))}
+          </select>
+        )}
 
         <div className="relative w-full sm:w-64">
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
