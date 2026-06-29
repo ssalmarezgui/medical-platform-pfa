@@ -7,12 +7,18 @@ import {
   IconGenderMale, IconGenderFemale, IconFileSpreadsheet, IconDatabaseImport
 } from '@tabler/icons-react';
 import { AddDonorModal } from '../features/donors/components/AddDonorModal';
-import { ImportDonorsModal } from '../features/donors/components/ImportDonorsModal'; // Assurez-vous d'avoir ce composant
+import { ImportDonorsModal } from '../features/donors/components/ImportDonorsModal'; 
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import { Toast } from './ui/Toast';
 import axios from 'axios';
+// Importation du store d'authentification globale
+import { useAuthStore } from '../store/useAuthStore';
 
 export const DonorPage = () => {
+  // Récupération de l'utilisateur connecté et de son hôpital de rattachement choisi à la connexion
+  const { user } = useAuthStore();
+  const userHopitalId = user?.hopitalId;
+
   const queryClient = useQueryClient();
   const { data: hospitals } = useHospitals();
   
@@ -20,8 +26,16 @@ export const DonorPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
-  // Chargement des données des donneurs (Filtre par hôpital optionnel transmis au Hook)
-  const { data: donors, isLoading, error } = useDonors(undefined, selectedHospitalFilter || undefined);
+  // DECLARATION DES RÔLES ET HABILITATIONS (Correction de l'erreur de compilation)
+  const isReadOnly = user?.roleU === 'MEDECIN_SUIVI'; // R uniquement
+  const canCreateOrUpdate = user?.roleU === 'ADMIN' || user?.roleU === 'MEDECIN_INVESTIGATEUR'; // C/U
+  const canDelete = user?.roleU === 'ADMIN'; // D
+
+  // Chargement des données des donneurs (Filtre par hôpital de connexion prioritaire, ou par recherche admin)
+  const { data: donors, isLoading, error } = useDonors(
+    undefined, 
+    userHopitalId || selectedHospitalFilter || undefined
+  );
   
   // États de contrôle pour le Modal d'Ajout/Édition
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -142,17 +156,19 @@ export const DonorPage = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          {/* Filtre Hôpital */}
-          <select 
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
-            value={selectedHospitalFilter}
-            onChange={(e) => setSelectedHospitalFilter(e.target.value)}
-          >
-            <option value="">Tous les établissements</option>
-            {hospitals?.map(h => (
-              <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
-            ))}
-          </select>
+          {/* Filtre Hôpital : Visible uniquement par l'ADMIN global */}
+          {user?.roleU === 'ADMIN' && (
+            <select 
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
+              value={selectedHospitalFilter}
+              onChange={(e) => setSelectedHospitalFilter(e.target.value)}
+            >
+              <option value="">Tous les établissements</option>
+              {hospitals?.map(h => (
+                <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
+              ))}
+            </select>
+          )}
 
           {/* Barre de recherche par ID/Nom */}
           <div className="relative w-full sm:w-64">
@@ -165,14 +181,16 @@ export const DonorPage = () => {
             />
           </div>
 
-          {/* Bouton d'importation */}
-          <button 
-            onClick={() => setIsImportOpen(true)}
-            title="Importer des donneurs (CSV)"
-            className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-          >
-            <IconDatabaseImport size={18} />
-          </button>
+          {/* Bouton d'importation : Masqué pour le médecin de suivi (R) */}
+          {canCreateOrUpdate && (
+            <button 
+              onClick={() => setIsImportOpen(true)}
+              title="Importer des donneurs (CSV)"
+              className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+            >
+              <IconDatabaseImport size={18} />
+            </button>
+          )}
 
           {/* Bouton d'exportation */}
           <button 
@@ -183,13 +201,15 @@ export const DonorPage = () => {
             <IconFileSpreadsheet size={18} />
           </button>
           
-          {/* Bouton Enregistrement d'un donneur */}
-          <button 
-            onClick={() => setIsAddOpen(true)} 
-            className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-[#203F75] flex items-center gap-2 border-none cursor-pointer w-full sm:w-auto justify-center"
-          >
-            <IconPlus size={16} /> Enregistrer un Donneur
-          </button>
+          {/* Bouton Enregistrement d'un donneur : Masqué pour le médecin de suivi (R) */}
+          {canCreateOrUpdate && (
+            <button 
+              onClick={() => setIsAddOpen(true)} 
+              className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-[#203F75] flex items-center gap-2 border-none cursor-pointer w-full sm:w-auto justify-center"
+            >
+              <IconPlus size={16} /> Enregistrer un Donneur
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,10 +218,16 @@ export const DonorPage = () => {
         <div className="flex flex-col items-center justify-center min-h-[300px] bg-white border border-slate-100 rounded-[30px] p-12 text-center shadow-sm">
           <IconUsers size={48} className="text-[#6588BB] mb-4" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">Aucun donneur enregistré</h3>
-          <p className="text-[#6588BB] text-xs max-w-xs mb-6">Ajoutez les premiers donneurs pour pouvoir réaliser des transplantations rénales.</p>
-          <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-            Enregistrer le premier donneur
-          </button>
+          <p className="text-[#6588BB] text-xs max-w-xs mb-6">
+            {isReadOnly 
+              ? "Le registre des donneurs est vide." 
+              : "Ajoutez les premiers donneurs pour pouvoir réaliser des transplantations rénales."}
+          </p>
+          {canCreateOrUpdate && (
+            <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-[#203F75] flex items-center gap-2 border-none cursor-pointer">
+              Enregistrer le premier donneur
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,7 +235,7 @@ export const DonorPage = () => {
             <div key={d.identifiantD} className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start mb-4">
-                  {/* Icône de genre conditionnelle (rose pour F, bleu pour M) */}
+                  {/* Icône de genre conditionnelle */}
                   <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-lg shadow-sm ${
                     d.sexeD === 'M' || d.sexeD === 'Masculin'
                       ? 'bg-blue-50 text-[#2B5296]' 
@@ -236,23 +262,22 @@ export const DonorPage = () => {
                 </div>
               </div>
 
-              {/* Barre d'actions au bas de la carte */}
-              <div className="mt-6 pt-4 border-t border-slate-50 flex justify-end gap-2">
-                <button 
-                  onClick={() => triggerEdit(d)} 
-                  className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg border-none hover:bg-slate-100" 
-                  title="Modifier la fiche"
-                >
-                  <IconEdit size={16} />
-                </button>
-                <button 
-                  onClick={() => triggerDelete(d.identifiantD!)} 
-                  className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg border-none hover:bg-red-100" 
-                  title="Supprimer la fiche"
-                >
-                  <IconTrash size={16} />
-                </button>
-              </div>
+              {/* Barre d'actions au bas de la carte (masquée si l'utilisateur est médecin de suivi / R seul) */}
+              {canCreateOrUpdate && (
+                <div className="mt-6 pt-4 border-t border-slate-50 flex justify-end gap-2">
+                  {/* Le bouton d'édition est visible pour l'investigateur et l'admin (U) */}
+                  <button onClick={() => triggerEdit(d)} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg border-none hover:bg-slate-100" title="Modifier">
+                    <IconEdit size={16} />
+                  </button>
+                  
+                  {/* Le bouton de suppression s'affiche uniquement pour l'admin (D) */}
+                  {canDelete && (
+                    <button onClick={() => triggerDelete(d.identifiantD)} className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg border-none hover:bg-red-100" title="Supprimer">
+                      <IconTrash size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -261,13 +286,7 @@ export const DonorPage = () => {
       {/* Modals & Toasts d'accompagnement */}
       <AddDonorModal isOpen={isAddOpen} onClose={handleCloseModal} donor={selectedDonor} />
       
-      <DeleteConfirmModal 
-        isOpen={confirmOpen} 
-        onClose={() => setConfirmOpen(false)} 
-        onConfirm={handleDelete} 
-        title="Supprimer la fiche du donneur ?" 
-        message="Cette action effacera définitivement ce donneur du registre clinique." 
-      />
+      <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la fiche du donneur ?" message="Cette action effacera définitivement ce donneur du registre clinique." />
 
       <ImportDonorsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
       

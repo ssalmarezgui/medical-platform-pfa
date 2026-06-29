@@ -9,7 +9,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -26,19 +27,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByLoginU(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé avec le login : " + username));
 
-        // Ajout du préfixe ROLE_ requis par Spring Security si non présent dans la base
-        String roleWithPrefix = user.getRoleU().startsWith("ROLE_") ? user.getRoleU() : "ROLE_" + user.getRoleU();
-        // SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleWithPrefix);
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getRoleU());
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+
+        if (user.getRole() != null){
+            authorities.add(new SimpleGrantedAuthority(user.getRole().getNomRole()));
+
+            user.getRole().getPermissions().forEach(permission -> { 
+                authorities.add(new SimpleGrantedAuthority(permission.getNomPermission()));
+            });
+        }
 
         // Construction de l'objet UserDetails de Spring Security
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getLoginU())
                 .password(user.getMotPasseU())
-                .authorities(Collections.singletonList(authority))
-                // Liaison avec logique force brute
+                .authorities(authorities)
                 .accountLocked(!user.isAccountNonLocked())
-                // Autres propriétés par défaut (ajustables aux futurs)
                 .disabled(false) 
                 .accountExpired(false)
                 .credentialsExpired(false)

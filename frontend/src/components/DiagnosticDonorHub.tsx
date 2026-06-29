@@ -20,6 +20,9 @@ export const DiagnosticDonorHub = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
+  // Détermination du mode Lecture Seule (R pour le médecin de suivi)
+  const isReadOnly = user?.roleU === 'MEDECIN_SUIVI';
+
   const cards = [
     { 
       title: "Antécédents Familiaux",
@@ -27,7 +30,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconUsersGroup size={32} />, 
       path: "/donors/family-history", 
       color: "bg-indigo-50 text-indigo-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Habitudes", 
@@ -35,7 +38,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconActivity size={32} />, 
       path: "/donors/habits", 
       color: "bg-blue-50 text-[#2B5296]",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Antécédents Médicaux", 
@@ -43,7 +46,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconMedicalCross size={32} />, 
       path: "/donors/medical-history", 
       color: "bg-emerald-50 text-emerald-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Antécédents Chirurgicaux", 
@@ -51,7 +54,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconScissors size={32} />, 
       path: "/donors/surgery-history", 
       color: "bg-purple-50 text-purple-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Antécédents Gynéco-Obstétriques", 
@@ -59,7 +62,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconDna size={32} />, 
       path: "/donors/obgyn-history", 
       color: "bg-pink-50 text-pink-500",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Médicaments Long Cours", 
@@ -67,7 +70,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconPill size={32} />, 
       path: "/donors/medications", 
       color: "bg-amber-50 text-amber-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Hématologie & Hémostase",
@@ -75,7 +78,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconDroplet size={32} />, 
       path: "/donors/hematology", 
       color: "bg-red-50 text-red-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Bilan Immunologique",
@@ -83,7 +86,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconBiohazard size={32} />, 
       path: "/donors/immunology", 
       color: "bg-orange-50 text-orange-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Biochimie Sanguine",
@@ -91,7 +94,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconFlask size={32} />, 
       path: "/donors/biochemistry-blood", 
       color: "bg-sky-50 text-sky-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Biochimie Urinaire",
@@ -99,7 +102,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconTestPipe size={32} />, 
       path: "/donors/biochemistry-urine", 
       color: "bg-violet-50 text-violet-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Marqueurs Tumoraux",
@@ -107,7 +110,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconShield size={32} />, 
       path: "/donors/tumor-markers", 
       color: "bg-yellow-50 text-yellow-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Microbiologie & Sérologie",
@@ -115,7 +118,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconVirus size={32} />, 
       path: "/donors/infectious", 
       color: "bg-rose-50 text-rose-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Examens d'Imagerie",
@@ -123,7 +126,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconPhoto size={32} />, 
       path: "/donors/imaging", 
       color: "bg-gray-50 text-gray-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
     { 
       title: "Hormones & Vitamines",
@@ -131,7 +134,7 @@ export const DiagnosticDonorHub = () => {
       icon: <IconPill size={32} />, 
       path: "/donors/hormones-vitamins", 
       color: "bg-teal-50 text-teal-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE', 'MEDECIN_SUIVI'] // Ajout MEDECIN_SUIVI (R)
     },
   ];
   
@@ -164,8 +167,9 @@ export const DiagnosticDonorHub = () => {
               <p className="text-xs text-slate-500 leading-relaxed mb-6">{card.desc}</p>
             </div>
             
+            {/* Adaptation dynamique de la légende du bouton de redirection */}
             <span className="text-xs font-bold text-[#2B5296] inline-flex items-center gap-1 mt-auto pt-4 border-t border-slate-50 w-full">
-              Consulter la fiche <span className="text-[14px]">→</span>
+              {isReadOnly ? "Consulter la fiche (Lecture seule)" : "Saisir & Consulter"} <span className="text-[14px]">→</span>
             </span>
           </div>
         ))}

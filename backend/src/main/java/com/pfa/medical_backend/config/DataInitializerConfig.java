@@ -8,14 +8,17 @@ import org.springframework.util.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 
 import com.pfa.medical_backend.entities.HopitalStructureSoin;
+import com.pfa.medical_backend.entities.Role;
 import com.pfa.medical_backend.entities.ServiceMedical;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.HopitalStructureSoinRepository;
+import com.pfa.medical_backend.repositories.RoleRepository;
 import com.pfa.medical_backend.repositories.ServiceRepository;
 import com.pfa.medical_backend.repositories.UserRepository;
 
@@ -23,6 +26,8 @@ import com.pfa.medical_backend.repositories.UserRepository;
 @Configuration
 @ConditionalOnProperty(name = "app.bootstrap-admin.enabled", havingValue = "true")
 public class DataInitializerConfig {
+
+    private final RoleRepository roleRepository;
 
     @Value("${app.bootstrap-admin.enabled:false}")
     private boolean bootstrapAdminEnabled;
@@ -33,12 +38,17 @@ public class DataInitializerConfig {
     @Value("${app.bootstrap-admin.password:}")
     private String adminPassword;
 
-    @Value("${app.bootstrap-admin.role:ADMIN}")
+    @Value("${app.bootstrap-admin.role:ROLE_ADMIN}")
     private String adminRole;
+
+    DataInitializerConfig(RoleRepository roleRepository) {
+        this.roleRepository = roleRepository;
+    }
 
     @Bean
     public CommandLineRunner bootstrapData(
         UserRepository userRepository,
+        RoleRepository roleRepository,
         HopitalStructureSoinRepository hopitalRepository,
         ServiceRepository serviceRepository,
         PasswordEncoder passwordEncoder
@@ -48,13 +58,23 @@ public class DataInitializerConfig {
                 return;
             }
 
-            if (!StringUtils.hasText(adminLogin) || !StringUtils.hasText(adminPassword)) {
+            if (!StringUtils.hasText(adminLogin) || 
+                !StringUtils.hasText(adminPassword)) {
                 throw new IllegalStateException(
                     "Admin bootstrap is enabled but credentials are missing."
                 );
             }
 
-            // 1. INITIALISATION SYNCHRONE DES 6 HÔPITAUX DE RÉFÉRENCE TUNISIENS (MCD strict)
+            // les roles 
+
+            bootstrapRole(roleRepository, "ROLE_ADMIN");
+            bootstrapRole(roleRepository, "ROLE_MEDECIN_INVESTIGATEUR");
+            bootstrapRole(roleRepository, "ROLE_AMEDECIN_SUIVI");
+            bootstrapRole(roleRepository, "ROLE_AGENT_LABORATOIRE");
+            bootstrapRole(roleRepository, "ROLE_AGENT_IMMUNO");
+
+
+            // Initialisation des hopitaux 
             HopitalStructureSoin hcn = bootstrapHopital(hopitalRepository, serviceRepository, 
                 "HCN_TUNIS1", "HCN", "Boulevard du 9 avril 1938-Bab Saâdoun-1007-Tunisia", 30, 30, 1025, 
                 "Hôpital universitaire de référence nationale. Dispose d'un service de néphrologie et transplantation rénale de renommée nationale, avec un plateau technique de pointe.", 
@@ -85,48 +105,66 @@ public class DataInitializerConfig {
                 "Principal hôpital universitaire du Sud tunisien. Dispose d'un service de néphrologie et dialyse très actif couvrant toute la région sud.", 
                 LocalDate.of(1900, 1, 1));
 
-            // 2. RECUPÉRER LE SERVICE DE NÉPHROLOGIE DE RÉFÉRENCE (HCN) POUR ASSIGNATION DES COMPTES DEMO
+            // RECUPÉRER LE SERVICE DE NÉPHROLOGIE DE RÉFÉRENCE
             ServiceMedical referenceService = serviceRepository.findAll().stream()
                 .filter(s -> s.getHopital() != null && "HCN_TUNIS1".equals(s.getHopital().getIdentifiantH()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Service de référence de HCN introuvable"));
 
-            // 3. INITIALISATION ET SYNCHRONISATION DES UTILISATEURS SUR LE SERVICE DE RÉFÉRENCE
+            // INITIALISATION DE L'ADMINISTRATEUR
+            Role roleAdmin = roleRepository.findByNomRole(adminRole)
+                .orElseThrow(() -> new RuntimeException("Rôle Admin introuvable"));
+
             User admin = userRepository.findByLoginU(adminLogin).orElseGet(User::new);
             admin.setLoginU(adminLogin);
             admin.setMotPasseU(passwordEncoder.encode(adminPassword));
-            admin.setRoleU(adminRole);
+            admin.setRole(roleAdmin);
             admin.setService(referenceService);
             admin.setAccountNonLocked(true);
             userRepository.save(admin);
             System.out.println("Admin synchronized: " + adminLogin + " (" + adminRole + ") rattaché à HCN");
 
-            bootstrapDemoUser(userRepository, passwordEncoder, "investigateur", "Invest1234!", "MEDECIN_INVESTIGATEUR", referenceService);
-            bootstrapDemoUser(userRepository, passwordEncoder, "suivi", "Suivi1234!", "MEDECIN_SUIVI", referenceService);
-            bootstrapDemoUser(userRepository, passwordEncoder, "labo", "Labo1234!", "AGENT_LABORATOIRE", referenceService);
-            bootstrapDemoUser(userRepository, passwordEncoder, "immuno", "Immuno1234!", "AGENT_IMMUNO", referenceService);
+            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "investigateur", "Invest1234!", "ROLE_MEDECIN_INVESTIGATEUR", referenceService);
+            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "suivi", "Suivi1234!", "ROLE_MEDECIN_SUIVI", referenceService);
+            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "labo", "Labo1234!", "ROLE_AGENT_LABORATOIRE", referenceService);
+            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "immuno", "Immuno1234!", "ROLE_AGENT_IMMUNO", referenceService);
         };
+    }
+
+
+    private void bootstrapRole(RoleRepository roleRepository, String roleName){
+        if (roleRepository.findByNomRole(roleName).isEmpty()){
+            Role role = new Role();
+            role.setNomRole(roleName);
+            role.setPermissions(new HashSet<>());
+            roleRepository.save(role);
+            System.out.println("Rôle créé : " + roleName);
+        }
+
     }
 
     private void bootstrapDemoUser(
         UserRepository userRepository,
+        RoleRepository roleRepository,
         PasswordEncoder passwordEncoder,
         String login,
         String password,
-        String role,
+        String roleName,
         ServiceMedical service
     ) {
+        Role role = roleRepository.findByNomRole(roleName)
+            .orElseThrow(() -> new RuntimeException("Rôle introuvable : " + roleName));
+
         User user = userRepository.findByLoginU(login).orElseGet(User::new);
         user.setLoginU(login);
         user.setMotPasseU(passwordEncoder.encode(password));
-        user.setRoleU(role);
+        user.setRole(role);
         user.setService(service);
         user.setAccountNonLocked(true); 
         userRepository.save(user);
-        System.out.println("Demo user synchronized: " + login + " (" + role + ")");
+        System.out.println("Demo user synchronized: " + login + " (" + roleName + ")");
     }
 
-    // Méthode de synchronisation automatique d'un hôpital et de son service Nephrologie associé
     private HopitalStructureSoin bootstrapHopital(
         HopitalStructureSoinRepository hopitalRepository,
         ServiceRepository serviceRepository,

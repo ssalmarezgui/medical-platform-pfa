@@ -30,11 +30,13 @@ public class User {
     private String loginU;
 
     @Column(name = "MotPasseU", nullable = false)
-    @JsonIgnore // Ne pas exposer le mot de passe dans les réponses JSON
+    @JsonIgnore
     private String motPasseU; 
 
-    @Column(name = "RoleU", nullable = false, length = 30)
-    private String roleU;   
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "IdentifiantR", nullable = true) // a changer a false au futur
+    private Role role;
+
     
     // champs de sec et conformite (audit + forcebrute)
 
@@ -46,7 +48,6 @@ public class User {
 
     @Column(name="lock_time")
     private LocalDateTime locktime;
-
     @Column(name="last_login")
     private LocalDateTime lastlogin;
 
@@ -63,5 +64,6 @@ public class User {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "IdentifiantM", nullable = true)
     private Medecin medecin;
+
 
 }

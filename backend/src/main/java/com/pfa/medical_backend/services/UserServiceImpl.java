@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 
 import com.pfa.medical_backend.dto.UserRequestDTO;
 import com.pfa.medical_backend.dto.UserResponseDTO;
+import com.pfa.medical_backend.entities.Role;
 import com.pfa.medical_backend.entities.User;
+import com.pfa.medical_backend.repositories.RoleRepository;
 import com.pfa.medical_backend.repositories.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -21,12 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final long LOCK_DURATION_MINUTES = 15;
 
-    public UserServiceImpl(UserRepository userRepository,PasswordEncoder passwordEncoder){
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder){
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
     
@@ -37,6 +40,9 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Ce login est déjà utilisé");
         }
 
+        Role role = roleRepository.findByNomRole(dto.getRoleU())
+            .orElseThrow(() -> new EntityNotFoundException("Rôle introuvable:" + dto.getRoleU()));
+
         User user = new User();
         user.setUuid(UUID.randomUUID().toString());
         user.setLoginU(dto.getLoginU());
@@ -44,7 +50,7 @@ public class UserServiceImpl implements UserService {
         // chiff sym de mdp
         user.setMotPasseU(passwordEncoder.encode(dto.getMotPasseU()));
 
-        user.setRoleU(dto.getRoleU());
+        user.setRole(role);
         user.setAccountNonLocked(true);
         user.setFailedLoginAttempts(0);
 
@@ -59,9 +65,14 @@ public class UserServiceImpl implements UserService {
         UserResponseDTO dto = new UserResponseDTO();
         dto.setUuid(user.getUuid());
         dto.setLoginU(user.getLoginU());
-        dto.setRoleU(user.getRoleU());
+
+        if (user.getRole() != null){
+            dto.setRoleU(user.getRole().getNomRole());
+        }
+
         dto.setAccountNonLocked(user.isAccountNonLocked());
         dto.setLastlogin(user.getLastlogin());
+        
         if(user.getService() != null){
             dto.setServiceId(user.getService().getIdentifiantS());
         }

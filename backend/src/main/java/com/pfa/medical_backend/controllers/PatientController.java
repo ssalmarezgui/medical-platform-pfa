@@ -40,8 +40,14 @@ public class PatientController {
     private boolean isSuiviOnly(Authentication auth) {
         if (auth == null) return false;
         
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("SUIVI"))
-                && auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ADMIN"));
+        return auth.getAuthorities().stream().anyMatch(a -> 
+            a.getAuthority().equals("ROLE_MEDECIN_SUIVI") || 
+            a.getAuthority().equals("MEDECIN_SUIVI")
+        )
+                && auth.getAuthorities().stream().noneMatch(a -> 
+                    a.getAuthority().equals("ROLE_ADMIN") || 
+                    a.getAuthority().equals("ADMIN")
+                );
     }
 
     @GetMapping
@@ -57,7 +63,7 @@ public class PatientController {
             if (loggedInUser.isPresent()) {
                 com.pfa.medical_backend.entities.User user = loggedInUser.get();
                 
-                if ("MEDECIN_SUIVI".equals(user.getRoleU()) && user.getMedecin() != null) {
+                if (user.getRole() != null && "ROLE_MEDECIN_SUIVI".equals(user.getRole().getNomRole()) && user.getMedecin() != null) {
                     medecinSuiviId = user.getMedecin().getIdentifiantM();
                     
                     if ((hopitalId == null || hopitalId.trim().isEmpty()) && user.getService() != null && user.getService().getHopital() != null) {
@@ -65,7 +71,7 @@ public class PatientController {
                     }
                 }
 
-                if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
+                if (user.getRole() != null && "ROLE_MEDECIN_INVESTIGATEUR".equals(user.getRole().getNomRole()) && user.getMedecin() != null) {
                     medecinInvestigateurId = user.getMedecin().getIdentifiantM();
                 }
             }
@@ -91,8 +97,10 @@ public class PatientController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
-    public ResponseEntity<PatientIdAdmin> create(@RequestBody PatientIdAdmin patient, Authentication auth) {
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN','ROLE_MEDECIN_INVESTIGATEUR','ROLE_MEDECIN_SUIVI')")
+    public ResponseEntity<PatientIdAdmin> create(
+        @RequestBody PatientIdAdmin patient, 
+        Authentication auth) {
         log.info("Création d'un nouveau dossier patient");
 
         if (auth != null) {
@@ -108,16 +116,22 @@ public class PatientController {
                     throw new IllegalArgumentException("Le médecin connecté n'est rattaché à aucun hôpital.");
                 }
 
-                if ("MEDECIN_INVESTIGATEUR".equals(user.getRoleU()) && user.getMedecin() != null) {
-                    patient.setMedecinInvestigateur(user.getMedecin());
-                }
-                
-                if ("MEDECIN_SUIVI".equals(user.getRoleU()) && user.getMedecin() != null) {
-                    if (patient.getMedecinsSuivi() == null) {
-                        patient.setMedecinsSuivi(new java.util.HashSet<>());
+                if (user.getRole() != null ){
+                    String nomRole = user.getRole().getNomRole();
+                    if ("ROLE_MEDECIN_INVESTIGATEUR".equals(nomRole) && user.getMedecin() != null) {
+                        patient.setMedecinInvestigateur(user.getMedecin());
                     }
-                    patient.getMedecinsSuivi().add(user.getMedecin());
+                    
+                    if ("ROLE_MEDECIN_SUIVI".equals(nomRole) && user.getMedecin() != null) {
+                        if (patient.getMedecinsSuivi() == null) {
+                            patient.setMedecinsSuivi(new java.util.HashSet<>());
+                        }
+                        patient.getMedecinsSuivi().add(user.getMedecin());
+                    }
+
                 }
+
+                
             });
         }
 

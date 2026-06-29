@@ -26,6 +26,11 @@ export const PatientPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
+  // Évaluation des permissions selon le rôle clinique de l'utilisateur
+  const isReadOnly = user?.roleU === 'MEDECIN_SUIVI'; // R uniquement
+  const canCreateOrUpdate = user?.roleU === 'ADMIN' || user?.roleU === 'MEDECIN_INVESTIGATEUR'; // C/U autorisés
+  const canDelete = user?.roleU === 'ADMIN'; // D autorisé
+
   // export CSV
   const handleExportCSV = () => {
     if (!patients || patients.length === 0) {
@@ -119,21 +124,27 @@ export const PatientPage = () => {
           />
         </div>
 
-        <button 
-          onClick={() => setIsImportOpen(true)}
-          title="Importer des données"
-          className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-        >
-          <IconDatabaseImport size={18} />
-        </button>
+        {/* Bouton d'importation masqué pour le médecin de suivi (R) */}
+        {canCreateOrUpdate && (
+          <button 
+            onClick={() => setIsImportOpen(true)}
+            title="Importer des données"
+            className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+          >
+            <IconDatabaseImport size={18} />
+          </button>
+        )}
 
         <button onClick={handleExportCSV} className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors">
           <IconFileSpreadsheet size={18} />
         </button>
         
-        <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 flex items-center gap-2 border-none cursor-pointer">
-          <IconPlus size={16} /> Admission
-        </button>
+        {/* Bouton d'admission masqué pour le médecin de suivi (R) */}
+        {canCreateOrUpdate && (
+          <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 flex items-center gap-2 border-none cursor-pointer">
+            <IconPlus size={16} /> Admission
+          </button>
+        )}
       </div>
       </div>
 
@@ -165,10 +176,22 @@ export const PatientPage = () => {
                 <p className="font-bold text-[#2B5296]">Carnet: {p.typeCarnetP} ({p.numCarnetP})</p>
             </div>
 
-            <div className="mt-6 pt-4 border-t flex justify-end gap-2">
-              <button onClick={() => { setSelectedPatient(p); setIsEditOpen(true); }} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg"><IconEdit size={16} /></button>
-              <button onClick={() => triggerDelete(p.identifiantP)} className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg"><IconTrash size={16} /></button>
-            </div>
+            {/* Le bloc d'actions complet est masqué si l'utilisateur est médecin de suivi (R) */}
+            {canCreateOrUpdate && (
+              <div className="mt-6 pt-4 border-t flex justify-end gap-2">
+                {/* Le bouton de modification reste visible pour l'investigateur et l'admin (U) */}
+                <button onClick={() => { setSelectedPatient(p); setIsEditOpen(true); }} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg">
+                  <IconEdit size={16} />
+                </button>
+                
+                {/* Le bouton de suppression s'affiche uniquement pour l'admin (D) */}
+                {canDelete && (
+                  <button onClick={() => triggerDelete(p.identifiantP)} className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg">
+                    <IconTrash size={16} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
