@@ -4,7 +4,6 @@ import com.pfa.medical_backend.dto.PatientDTO;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.services.PatientService;
-import com.pfa.medical_backend.entities.HopitalStructureSoin;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,7 +21,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/patients")
 @Slf4j
-@CrossOrigin(origins = "*")
+
 public class PatientController {
 
     @Autowired private PatientService patientService;
@@ -42,15 +41,16 @@ public class PatientController {
         
         return auth.getAuthorities().stream().anyMatch(a -> 
             a.getAuthority().equals("ROLE_MEDECIN_SUIVI") || 
-            a.getAuthority().equals("MEDECIN_SUIVI")
+            a.getAuthority().equals("MEDECIN_SUIVI")                    
         )
-                && auth.getAuthorities().stream().noneMatch(a -> 
-                    a.getAuthority().equals("ROLE_ADMIN") || 
-                    a.getAuthority().equals("ADMIN")
-                );
+        && auth.getAuthorities().stream().noneMatch(a -> 
+            a.getAuthority().equals("ROLE_ADMIN") || 
+            a.getAuthority().equals("ADMIN")
+        );
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<List<PatientDTO>> getAllPatients(
         @RequestParam(name = "hopitalId", required = false) String hopitalId,
         Authentication auth
@@ -77,13 +77,12 @@ public class PatientController {
             }
         }
 
-        // Appel de la méthode de service mise à jour avec les 3 paramètres de filtrage
         List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId, medecinInvestigateurId, medecinSuiviId);
         return ResponseEntity.ok(patients);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT')")
     public ResponseEntity<PatientIdAdmin> getById(@PathVariable String id, Authentication auth) {
         Optional<PatientIdAdmin> patient = patientService.getPatientById(id);
         
@@ -97,10 +96,8 @@ public class PatientController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN','ROLE_MEDECIN_INVESTIGATEUR','ROLE_MEDECIN_SUIVI')")
-    public ResponseEntity<PatientIdAdmin> create(
-        @RequestBody PatientIdAdmin patient, 
-        Authentication auth) {
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
+    public ResponseEntity<PatientIdAdmin> create(@RequestBody PatientIdAdmin patient, Authentication auth) {
         log.info("Création d'un nouveau dossier patient");
 
         if (auth != null) {
@@ -116,7 +113,7 @@ public class PatientController {
                     throw new IllegalArgumentException("Le médecin connecté n'est rattaché à aucun hôpital.");
                 }
 
-                if (user.getRole() != null ){
+                if (user.getRole() != null) {
                     String nomRole = user.getRole().getNomRole();
                     if ("ROLE_MEDECIN_INVESTIGATEUR".equals(nomRole) && user.getMedecin() != null) {
                         patient.setMedecinInvestigateur(user.getMedecin());
@@ -130,8 +127,6 @@ public class PatientController {
                     }
 
                 }
-
-                
             });
         }
 
@@ -139,26 +134,26 @@ public class PatientController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public PatientIdAdmin update(@PathVariable String id, @RequestBody PatientIdAdmin details) {
         return patientService.updatePatient(id, details);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('DELETE_PATIENT')")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         patientService.deletePatient(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{patientId}/services/{serviceId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public PatientIdAdmin affecterAuService(@PathVariable String patientId, @PathVariable Integer serviceId) {
         return patientService.affecterPatientAuService(patientId, serviceId);
     }
 
     @DeleteMapping("/{patientId}/services/{serviceId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public ResponseEntity<PatientIdAdmin> desaffecterPatientDuService(
             @PathVariable String patientId, @PathVariable Integer serviceId) {
         try {
@@ -169,13 +164,13 @@ public class PatientController {
     }
 
     @PostMapping("/{patientId}/medecins/{medecinId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public PatientIdAdmin assignerMedecin(@PathVariable String patientId, @PathVariable Integer medecinId) {
         return patientService.assignerMedecinAuPatient(patientId, medecinId);
     }
 
     @DeleteMapping("/{patientId}/medecins/{medecinId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public ResponseEntity<PatientIdAdmin> retirerMedecinDuPatient(
             @PathVariable String patientId, @PathVariable Integer medecinId) {
         try {

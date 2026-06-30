@@ -13,6 +13,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -28,24 +31,26 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         
-        // Authentification via l'AuthenticationManager configuré avec notre UserDetailsService
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getLoginU(), loginRequest.getMotPasseU())
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         
-        // Génération du Token JWT
         String jwt = jwtUtils.generateJwtToken(authentication);
         
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         
-        // Récupération du rôle principal
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_"))
                 .findFirst()
                 .orElse("ROLE_USER");
 
-        return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role));
+        List<String> authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
 }

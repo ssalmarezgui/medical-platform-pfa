@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.ImagerieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/imageries")
-@CrossOrigin(origins = "*")
+
 public class ImagerieController {
 
     @Autowired
@@ -34,6 +35,7 @@ public class ImagerieController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<ImagerieDTO> getAll(
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
@@ -53,6 +55,7 @@ public class ImagerieController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')") 
     public ResponseEntity<ImagerieDTO> getById(@PathVariable Integer id) {
         return imagerieService.getById(id)
             .map(this::toDTO)
@@ -61,24 +64,29 @@ public class ImagerieController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<ImagerieDTO> create(@PathVariable String patientId, @RequestBody Imagerie imagerie) {
         Imagerie created = imagerieService.create(imagerie, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<ImagerieDTO> createForDonor(@PathVariable Integer donorId, @RequestBody Imagerie imagerie) {
         Imagerie created = imagerieService.createForDonor(imagerie, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<ImagerieDTO> update(@PathVariable Integer id, @RequestBody Imagerie details) {
         Imagerie updated = imagerieService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         imagerieService.delete(id);
         return ResponseEntity.noContent().build();

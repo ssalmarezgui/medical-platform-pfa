@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.HabitudeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/habitudes")
-@CrossOrigin(origins = "*")
+
 public class HabitudeController {
 
     @Autowired
@@ -39,6 +40,7 @@ public class HabitudeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<HabitudeDTO> getAll(
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
@@ -55,6 +57,7 @@ public class HabitudeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')") 
     public ResponseEntity<HabitudeDTO> getById(@PathVariable Integer id) {
         return habitudeService.getById(id)
             .map(this::toDTO)
@@ -63,24 +66,29 @@ public class HabitudeController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<HabitudeDTO> create(@PathVariable String patientId, @RequestBody Habitude habitude) {
         Habitude created = habitudeService.create(habitude, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<HabitudeDTO> createForDonor(@PathVariable Integer donorId, @RequestBody Habitude habitude) {
         Habitude created = habitudeService.createForDonor(habitude, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<HabitudeDTO> update(@PathVariable Integer id, @RequestBody Habitude details) {
         Habitude updated = habitudeService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         habitudeService.delete(id);
         return ResponseEntity.noContent().build();

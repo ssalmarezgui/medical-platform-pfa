@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.TransplantationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/transplantations")
-@CrossOrigin(origins = "*")
+
 public class TransplantationController {
 
     @Autowired
@@ -53,6 +54,7 @@ public class TransplantationController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<TransplantationDTO> getAll(@RequestParam(required = false) String patientId) {
         // Sécurisation contre les chaînes de caractères vides
         List<Transplantation> list = (patientId != null && !patientId.trim().isEmpty()) 
@@ -63,6 +65,7 @@ public class TransplantationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public ResponseEntity<TransplantationDTO> getById(@PathVariable Integer id) {
         return tService.getById(id)
             .map(this::toDTO)
@@ -71,6 +74,7 @@ public class TransplantationController {
     }
 
     @PostMapping("/patient/{patientId}/donneur/{donneurId}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<TransplantationDTO> create(
             @PathVariable String patientId, 
             @PathVariable Integer donneurId, 
@@ -80,12 +84,14 @@ public class TransplantationController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')") 
     public ResponseEntity<TransplantationDTO> update(@PathVariable Integer id, @RequestBody Transplantation details) {
         Transplantation updated = tService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')") 
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         tService.delete(id);
         return ResponseEntity.noContent().build();

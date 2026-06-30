@@ -6,19 +6,17 @@ import com.pfa.medical_backend.services.AntecedentFamilialService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/antecedents-familiaux")
-@CrossOrigin(origins = "*")
 public class AntecedentFamilialController {
 
     @Autowired
     private AntecedentFamilialService afService;
-
-    // Convertisseur d'Entité vers DTO
     private AntecedentFamilialDTO toDTO(AntecedentFamilial af) {
         AntecedentFamilialDTO dto = new AntecedentFamilialDTO();
         dto.setIdentifiantAF(af.getIdentifiantAF());
@@ -39,12 +37,12 @@ public class AntecedentFamilialController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentFamilialDTO> getAll(
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
 
     ) {
-        // Sécurisation contre les chaînes de caractères vides
         List<AntecedentFamilial> list ;
         if (patientId != null && !patientId.trim().isEmpty()) {
             list = afService.getByPatient(patientId);
@@ -59,6 +57,7 @@ public class AntecedentFamilialController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')") 
     public ResponseEntity<AntecedentFamilialDTO> getById(@PathVariable Integer id) {
         return afService.getById(id)
             .map(this::toDTO)
@@ -67,24 +66,29 @@ public class AntecedentFamilialController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<AntecedentFamilialDTO> create(@PathVariable String patientId, @RequestBody AntecedentFamilial af) {
         AntecedentFamilial created = afService.create(af, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<AntecedentFamilialDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentFamilial af) {
         AntecedentFamilial created = afService.createForDonor(af, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<AntecedentFamilialDTO> update(@PathVariable Integer id, @RequestBody AntecedentFamilial details) {
         AntecedentFamilial updated = afService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         afService.delete(id);
         return ResponseEntity.noContent().build();

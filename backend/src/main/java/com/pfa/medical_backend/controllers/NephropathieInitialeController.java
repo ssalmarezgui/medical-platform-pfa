@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.NephropathieInitialeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/nephropathies")
-@CrossOrigin(origins = "*")
+
 public class NephropathieInitialeController {
 
     @Autowired
@@ -33,8 +34,8 @@ public class NephropathieInitialeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public List<NephropathieInitialeDTO> getAll(@RequestParam(required = false) String patientId) {
-        // Sécurisation contre les chaînes de caractères vides
         List<NephropathieInitiale> list = (patientId != null && !patientId.trim().isEmpty()) 
             ? niService.getByPatient(patientId) 
             : niService.getAll();
@@ -43,6 +44,7 @@ public class NephropathieInitialeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<NephropathieInitialeDTO> getById(@PathVariable Integer id) {
         return niService.getById(id)
             .map(this::toDTO)
@@ -51,18 +53,21 @@ public class NephropathieInitialeController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<NephropathieInitialeDTO> create(@PathVariable String patientId, @RequestBody NephropathieInitiale ni) {
         NephropathieInitiale created = niService.create(ni, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<NephropathieInitialeDTO> update(@PathVariable Integer id, @RequestBody NephropathieInitiale details) {
         NephropathieInitiale updated = niService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         niService.delete(id);
         return ResponseEntity.noContent().build();

@@ -9,13 +9,14 @@ import com.pfa.medical_backend.services.MicrobiologieSerologieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/microbiologie")
-@CrossOrigin(origins = "*")
+
 public class MicrobiologieSerologieController {
 
     @Autowired
@@ -51,6 +52,7 @@ public class MicrobiologieSerologieController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<MicrobiologieSerologieDTO> getAll() {
         return msRepository.findAll().stream()
                 .map(this::toDTO)
@@ -74,18 +76,21 @@ public class MicrobiologieSerologieController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<MicrobiologieSerologieDTO> save(@PathVariable String patientId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
         MicrobiologieSerologie saved = msService.createOrUpdate(patientId, ms);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<MicrobiologieSerologieDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
         MicrobiologieSerologie saved = msService.createOrUpdateForDonor(donorId, ms);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         msService.delete(id);
         return ResponseEntity.noContent().build();

@@ -54,7 +54,8 @@ export const LoginPage = () => {
       });
 
       const rawToken = response.data.token; 
-      const rawRole = response.data.role;   
+      const rawRole = response.data.role;  
+      const rawAuthorities = response.data.authorities || []; 
       const login = response.data.loginU || username; 
 
       if (!rawToken) {
@@ -63,7 +64,11 @@ export const LoginPage = () => {
 
       const role = rawRole.startsWith("ROLE_") ? rawRole.replace("ROLE_", "") : rawRole;
 
-      loginUser(login, role, rawToken, selectedHospital);
+      const permissions = rawAuthorities.map((auth: string) => 
+        auth.startsWith("ROLE_") ? auth.replace("ROLE_", "") : auth
+      );
+
+      loginUser(login, role, permissions, rawToken, selectedHospital);
       setIsLoading(false);
 
       if (role === 'AGENT_IMMUNO') {

@@ -6,11 +6,12 @@ import com.pfa.medical_backend.services.ParametresBiopsiquesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/biopsies")
-@CrossOrigin(origins = "*")
+
 public class ParametresBiopsiquesController {
 
     @Autowired
@@ -27,6 +28,7 @@ public class ParametresBiopsiquesController {
     }
 
     @GetMapping("/nephropathie/{nephropathieId}")
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<ParametresBiopsiquesDTO> getByNephropathie(@PathVariable Integer nephropathieId) {
         return pbService.getByNephropathie(nephropathieId)
             .map(this::toDTO)
@@ -35,6 +37,7 @@ public class ParametresBiopsiquesController {
     }
 
     @PostMapping("/nephropathie/{nephropathieId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<ParametresBiopsiquesDTO> create(
             @PathVariable Integer nephropathieId, 
             @RequestBody ParametresBiopsiques pb) {
@@ -43,12 +46,14 @@ public class ParametresBiopsiquesController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<ParametresBiopsiquesDTO> update(@PathVariable Integer id, @RequestBody ParametresBiopsiques details) {
         ParametresBiopsiques updated = pbService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         pbService.delete(id);
         return ResponseEntity.noContent().build();

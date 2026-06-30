@@ -15,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/medecins")
-@CrossOrigin(origins = "*")
 public class MedecinController {
 
     @Autowired
@@ -23,6 +22,7 @@ public class MedecinController {
 
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_MEDECIN')")
     public List<Medecin> getAll(
             @RequestParam(required = false) Integer serviceId,
             @RequestParam(required = false) String hopitalId) {
@@ -38,7 +38,7 @@ public class MedecinController {
 
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN')")
+    @PreAuthorize("hasAuthority('READ_MEDECIN')")
     public ResponseEntity<Medecin> getById(@PathVariable Integer id) {
         return medecinService.getMedecinById(id)
             .map(ResponseEntity::ok)
@@ -46,28 +46,29 @@ public class MedecinController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public ResponseEntity<Medecin> create(@RequestBody Medecin medecin) {
         return new ResponseEntity<>(medecinService.createMedecin(medecin), HttpStatus.CREATED);
     }
 
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN')")
+
+    @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public Medecin update(@PathVariable Integer id, @RequestBody Medecin details) {
         return medecinService.updateMedecin(id, details);
     }
 
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         medecinService.deleteMedecin(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{medecinId}/services/{serviceId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public Medecin assignerAuService(
             @PathVariable Integer medecinId,
             @PathVariable Integer serviceId) {
@@ -76,7 +77,7 @@ public class MedecinController {
 
 
     @DeleteMapping("/{medecinId}/services/{serviceId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public ResponseEntity<Medecin> retirerMedecinDuService(
             @PathVariable Integer medecinId,
             @PathVariable Integer serviceId) {

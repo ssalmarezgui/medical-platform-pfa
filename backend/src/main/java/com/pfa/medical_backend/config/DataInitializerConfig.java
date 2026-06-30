@@ -10,24 +10,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Value;
 
 import com.pfa.medical_backend.entities.HopitalStructureSoin;
 import com.pfa.medical_backend.entities.Role;
+import com.pfa.medical_backend.entities.Permission;
 import com.pfa.medical_backend.entities.ServiceMedical;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.HopitalStructureSoinRepository;
 import com.pfa.medical_backend.repositories.RoleRepository;
+import com.pfa.medical_backend.repositories.PermissionRepository;
 import com.pfa.medical_backend.repositories.ServiceRepository;
 import com.pfa.medical_backend.repositories.UserRepository;
-
 
 @Configuration
 @ConditionalOnProperty(name = "app.bootstrap-admin.enabled", havingValue = "true")
 public class DataInitializerConfig {
-
-    private final RoleRepository roleRepository;
 
     @Value("${app.bootstrap-admin.enabled:false}")
     private boolean bootstrapAdminEnabled;
@@ -41,14 +42,11 @@ public class DataInitializerConfig {
     @Value("${app.bootstrap-admin.role:ROLE_ADMIN}")
     private String adminRole;
 
-    DataInitializerConfig(RoleRepository roleRepository) {
-        this.roleRepository = roleRepository;
-    }
-
     @Bean
     public CommandLineRunner bootstrapData(
         UserRepository userRepository,
         RoleRepository roleRepository,
+        PermissionRepository permissionRepository,
         HopitalStructureSoinRepository hopitalRepository,
         ServiceRepository serviceRepository,
         PasswordEncoder passwordEncoder
@@ -58,63 +56,55 @@ public class DataInitializerConfig {
                 return;
             }
 
-            if (!StringUtils.hasText(adminLogin) || 
-                !StringUtils.hasText(adminPassword)) {
+            if (!StringUtils.hasText(adminLogin) || !StringUtils.hasText(adminPassword)) {
                 throw new IllegalStateException(
                     "Admin bootstrap is enabled but credentials are missing."
                 );
             }
 
-            // les roles 
+            // 1. CRÉATION DES RÔLES ET AFFECTATIONS DE PERMISSIONS DE MANIÈRE SÉCURISÉE
+            Role roleAdmin = bootstrapRole(roleRepository, permissionRepository, "ROLE_ADMIN", Set.of(
+                "READ_PATIENT", "WRITE_PATIENT", "DELETE_PATIENT",
+                "READ_DONNEUR", "WRITE_DONNEUR", "DELETE_DONNEUR",
+                "READ_MEDECIN", "WRITE_MEDECIN",
+                "READ_SERVICE", "WRITE_SERVICE",
+                "READ_HOPITAL", "WRITE_HOPITAL"
+            ));
 
-            bootstrapRole(roleRepository, "ROLE_ADMIN");
-            bootstrapRole(roleRepository, "ROLE_MEDECIN_INVESTIGATEUR");
-            bootstrapRole(roleRepository, "ROLE_AMEDECIN_SUIVI");
-            bootstrapRole(roleRepository, "ROLE_AGENT_LABORATOIRE");
-            bootstrapRole(roleRepository, "ROLE_AGENT_IMMUNO");
+            Role roleSuivi = bootstrapRole(roleRepository, permissionRepository, "ROLE_MEDECIN_SUIVI", Set.of(
+                "READ_PATIENT", "READ_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL"
+            ));
 
+            Role roleInvestigateur = bootstrapRole(roleRepository, permissionRepository, "ROLE_MEDECIN_INVESTIGATEUR", Set.of(
+                "READ_PATIENT", "WRITE_PATIENT", "READ_DONNEUR", "WRITE_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL"
+            ));
 
-            // Initialisation des hopitaux 
+            Role roleLabo = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_LABORATOIRE", Set.of("READ_PATIENT", "READ_DONNEUR"));
+            Role roleImmuno = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_IMMUNO", Set.of("READ_PATIENT", "READ_DONNEUR"));
+
+            // 2. PEUPLEMENT DES HÔPITAUX DE RÉFÉRENCE TUNISIENS
             HopitalStructureSoin hcn = bootstrapHopital(hopitalRepository, serviceRepository, 
                 "HCN_TUNIS1", "HCN", "Boulevard du 9 avril 1938-Bab Saâdoun-1007-Tunisia", 30, 30, 1025, 
-                "Hôpital universitaire de référence nationale. Dispose d'un service de néphrologie et transplantation rénale de renommée nationale, avec un plateau technique de pointe.", 
+                "Hôpital universitaire de référence nationale.", 
                 LocalDate.of(1938, 4, 9));
 
             bootstrapHopital(hopitalRepository, serviceRepository, 
                 "LA_RABTA_1", "La Rabta", "La Rabta, Tunis-1007 – Beb Saadoun", 12, 34, 872, 
-                "Grand hôpital universitaire situé au cœur de Tunis, spécialisé dans la prise en charge des maladies chroniques dont les pathologies rénales.", 
+                "Grand hôpital universitaire situé au cœur de Tunis.", 
                 LocalDate.of(1895, 1, 1));
 
             bootstrapHopital(hopitalRepository, serviceRepository, 
                 "HMPIT_TUN1", "HMPIT", "Montfleury, Tunis-1008, Tunisie", 3, 15, 620, 
-                "Hôpital militaire universitaire de référence assurant des soins spécialisés pour le personnel militaire et civil.", 
+                "Hôpital militaire universitaire de référence.", 
                 LocalDate.of(1900, 1, 1));
 
-            bootstrapHopital(hopitalRepository, serviceRepository, 
-                "SAHLOUL_S1", "Sahloul", "Route de Ceinture Sahloul, Hammam‑Sousse 4011, Sousse, Tunisie", 12, 30, 700, 
-                "Hôpital universitaire régional de référence du Centre-Est tunisien. Son service de néphrologie prend en charge les patients insuffisants rénaux chroniques.", 
-                LocalDate.of(1900, 1, 1));
-
-            bootstrapHopital(hopitalRepository, serviceRepository, 
-                "FATTOUMA_1", "Fattouma Bourguiba", "Avenue Farhat‑Hached et Rue du 1er Juin 1995, Monastir 5000, Tunisie", 13, 39, 888, 
-                "Hôpital universitaire de la région du Sahel. Reconnu pour son excellence en médecine interne et néphrologie.", 
-                LocalDate.of(1900, 1, 1));
-
-            bootstrapHopital(hopitalRepository, serviceRepository, 
-                "H_CHAKER_1", "Hédi Chaker", "Route El Ain Km 0,5, 3000 Sfax, Tunisie", 13, 18, 889, 
-                "Principal hôpital universitaire du Sud tunisien. Dispose d'un service de néphrologie et dialyse très actif couvrant toute la région sud.", 
-                LocalDate.of(1900, 1, 1));
-
-            // RECUPÉRER LE SERVICE DE NÉPHROLOGIE DE RÉFÉRENCE
+            // 3. SERVICE DE RÉFÉRENCE
             ServiceMedical referenceService = serviceRepository.findAll().stream()
                 .filter(s -> s.getHopital() != null && "HCN_TUNIS1".equals(s.getHopital().getIdentifiantH()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Service de référence de HCN introuvable"));
 
-            // INITIALISATION DE L'ADMINISTRATEUR
-            Role roleAdmin = roleRepository.findByNomRole(adminRole)
-                .orElseThrow(() -> new RuntimeException("Rôle Admin introuvable"));
-
+            // 4. INITIALISATION DE L'ADMINISTRATEUR PRINCIPAL
             User admin = userRepository.findByLoginU(adminLogin).orElseGet(User::new);
             admin.setLoginU(adminLogin);
             admin.setMotPasseU(passwordEncoder.encode(adminPassword));
@@ -124,37 +114,51 @@ public class DataInitializerConfig {
             userRepository.save(admin);
             System.out.println("Admin synchronized: " + adminLogin + " (" + adminRole + ") rattaché à HCN");
 
-            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "investigateur", "Invest1234!", "ROLE_MEDECIN_INVESTIGATEUR", referenceService);
-            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "suivi", "Suivi1234!", "ROLE_MEDECIN_SUIVI", referenceService);
-            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "labo", "Labo1234!", "ROLE_AGENT_LABORATOIRE", referenceService);
-            bootstrapDemoUser(userRepository, roleRepository, passwordEncoder, "immuno", "Immuno1234!", "ROLE_AGENT_IMMUNO", referenceService);
+            // 5. INITIALISATION DES UTILISATEURS DE DÉMO
+            bootstrapDemoUser(userRepository, passwordEncoder, "investigateur", "Invest1234!", roleInvestigateur, referenceService);
+            bootstrapDemoUser(userRepository, passwordEncoder, "suivi", "Suivi1234!", roleSuivi, referenceService);
+            bootstrapDemoUser(userRepository, passwordEncoder, "labo", "Labo1234!", roleLabo, referenceService);
+            bootstrapDemoUser(userRepository, passwordEncoder, "immuno", "Immuno1234!", roleImmuno, referenceService);
         };
     }
 
+    // Crée une permission si elle n'existe pas
+    private Permission bootstrapPermission(PermissionRepository permissionRepository, String permissionName) {
+        return permissionRepository.findByNomPermission(permissionName).orElseGet(() -> {
+            Permission permission = new Permission();
+            permission.setNomPermission(permissionName);
+            return permissionRepository.save(permission);
+        });
+    }
 
-    private void bootstrapRole(RoleRepository roleRepository, String roleName){
-        if (roleRepository.findByNomRole(roleName).isEmpty()){
-            Role role = new Role();
-            role.setNomRole(roleName);
-            role.setPermissions(new HashSet<>());
-            roleRepository.save(role);
-            System.out.println("Rôle créé : " + roleName);
+    // Crée un rôle, résout ses permissions et les associe
+    private Role bootstrapRole(RoleRepository roleRepository, PermissionRepository permissionRepository, String roleName, Set<String> permissionNames){
+        Role role = roleRepository.findByNomRole(roleName).orElseGet(() -> {
+            Role newRole = new Role();
+            newRole.setNomRole(roleName);
+            newRole.setPermissions(new HashSet<>());
+            return roleRepository.saveAndFlush(newRole);
+        });
+
+        // Liaison des permissions au rôle
+        Set<Permission> permissions = new HashSet<>();
+        for (String pName : permissionNames) {
+            Permission perm = bootstrapPermission(permissionRepository, pName);
+            permissions.add(perm);
         }
-
+        
+        role.setPermissions(permissions);
+        return roleRepository.saveAndFlush(role);
     }
 
     private void bootstrapDemoUser(
         UserRepository userRepository,
-        RoleRepository roleRepository,
         PasswordEncoder passwordEncoder,
         String login,
         String password,
-        String roleName,
+        Role role,
         ServiceMedical service
     ) {
-        Role role = roleRepository.findByNomRole(roleName)
-            .orElseThrow(() -> new RuntimeException("Rôle introuvable : " + roleName));
-
         User user = userRepository.findByLoginU(login).orElseGet(User::new);
         user.setLoginU(login);
         user.setMotPasseU(passwordEncoder.encode(password));
@@ -162,7 +166,7 @@ public class DataInitializerConfig {
         user.setService(service);
         user.setAccountNonLocked(true); 
         userRepository.save(user);
-        System.out.println("Demo user synchronized: " + login + " (" + roleName + ")");
+        System.out.println("Demo user synchronized: " + login + " (" + role.getNomRole() + ")");
     }
 
     private HopitalStructureSoin bootstrapHopital(
@@ -189,7 +193,6 @@ public class DataInitializerConfig {
 
         HopitalStructureSoin saved = hopitalRepository.save(hopital);
 
-        // On vérifie s'il possède déjà un service, sinon on lui crée son service de Néphrologie
         boolean hasService = serviceRepository.findAll().stream()
             .anyMatch(s -> s.getHopital() != null && id.equals(s.getHopital().getIdentifiantH()));
 

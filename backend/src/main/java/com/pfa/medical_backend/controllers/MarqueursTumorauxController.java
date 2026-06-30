@@ -8,13 +8,14 @@ import com.pfa.medical_backend.services.MarqueursTumorauxService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/marqueurs-tumoraux")
-@CrossOrigin(origins = "*")
+
 public class MarqueursTumorauxController {
 
     @Autowired
@@ -39,6 +40,7 @@ public class MarqueursTumorauxController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<MarqueursTumorauxDTO> getAll() {
         return mtRepository.findAll().stream()
                 .map(this::toDTO)
@@ -70,18 +72,21 @@ public class MarqueursTumorauxController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<MarqueursTumorauxDTO> save(@PathVariable String patientId, @RequestBody MarqueursTumoraux mt) {
         MarqueursTumoraux saved = mtService.create(mt, patientId);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<MarqueursTumorauxDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody MarqueursTumoraux mt) {
         MarqueursTumoraux saved = mtService.createForDonor(mt, donorId);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         mtService.delete(id);
         return ResponseEntity.noContent().build();

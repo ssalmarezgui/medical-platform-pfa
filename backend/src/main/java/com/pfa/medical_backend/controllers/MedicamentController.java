@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.MedicamentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/medicaments")
-@CrossOrigin(origins = "*")
+
 public class MedicamentController {
 
     @Autowired
@@ -30,6 +31,7 @@ public class MedicamentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public List<MedicamentDTO> getAll(@RequestParam(required = false) String type) {
         List<Medicament> list = (type != null) 
             ? medicamentService.getByType(type) 
@@ -39,6 +41,7 @@ public class MedicamentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<MedicamentDTO> getById(@PathVariable Integer id) {
         return medicamentService.getById(id)
             .map(this::toDTO)
@@ -47,18 +50,21 @@ public class MedicamentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public ResponseEntity<MedicamentDTO> create(@RequestBody Medicament m) {
         Medicament created = medicamentService.create(m);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public ResponseEntity<MedicamentDTO> update(@PathVariable Integer id, @RequestBody Medicament details) {
         Medicament updated = medicamentService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         medicamentService.delete(id);
         return ResponseEntity.noContent().build();

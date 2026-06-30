@@ -8,13 +8,14 @@ import com.pfa.medical_backend.services.BilanImmunologiqueService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/immunologie")
-@CrossOrigin(origins = "*")
+
 public class BilanImmunologiqueController {
 
     @Autowired
@@ -51,6 +52,7 @@ public class BilanImmunologiqueController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<BilanImmunologiqueDTO> getAll() {
         return biRepository.findAll().stream()
                 .map(this::toDTO)
@@ -66,6 +68,7 @@ public class BilanImmunologiqueController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<BilanImmunologiqueDTO> save(@PathVariable String patientId, @RequestBody BilanImmunologique bi) {
         BilanImmunologique saved = biService.createOrUpdate(patientId, bi);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
@@ -80,12 +83,14 @@ public class BilanImmunologiqueController {
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<BilanImmunologiqueDTO> saveForDonneur(@PathVariable Integer donorId, @RequestBody BilanImmunologique bi) {
         BilanImmunologique saved = biService.createOrUpdateForDonor(donorId, bi);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         biService.delete(id);
         return ResponseEntity.noContent().build();

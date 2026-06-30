@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.DosageMedSangService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/dosages-sanguins")
-@CrossOrigin(origins = "*")
+
 public class DosageMedSangController {
 
     @Autowired
@@ -58,12 +59,15 @@ public class DosageMedSangController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<DosageMedSangDTO> update(@PathVariable Integer id, @RequestBody DosageMedSang details) {
         DosageMedSang updated = dmsService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         dmsService.delete(id);
         return ResponseEntity.noContent().build();

@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.PrescriptionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/prescriptions")
-@CrossOrigin(origins = "*")
+
 public class PrescriptionController {
 
     @Autowired
@@ -38,6 +39,7 @@ public class PrescriptionController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public List<PrescriptionDTO> getAll(@RequestParam(required = false) Integer traitementId) {
         List<Prescription> list = (traitementId != null) 
             ? prescriptionService.getByTraitement(traitementId) 
@@ -47,6 +49,7 @@ public class PrescriptionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<PrescriptionDTO> getById(@PathVariable Integer id) {
         return prescriptionService.getById(id)
             .map(this::toDTO)
@@ -55,6 +58,7 @@ public class PrescriptionController {
     }
 
     @PostMapping("/traitement/{traitementId}/medicament/{medicamentId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
     public ResponseEntity<PrescriptionDTO> create(
             @PathVariable Integer traitementId, 
             @PathVariable Integer medicamentId, 
@@ -64,12 +68,14 @@ public class PrescriptionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
     public ResponseEntity<PrescriptionDTO> update(@PathVariable Integer id, @RequestBody Prescription details) {
         Prescription updated = prescriptionService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         prescriptionService.delete(id);
         return ResponseEntity.noContent().build();

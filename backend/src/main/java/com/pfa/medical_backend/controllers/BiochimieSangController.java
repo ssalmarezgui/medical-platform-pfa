@@ -8,13 +8,14 @@ import com.pfa.medical_backend.services.BiochimieSangService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/biochimie-sanguine")
-@CrossOrigin(origins = "*")
+
 public class BiochimieSangController {
 
     @Autowired
@@ -53,6 +54,7 @@ public class BiochimieSangController {
 
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<BiochimieSangDTO> getAll() {
         return bsRepository.findAll().stream()
                 .map(this::toDTO)
@@ -68,6 +70,7 @@ public class BiochimieSangController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<BiochimieSangDTO> save(@PathVariable String patientId, @RequestBody BiochimieSang bs) {
         BiochimieSang saved = bsService.createOrUpdate(patientId, bs);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
@@ -82,12 +85,14 @@ public class BiochimieSangController {
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<BiochimieSangDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody BiochimieSang bs) {
         BiochimieSang saved = bsService.createOrUpdateForDonor(donorId, bs);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         bsService.delete(id);
         return ResponseEntity.noContent().build();

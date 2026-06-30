@@ -7,6 +7,7 @@ import com.pfa.medical_backend.repositories.HormonesVitaminesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hormones-vitamines")
-@CrossOrigin(origins = "*")
+
 public class HormonesVitaminesController {
 
     @Autowired
@@ -53,6 +54,7 @@ public class HormonesVitaminesController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public ResponseEntity<List<HormonesVitaminesDTO>> getAll(
             @RequestParam(required = false) String patientId,
             @RequestParam(required = false) Integer donorId
@@ -80,6 +82,7 @@ public class HormonesVitaminesController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<HormonesVitaminesDTO> saveForPatient(@PathVariable String patientId, @RequestBody HormonesVitamines hv) {
         HormonesVitamines saved = hvService.createOrUpdate(patientId, hv);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
@@ -94,12 +97,14 @@ public class HormonesVitaminesController {
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<HormonesVitaminesDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HormonesVitamines hv) {
         HormonesVitamines saved = hvService.createOrUpdateForDonor(donorId, hv);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         hvService.delete(id);
         return ResponseEntity.noContent().build();

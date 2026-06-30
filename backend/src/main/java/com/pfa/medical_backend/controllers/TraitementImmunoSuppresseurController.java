@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.persistence.EntityManager;
 
@@ -18,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/traitements-immuno") // L'adresse URL exacte attendue par React !
 @Slf4j
-@CrossOrigin(origins = "*") // Autorise les connexions CORS de React
+ // Autorise les connexions CORS de React
 public class TraitementImmunoSuppresseurController {
 
     @Autowired
@@ -31,6 +32,7 @@ public class TraitementImmunoSuppresseurController {
     private PatientIdAdminRepository patientRepository;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<List<TraitementImmunoSuppresseur>> getAllByPatient(@RequestParam(required = false) String patientId) {
         log.info("Consultation de l'historique d'immuno-suppression");
         entityManager.clear(); 
@@ -45,6 +47,7 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_PATIENT')")
     public ResponseEntity<TraitementImmunoSuppresseur> getById(@PathVariable Integer id) {
         return tisRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -52,15 +55,14 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<TraitementImmunoSuppresseur> create(@RequestBody TraitementImmunoSuppresseur tis) {
         if (tis.getPatient() == null || tis.getPatient().getIdentifiantP() == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        // On vérifie s'il s'agit d'un objet TISInduction ou TISEntretien (Jackson polymorphique)
+        // On vérifie s'il s'agit d'un objet TISInduction ou TISEntretien
         log.info("Création d'un traitement d'immuno-suppression pour le patient : {}", tis.getPatient().getIdentifiantP());
-        
-        // On récupère et associe l'entité Patient
         PatientIdAdmin patient = patientRepository.findById(tis.getPatient().getIdentifiantP())
                 .orElseThrow(() -> new RuntimeException("Patient non trouvé"));
         tis.setPatient(patient);
@@ -71,6 +73,7 @@ public class TraitementImmunoSuppresseurController {
 
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<TraitementImmunoSuppresseur> update(@PathVariable Integer id, @RequestBody TraitementImmunoSuppresseur details) {
         return tisRepository.findById(id).map(existing -> {
             existing.setDciTIS(details.getDciTIS());
@@ -100,6 +103,7 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         if (!tisRepository.existsById(id)) {
             return ResponseEntity.notFound().build();

@@ -12,14 +12,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/donneurs")
-@CrossOrigin(origins = "*")
 public class DonneurController {
 
     @Autowired
     private DonneurService donneurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('READ_DONNEUR')")
     public List<Donneur> getAll(@RequestParam(required = false) String type) {
         if (type != null) {
             return donneurService.getByType(type);
@@ -28,7 +27,7 @@ public class DonneurController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('READ_DONNEUR')")
     public ResponseEntity<Donneur> getById(@PathVariable Integer id) {
         return donneurService.getById(id)
                 .map(ResponseEntity::ok)
@@ -36,20 +35,21 @@ public class DonneurController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('WRITE_DONNEUR')")
     public ResponseEntity<Donneur> create(@RequestBody Donneur donneur) {
         // Remarque n°10 : L'objet reçu est l'équivalent exact du patient
         return new ResponseEntity<>(donneurService.create(donneur), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+
+    @PreAuthorize("hasAnyAuthority('WRITE_DONNEUR')")
     public Donneur update(@PathVariable Integer id, @RequestBody Donneur details) {
         return donneurService.update(id, details);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('DELETE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         donneurService.delete(id);
         return ResponseEntity.noContent().build();

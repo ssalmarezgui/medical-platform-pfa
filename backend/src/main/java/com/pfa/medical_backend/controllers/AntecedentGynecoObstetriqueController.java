@@ -12,11 +12,11 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/antecedents-gyneco")
-@CrossOrigin(origins = "*")
 public class AntecedentGynecoObstetriqueController {
 
     @Autowired
@@ -51,6 +51,7 @@ public class AntecedentGynecoObstetriqueController {
 
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentGynecoObstetriqueDTO> getAll() {        
         return agoRepository.findAll().stream()
                 .map(this::toDTO)
@@ -66,6 +67,7 @@ public class AntecedentGynecoObstetriqueController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> create(@PathVariable String patientId, @RequestBody AntecedentGynecoObstetrique ago) {
         AntecedentGynecoObstetrique created = agoService.create(ago, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
@@ -80,18 +82,22 @@ public class AntecedentGynecoObstetriqueController {
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentGynecoObstetrique ago) {
         AntecedentGynecoObstetrique created = agoService.createForDonor(ago, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> update(@PathVariable Integer id, @RequestBody AntecedentGynecoObstetrique details) {
         AntecedentGynecoObstetrique updated = agoService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         agoService.delete(id);
         return ResponseEntity.noContent().build();

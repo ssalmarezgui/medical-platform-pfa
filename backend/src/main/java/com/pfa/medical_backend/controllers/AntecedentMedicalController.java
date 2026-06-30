@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.AntecedentMedicalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/antecedents-medicaux")
-@CrossOrigin(origins = "*")
+
 public class AntecedentMedicalController {
 
     @Autowired
@@ -42,6 +43,7 @@ public class AntecedentMedicalController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentMedicalDTO> getAll(
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
@@ -59,6 +61,7 @@ public class AntecedentMedicalController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')") 
     public ResponseEntity<AntecedentMedicalDTO> getById(@PathVariable Integer id) {
         return amService.getById(id)
             .map(this::toDTO)
@@ -67,24 +70,29 @@ public class AntecedentMedicalController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<AntecedentMedicalDTO> create(@PathVariable String patientId, @RequestBody AntecedentMedical am) {
         AntecedentMedical created = amService.create(am, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<AntecedentMedicalDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentMedical am) {
         AntecedentMedical created = amService.createForDonor(am, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<AntecedentMedicalDTO> update(@PathVariable Integer id, @RequestBody AntecedentMedical details) {
         AntecedentMedical updated = amService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         amService.delete(id);
         return ResponseEntity.noContent().build();

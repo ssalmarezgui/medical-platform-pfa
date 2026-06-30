@@ -8,13 +8,14 @@ import com.pfa.medical_backend.services.FicheHematologieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hematologie")
-@CrossOrigin(origins = "*")
+
 public class FicheHematologieController {
 
     @Autowired
@@ -53,6 +54,7 @@ public class FicheHematologieController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<HemotologieHemostaseDTO> getAll() {
         return hhRepository.findAll().stream()
                 .map(this::toDTO)
@@ -68,6 +70,7 @@ public class FicheHematologieController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<HemotologieHemostaseDTO> save(@PathVariable String patientId, @RequestBody HemotologieHemostase hh) {
         HemotologieHemostase saved = fhService.createOrUpdate(patientId, hh);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
@@ -82,12 +85,14 @@ public class FicheHematologieController {
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<HemotologieHemostaseDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HemotologieHemostase hh) {
         HemotologieHemostase saved = fhService.createOrUpdateForDonor(donorId, hh);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         fhService.delete(id);
         return ResponseEntity.noContent().build();

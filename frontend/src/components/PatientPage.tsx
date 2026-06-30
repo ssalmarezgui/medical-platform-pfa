@@ -7,13 +7,15 @@ import { EditPatientModal } from '../features/patients/components/EditPatientMod
 import { ImportPatientsModal } from '../features/patients/components/ImportPatientsModal';
 import { useHospitals } from '../features/hospitals/hooks/useHospitals';
 import { Patient } from '../features/patients/types/patients';
-// Importation du store d'authentification globale
 import { useAuthStore } from '../store/useAuthStore';
 
+import { usePermission } from '../hooks/usePermission';
+
 export const PatientPage = () => {
-  // Récupération de l'utilisateur connecté et de son hôpital de rattachement choisi à la connexion
   const { user } = useAuthStore();
   const userHopitalId = user?.hopitalId;
+
+  const { hasPermission } = usePermission();
 
   const { data: hospitals } = useHospitals();
   const deletePatientMutation = useDeletePatient();
@@ -26,12 +28,10 @@ export const PatientPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
-  // Évaluation des permissions selon le rôle clinique de l'utilisateur
-  const isReadOnly = user?.roleU === 'MEDECIN_SUIVI'; // R uniquement
-  const canCreateOrUpdate = user?.roleU === 'ADMIN' || user?.roleU === 'MEDECIN_INVESTIGATEUR'; // C/U autorisés
-  const canDelete = user?.roleU === 'ADMIN'; // D autorisé
+  const isReadOnly = !hasPermission('WRITE_PATIENT');
+  const canCreateOrUpdate = hasPermission('WRITE_PATIENT');
+  const canDelete = hasPermission('DELETE_PATIENT');
 
-  // export CSV
   const handleExportCSV = () => {
     if (!patients || patients.length === 0) {
       alert("Aucune donnée à exporter.");
@@ -63,7 +63,6 @@ export const PatientPage = () => {
 
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
-  // Appel de la requête avec l'hôpital de connexion ou le filtre de recherche de l'administrateur
   const { data: patients, isLoading } = usePatients(
     undefined, 
     undefined, 
@@ -99,9 +98,7 @@ export const PatientPage = () => {
             <p className="text-[#6588BB] text-sm">Gestion complète des dossiers d'admission.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-  
-        {/* Seul l'administrateur global peut voir et manipuler ce filtre d'établissement */}
-        {user?.roleU === 'ADMIN' && (
+        {hasPermission('WRITE_HOPITAL') && (
           <select 
             className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
             value={selectedHospitalFilter}
@@ -124,7 +121,6 @@ export const PatientPage = () => {
           />
         </div>
 
-        {/* Bouton d'importation masqué pour le médecin de suivi (R) */}
         {canCreateOrUpdate && (
           <button 
             onClick={() => setIsImportOpen(true)}
@@ -139,7 +135,6 @@ export const PatientPage = () => {
           <IconFileSpreadsheet size={18} />
         </button>
         
-        {/* Bouton d'admission masqué pour le médecin de suivi (R) */}
         {canCreateOrUpdate && (
           <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 flex items-center gap-2 border-none cursor-pointer">
             <IconPlus size={16} /> Admission
@@ -176,15 +171,12 @@ export const PatientPage = () => {
                 <p className="font-bold text-[#2B5296]">Carnet: {p.typeCarnetP} ({p.numCarnetP})</p>
             </div>
 
-            {/* Le bloc d'actions complet est masqué si l'utilisateur est médecin de suivi (R) */}
             {canCreateOrUpdate && (
               <div className="mt-6 pt-4 border-t flex justify-end gap-2">
-                {/* Le bouton de modification reste visible pour l'investigateur et l'admin (U) */}
                 <button onClick={() => { setSelectedPatient(p); setIsEditOpen(true); }} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg">
                   <IconEdit size={16} />
                 </button>
                 
-                {/* Le bouton de suppression s'affiche uniquement pour l'admin (D) */}
                 {canDelete && (
                   <button onClick={() => triggerDelete(p.identifiantP)} className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg">
                     <IconTrash size={16} />

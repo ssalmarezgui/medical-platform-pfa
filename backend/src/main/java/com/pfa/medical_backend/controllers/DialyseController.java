@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.DialyseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/dialyses")
-@CrossOrigin(origins = "*")
+
 public class DialyseController {
 
     @Autowired
@@ -55,12 +56,15 @@ public class DialyseController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<DialyseDTO> update(@PathVariable Integer id, @RequestBody Dialyse details) {
         Dialyse updated = dialyseService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         dialyseService.delete(id);
         return ResponseEntity.noContent().build();

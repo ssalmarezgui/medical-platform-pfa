@@ -13,7 +13,7 @@ import com.pfa.medical_backend.repositories.*;
 
 @RestController
 @RequestMapping("/api/references")
-@CrossOrigin(origins = "*")
+
 public class ReferenceController {
 
     @Autowired private ComorbiditeRepository comorbiditeRepo;

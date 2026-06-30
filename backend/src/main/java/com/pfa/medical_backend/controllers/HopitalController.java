@@ -17,10 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-// @RequestMapping("/api/v1/hopitaux")
 @RequestMapping("/api/hopitaux")
 @Slf4j
-//@CrossOrigin(origins = "*")
 @CrossOrigin(origins = "http://localhost:5173")
 public class HopitalController {
 
@@ -37,13 +35,14 @@ public class HopitalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN_INVESTIGATEUR','MEDECIN_SUIVI')")
+    @PreAuthorize("hasAnyAuthority('READ_HOPITAL')")
     public List<HopitalStructureSoin> getAll() {
         log.info("Consultation de la liste des hôpitaux");
         return hopitalService.getAllHopitaux();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_HOPITAL')")
     public ResponseEntity<HopitalStructureSoin> getById(@PathVariable String id){
         return hopitalService.getHopitalById(id)
             .map(ResponseEntity::ok)
@@ -52,20 +51,21 @@ public class HopitalController {
 
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public ResponseEntity<HopitalStructureSoin> create(@Valid @RequestBody HopitalStructureSoin h) {
         log.info("Création d'un nouvel hôpital : {}", h.getLibelleH());
         return new ResponseEntity<>(hopitalService.createHopital(h), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public HopitalStructureSoin update(@PathVariable String id, @RequestBody HopitalStructureSoin details) {
         return hopitalService.updateHopital(id, details);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         hopitalService.deleteHopital(id);
         return ResponseEntity.noContent().build();
@@ -73,6 +73,7 @@ public class HopitalController {
 
 
     @GetMapping("/{hopitalId}/services")
+    @PreAuthorize("hasAuthority('READ_SERVICE')") 
     public ResponseEntity<List<ServiceMedical>> getServicesOfHopital(@PathVariable String hopitalId) {
         try {
             return ResponseEntity.ok(hopitalService.getServicesOfHopital(hopitalId));
@@ -82,6 +83,7 @@ public class HopitalController {
     }
 
     @PostMapping("/{hopitalId}/services")
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ResponseEntity<?> ajouterServiceAHopital(
         @PathVariable String hopitalId,
         @RequestBody ServiceMedical service
@@ -95,6 +97,7 @@ public class HopitalController {
     }
 
     @DeleteMapping("/{hopitalId}/services/{serviceId}")
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ResponseEntity<?> retirerServiceDeHopital(
         @PathVariable String hopitalId,
         @PathVariable Integer serviceId

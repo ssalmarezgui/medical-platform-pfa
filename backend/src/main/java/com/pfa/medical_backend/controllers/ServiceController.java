@@ -14,7 +14,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/services")
 @Slf4j
-@CrossOrigin(origins = "*")
 public class ServiceController {
 
     private final ServiceHospitalierService serviceHospitalierService;
@@ -25,7 +24,7 @@ public class ServiceController {
 
    
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAuthority('READ_SERVICE')")
     public List<ServiceMedical> getAll(@RequestParam(required = false) String hopitalId) { 
         if (hopitalId != null) {
             return serviceHospitalierService.getServicesByHopital(hopitalId);
@@ -34,7 +33,7 @@ public class ServiceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAuthority('READ_SERVICE')")
     public ResponseEntity<ServiceMedical> getById(@PathVariable Integer id) {
    
         return serviceHospitalierService.getServiceById(id)
@@ -44,26 +43,27 @@ public class ServiceController {
 
 
     @GetMapping("/hopital/{hopitalId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','MEDECIN','MEDECIN_INVESTIGATEUR')")
+    @PreAuthorize("hasAuthority('READ_SERVICE')")
     public List<ServiceMedical> getByHopital(@PathVariable String hopitalId) { 
         return serviceHospitalierService.getServicesByHopital(hopitalId);
     }
 
     @PostMapping("/hopital/{hopitalId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ResponseEntity<ServiceMedical> create(@PathVariable String hopitalId, @RequestBody ServiceMedical service) { 
         log.info("Création du service {} pour l'hôpital {}", service.getLibelleS(), hopitalId);
         return new ResponseEntity<>(serviceHospitalierService.createService(service, hopitalId), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ServiceMedical update(@PathVariable Integer id, @RequestBody ServiceMedical details) {
         return serviceHospitalierService.updateService(id, details);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         log.warn("Suppression du service ID : {}", id);
         serviceHospitalierService.deleteService(id);
@@ -73,13 +73,13 @@ public class ServiceController {
     // GESTION DES ACCES
 
     @GetMapping("/{serviceId}/users")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('READ_SERVICE')")
     public List<User> getUsersByService(@PathVariable Integer serviceId) {
         return serviceHospitalierService.getUsersByService(serviceId);
     }
 
     @PostMapping("/{serviceId}/users/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_SERVICE')")
     public ServiceMedical assignUser(@PathVariable Integer serviceId, @PathVariable Integer userId) {
         return serviceHospitalierService.assignerUtilisateurAuService(serviceId, userId);
     }

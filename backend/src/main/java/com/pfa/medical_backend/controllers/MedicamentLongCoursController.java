@@ -6,13 +6,14 @@ import com.pfa.medical_backend.services.MedicamentLongCoursService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/medicaments-long-cours")
-@CrossOrigin(origins = "*")
+
 public class MedicamentLongCoursController {
 
     @Autowired
@@ -37,8 +38,8 @@ public class MedicamentLongCoursController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<MedicamentLongCoursDTO> getAll(@RequestParam(required = false) String patientId) {
-        // Sécurisation contre les chaînes de caractères vides
         List<MedicamentLongCours> list = (patientId != null && !patientId.trim().isEmpty()) 
             ? mlcService.getByPatient(patientId) 
             : mlcService.getAll();
@@ -47,6 +48,7 @@ public class MedicamentLongCoursController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')") 
     public ResponseEntity<MedicamentLongCoursDTO> getById(@PathVariable Integer id) {
         return mlcService.getById(id)
             .map(this::toDTO)
@@ -55,24 +57,29 @@ public class MedicamentLongCoursController {
     }
 
     @PostMapping("/patient/{patientId}")
+    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<MedicamentLongCoursDTO> create(@PathVariable String patientId, @RequestBody MedicamentLongCours mlc) {
         MedicamentLongCours created = mlcService.create(mlc, patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<MedicamentLongCoursDTO> createForDonor(@PathVariable Integer donorId, @RequestBody MedicamentLongCours mlc) {
         MedicamentLongCours created = mlcService.createForDonor(mlc, donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+
     public ResponseEntity<MedicamentLongCoursDTO> update(@PathVariable Integer id, @RequestBody MedicamentLongCours details) {
         MedicamentLongCours updated = mlcService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         mlcService.delete(id);
         return ResponseEntity.noContent().build();
