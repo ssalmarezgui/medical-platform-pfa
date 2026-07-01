@@ -10,6 +10,7 @@ import {
 import React, { useState } from 'react'; 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../store/useUIStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const Sidebar = () => {
@@ -20,7 +21,10 @@ export const Sidebar = () => {
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const handleConfirmLogout = () => {
+    queryClient.clear(); // Clear the React Query cache
     logout();
     setShowLogoutConfirm(false);
     navigate('/login');

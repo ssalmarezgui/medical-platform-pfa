@@ -39,7 +39,7 @@ public class MedecinController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('READ_MEDECIN')")
-    public ResponseEntity<Medecin> getById(@PathVariable Integer id) {
+    public ResponseEntity<Medecin> getById(@PathVariable Long id) {
         return medecinService.getMedecinById(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
@@ -55,14 +55,14 @@ public class MedecinController {
     @PutMapping("/{id}")
 
     @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
-    public Medecin update(@PathVariable Integer id, @RequestBody Medecin details) {
+    public Medecin update(@PathVariable Long id, @RequestBody Medecin details) {
         return medecinService.updateMedecin(id, details);
     }
 
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         medecinService.deleteMedecin(id);
         return ResponseEntity.noContent().build();
     }
@@ -70,7 +70,7 @@ public class MedecinController {
     @PostMapping("/{medecinId}/services/{serviceId}")
     @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public Medecin assignerAuService(
-            @PathVariable Integer medecinId,
+            @PathVariable Long medecinId,
             @PathVariable Integer serviceId) {
         return medecinService.assignerMedecinAuService(medecinId, serviceId);
     }
@@ -79,7 +79,7 @@ public class MedecinController {
     @DeleteMapping("/{medecinId}/services/{serviceId}")
     @PreAuthorize("hasAuthority('WRITE_MEDECIN')")
     public ResponseEntity<Medecin> retirerMedecinDuService(
-            @PathVariable Integer medecinId,
+            @PathVariable Long medecinId,
             @PathVariable Integer serviceId) {
         try {
             Medecin medecin = medecinService.retirerMedecinDuService(medecinId, serviceId);

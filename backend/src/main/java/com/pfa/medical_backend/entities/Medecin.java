@@ -15,9 +15,8 @@ import java.util.Set;
 public class Medecin {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "IdentifiantM")
-    private Integer identifiantM;
+    private Long identifiantM;
 
     @Column(name = "NomM")
     private String nomM;

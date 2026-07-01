@@ -10,48 +10,41 @@ import { AddDonorModal } from '../features/donors/components/AddDonorModal';
 import { ImportDonorsModal } from '../features/donors/components/ImportDonorsModal'; 
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import { Toast } from './ui/Toast';
-import axios from 'axios';
-// Importation du store d'authentification globale
 import { useAuthStore } from '../store/useAuthStore';
+import { usePermission } from '../hooks/usePermission';
+import { donorService } from '../features/donors/api/donorService';
 
 export const DonorPage = () => {
-  // Récupération de l'utilisateur connecté et de son hôpital de rattachement choisi à la connexion
   const { user } = useAuthStore();
   const userHopitalId = user?.hopitalId;
+
+  const { hasPermission } = usePermission();
 
   const queryClient = useQueryClient();
   const { data: hospitals } = useHospitals();
   
-  // États de recherche et de filtres
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
-  // DECLARATION DES RÔLES ET HABILITATIONS (Correction de l'erreur de compilation)
-  const isReadOnly = user?.roleU === 'MEDECIN_SUIVI'; // R uniquement
-  const canCreateOrUpdate = user?.roleU === 'ADMIN' || user?.roleU === 'MEDECIN_INVESTIGATEUR'; // C/U
-  const canDelete = user?.roleU === 'ADMIN'; // D
+  const isReadOnly = !hasPermission('WRITE_DONNEUR'); 
+  const canCreateOrUpdate = hasPermission('WRITE_DONNEUR'); 
+  const canDelete = hasPermission('DELETE_DONNEUR');
 
-  // Chargement des données des donneurs (Filtre par hôpital de connexion prioritaire, ou par recherche admin)
   const { data: donors, isLoading, error } = useDonors(
-    undefined, 
     userHopitalId || selectedHospitalFilter || undefined
   );
   
-  // États de contrôle pour le Modal d'Ajout/Édition
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState<any | null>(null);
 
-  // États pour la suppression sécurisée
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
-  // États pour les Toasts de notification
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  // Export CSV conforme au format du registre
   const handleExportCSV = () => {
     if (!donors || donors.length === 0) {
       alert("Aucune donnée de donneur à exporter.");
@@ -83,7 +76,6 @@ export const DonorPage = () => {
 
   const sansAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // Filtrage dynamique local (recherche par nom ou CIN)
   const filteredDonors = donors?.filter(d => {
     const nomComplet = sansAccents(`${d.prenomD} ${d.nomD}`.toLowerCase());
     const recherchePropre = sansAccents(searchTerm.toLowerCase());
@@ -92,29 +84,25 @@ export const DonorPage = () => {
 
   const estVide = !donors || donors.length === 0;
 
-  // Ouvrir le modal d'édition
   const triggerEdit = (donor: any) => {
     setSelectedDonor(donor);
     setIsAddOpen(true);
   };
 
-  // Fermer le modal d'admission/édition
   const handleCloseModal = () => {
     setIsAddOpen(false);
     setSelectedDonor(null);
   };
 
-  // Ouvrir le modal de confirmation de suppression
   const triggerDelete = (id: number) => {
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
-  // Traiter la suppression physique
   const handleDelete = async () => {
     if (idToDelete === null) return;
     try {
-      await axios.delete(`http://localhost:8081/api/donneurs/${idToDelete}`);
+      await donorService.delete(idToDelete);
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       
       setConfirmOpen(false);
@@ -148,7 +136,6 @@ export const DonorPage = () => {
   return (
     <div className="max-w-[1440px] mx-auto p-6 text-xs">
       
-      {/* 1. Header principal */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Registre des Donneurs</h1>
@@ -156,8 +143,7 @@ export const DonorPage = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          {/* Filtre Hôpital : Visible uniquement par l'ADMIN global */}
-          {user?.roleU === 'ADMIN' && (
+          {hasPermission('WRITE_HOPITAL') && (
             <select 
               className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
               value={selectedHospitalFilter}
@@ -170,7 +156,6 @@ export const DonorPage = () => {
             </select>
           )}
 
-          {/* Barre de recherche par ID/Nom */}
           <div className="relative w-full sm:w-64">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -181,7 +166,6 @@ export const DonorPage = () => {
             />
           </div>
 
-          {/* Bouton d'importation : Masqué pour le médecin de suivi (R) */}
           {canCreateOrUpdate && (
             <button 
               onClick={() => setIsImportOpen(true)}
@@ -192,7 +176,6 @@ export const DonorPage = () => {
             </button>
           )}
 
-          {/* Bouton d'exportation */}
           <button 
             onClick={handleExportCSV} 
             title="Exporter la liste (CSV)"
@@ -201,7 +184,6 @@ export const DonorPage = () => {
             <IconFileSpreadsheet size={18} />
           </button>
           
-          {/* Bouton Enregistrement d'un donneur : Masqué pour le médecin de suivi (R) */}
           {canCreateOrUpdate && (
             <button 
               onClick={() => setIsAddOpen(true)} 
@@ -213,7 +195,6 @@ export const DonorPage = () => {
         </div>
       </div>
 
-      {/* 2. Affichage des fiches ou de la boîte vide */}
       {estVide ? (
         <div className="flex flex-col items-center justify-center min-h-[300px] bg-white border border-slate-100 rounded-[30px] p-12 text-center shadow-sm">
           <IconUsers size={48} className="text-[#6588BB] mb-4" />
@@ -235,7 +216,6 @@ export const DonorPage = () => {
             <div key={d.identifiantD} className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start mb-4">
-                  {/* Icône de genre conditionnelle */}
                   <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-lg shadow-sm ${
                     d.sexeD === 'M' || d.sexeD === 'Masculin'
                       ? 'bg-blue-50 text-[#2B5296]' 
@@ -262,15 +242,12 @@ export const DonorPage = () => {
                 </div>
               </div>
 
-              {/* Barre d'actions au bas de la carte (masquée si l'utilisateur est médecin de suivi / R seul) */}
               {canCreateOrUpdate && (
                 <div className="mt-6 pt-4 border-t border-slate-50 flex justify-end gap-2">
-                  {/* Le bouton d'édition est visible pour l'investigateur et l'admin (U) */}
                   <button onClick={() => triggerEdit(d)} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg border-none hover:bg-slate-100" title="Modifier">
                     <IconEdit size={16} />
                   </button>
                   
-                  {/* Le bouton de suppression s'affiche uniquement pour l'admin (D) */}
                   {canDelete && (
                     <button onClick={() => triggerDelete(d.identifiantD)} className="p-2 bg-red-50 text-red-600 cursor-pointer rounded-lg border-none hover:bg-red-100" title="Supprimer">
                       <IconTrash size={16} />
@@ -283,7 +260,6 @@ export const DonorPage = () => {
         </div>
       )}
 
-      {/* Modals & Toasts d'accompagnement */}
       <AddDonorModal isOpen={isAddOpen} onClose={handleCloseModal} donor={selectedDonor} />
       
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la fiche du donneur ?" message="Cette action effacera définitivement ce donneur du registre clinique." />

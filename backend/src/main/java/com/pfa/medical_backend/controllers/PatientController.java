@@ -55,8 +55,8 @@ public class PatientController {
         @RequestParam(name = "hopitalId", required = false) String hopitalId,
         Authentication auth
     ) {
-        Integer medecinInvestigateurId = null;
-        Integer medecinSuiviId = null;
+        Long medecinInvestigateurId = null;
+        Long medecinSuiviId = null;
 
         if (auth != null) {
             Optional<com.pfa.medical_backend.entities.User> loggedInUser = userRepository.findByLoginU(auth.getName());
@@ -165,14 +165,14 @@ public class PatientController {
 
     @PostMapping("/{patientId}/medecins/{medecinId}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
-    public PatientIdAdmin assignerMedecin(@PathVariable String patientId, @PathVariable Integer medecinId) {
+    public PatientIdAdmin assignerMedecin(@PathVariable String patientId, @PathVariable Long medecinId) {
         return patientService.assignerMedecinAuPatient(patientId, medecinId);
     }
 
     @DeleteMapping("/{patientId}/medecins/{medecinId}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT')")
     public ResponseEntity<PatientIdAdmin> retirerMedecinDuPatient(
-            @PathVariable String patientId, @PathVariable Integer medecinId) {
+            @PathVariable String patientId, @PathVariable Long medecinId) {
         try {
             return ResponseEntity.ok(patientService.retirerMedecinDuPatient(patientId, medecinId));
         } catch (RuntimeException e) {

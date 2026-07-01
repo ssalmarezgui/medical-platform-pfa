@@ -246,6 +246,10 @@ export const DoctorPage = () => {
                         <p className="text-[11px] text-[#6588BB] font-black uppercase tracking-wider mt-0.5">
                           {doc.specialiteM}
                         </p>
+                        
+                        <p className="text-[10px] text-[#2B5296] font-mono font-bold mt-1">
+                          Matricule : #{doc.identifiantM}
+                        </p>
                       </div>
                     </div>
                     

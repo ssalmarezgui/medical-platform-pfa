@@ -14,6 +14,6 @@ public class UserResponseDTO {
     private boolean accountNonLocked;
     private LocalDateTime lastlogin;
     private Integer serviceId;
-    private Integer medecinId;
+    private Long medecinId;
     
 }

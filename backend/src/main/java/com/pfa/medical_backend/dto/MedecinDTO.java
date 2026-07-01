@@ -8,7 +8,7 @@ import lombok.Data;
 
 @Data
 public class MedecinDTO {
-    private Integer identifiantM;
+    private Long identifiantM;
     private String nomM;
     private String prenomM;
     private LocalDate dateNaissM;

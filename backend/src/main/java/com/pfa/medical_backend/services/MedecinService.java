@@ -26,7 +26,7 @@ public class MedecinService {
 
     
     @Transactional("transactionManager")
-    public Medecin assignerMedecinAuService(Integer medecinId, Integer serviceId) {
+    public Medecin assignerMedecinAuService(Long medecinId, Integer serviceId) {
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
         Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
 
@@ -42,7 +42,7 @@ public class MedecinService {
 
 
     @Transactional("transactionManager")
-    public Medecin retirerMedecinDuService(Integer medecinId, Integer serviceId) {
+    public Medecin retirerMedecinDuService(Long medecinId, Integer serviceId) {
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
         Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
 
@@ -81,7 +81,7 @@ public class MedecinService {
     }
 
 
-    public Optional<Medecin> getMedecinById(Integer medecinId) {
+    public Optional<Medecin> getMedecinById(Long medecinId) {
         return medecinRepository.findById(medecinId);
     }
 
@@ -98,7 +98,7 @@ public class MedecinService {
     }
 
     @Transactional("transactionManager")
-    public Medecin updateMedecin(Integer medecinId, Medecin medecinDetails) {
+    public Medecin updateMedecin(Long medecinId, Medecin medecinDetails) {
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
         if (medecin.isPresent()) {
             Medecin m = medecin.get();
@@ -137,7 +137,7 @@ public class MedecinService {
 
 
     @Transactional("transactionManager")
-    public void deleteMedecin(Integer medecinId) {
+    public void deleteMedecin(Long medecinId) {
         Medecin medecin = medecinRepository.findById(medecinId)
             .orElseThrow(() -> new RuntimeException("Médecin non trouvé"));
 

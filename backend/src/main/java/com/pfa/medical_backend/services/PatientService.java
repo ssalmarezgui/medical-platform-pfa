@@ -58,7 +58,7 @@ public class PatientService {
         throw new RuntimeException("Patient ou service non trouve");
     }
 
-    public PatientIdAdmin assignerMedecinAuPatient(String patientId, Integer medecinId) {
+    public PatientIdAdmin assignerMedecinAuPatient(String patientId, Long medecinId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
 
@@ -72,7 +72,7 @@ public class PatientService {
         throw new RuntimeException("Patient ou medecin non trouve");
     }
 
-    public PatientIdAdmin retirerMedecinDuPatient(String patientId, Integer medecinId) {
+    public PatientIdAdmin retirerMedecinDuPatient(String patientId, Long medecinId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
 
@@ -94,7 +94,7 @@ public class PatientService {
         return service.map(patientRepository::findByService).orElse(List.of());
     }
 
-    public List<PatientIdAdmin> getPatientsByMedecin(Integer medecinId) {
+    public List<PatientIdAdmin> getPatientsByMedecin(Long medecinId) {
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
         return medecin.map(patientRepository::findByMedecinSuiveur).orElse(List.of());
     }
@@ -391,7 +391,7 @@ public class PatientService {
         return service.getIdHopital();
     }
 
-    public List<PatientDTO> getPatientsAsDTO(String hopitalId, Integer medecinInvestigateurId, Integer medecinSuiviId) {
+    public List<PatientDTO> getPatientsAsDTO(String hopitalId, Long medecinInvestigateurId, Long medecinSuiviId) {
         List<PatientIdAdmin> patients;
         
         if (medecinInvestigateurId != null) {

@@ -24,9 +24,10 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<DoctorFormValues>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<DoctorFormValues & { identifiantM?: any }>({
     resolver: zodResolver(doctorSchema) as any,
     defaultValues: {
+      identifiantM: '' as any,
       nomM: '',
       prenomM: '',
       sexeM: 'M',
@@ -48,9 +49,21 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
     setSelectedHospital(watchedHospital || '');
   }, [watchedHospital]);
 
-  const onSubmit = async (data: DoctorFormValues) => {
+
+  const onSubmit = async (data: DoctorFormValues & { identifiantM?: any }) => {
+    const rawMatricule = watch('identifiantM'); 
+    const matricule = String(rawMatricule || '').trim();
+
+    if (!matricule || isNaN(Number(matricule)) || matricule.length < 8 || matricule.length > 12) {
+      setToastType('error');
+      setToastMessage("Le matricule doit comporter entre 8 et 12 chiffres.");
+      setToastOpen(true);
+      return;
+    }
+
     try {
       const formattedData: any = {
+        identifiantM: Number(matricule),
         nomM: data.nomM,
         prenomM: data.prenomM,
         dateNaissM: data.dateNaissM,
@@ -72,9 +85,9 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
       setToastOpen(true);
       reset();
       setTimeout(() => onClose(), 1000);
-    } catch (error) {
+    } catch (error: any) {
       setToastType('error');
-      setToastMessage("Erreur d'enregistrement : vérifiez la cohérence clinique du service.");
+      setToastMessage(error.response?.data?.message || "Erreur d'enregistrement.");
       setToastOpen(true);
     }
   };
@@ -94,6 +107,18 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            <div>
+              <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Matricule Médecin (ID - de 8 à 12 chiffres) *</label>
+              <input 
+                type="text" 
+                maxLength={12} 
+                placeholder="Ex: 12345678" 
+                {...register('identifiantM')} 
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm font-bold text-[#2B5296]" 
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Nom *</label>
@@ -143,7 +168,7 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Spécialité *</label>
-                <input {...register('specialiteM')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Ex: Cardiologue, Pédiatre" />
+                <input {...register('specialiteM')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" placeholder="Ex: Néphrologue, Immunologue" />
                 {errors.specialiteM && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.specialiteM.message}</p>}
               </div>
               <div>

@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useUpdatePatient } from '../hooks/usePatients';
 import { useHospitals } from '../../hospitals/hooks/useHospitals';
 import { useDoctors } from '../../doctors/hooks/useDoctors';
-import { patientSchema, PatientFormValues, Patient } from '../types/patients';
-import { IconX, IconLoader } from '@tabler/icons-react';
+import { patientSchema, PatientFormValues } from '../types/patients';
+import { IconX, IconLoader, IconAlertCircle } from '@tabler/icons-react';
+import { Patient } from '../types/patients';
 import { Toast } from '../../../components/ui/Toast';
 
 interface EditPatientProps {
@@ -18,13 +19,15 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
   const updatePatientMutation = useUpdatePatient();
   const { data: hospitals } = useHospitals();
   const { data: doctors } = useDoctors();
+  
   const investigators = doctors?.filter(doc => doc.typeMedecin === 'INVESTIGATEUR');
+  const suiviDoctors = doctors?.filter(doc => doc.typeMedecin === 'SUIVI');
 
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<PatientFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<PatientFormValues & { medecinSuiviId?: any }>({
     resolver: zodResolver(patientSchema) as any,
   });
 
@@ -57,6 +60,8 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
 
   useEffect(() => {
     if (patient) {
+      const initialSuiviId = patient.medecinsSuivi?.[0]?.identifiantM || (patient as any).medecinSuiviId || undefined;
+
       reset({
         nomP: patient.nomP,
         prenomP: patient.prenomP,
@@ -79,12 +84,14 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
         medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
+        medecinSuiviId: initialSuiviId
       });
     }
   }, [patient, reset]);
 
   const handleCloseAndCancel = () => {
     if (patient) {
+      const initialSuiviId = patient.medecinsSuivi?.[0]?.identifiantM || (patient as any).medecinSuiviId || undefined;
       reset({
         nomP: patient.nomP,
         prenomP: patient.prenomP,
@@ -107,12 +114,13 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
         medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
+        medecinSuiviId: initialSuiviId
       });
     }
     onClose();
   };
 
-  const onSubmit = async (data: PatientFormValues) => {
+  const onSubmit = async (data: PatientFormValues & { medecinSuiviId?: any }) => {
     if (!patient || patient.identifiantP === undefined) return;
 
     const finalCin = data.numeroCin; 
@@ -126,10 +134,11 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         medecinInvestigateur: data.medecinInvestigateurId 
           ? { identifiantM: Number(data.medecinInvestigateurId) } 
           : null,
+        medecinsSuivi: data.medecinSuiviId ? [{ identifiantM: Number(data.medecinSuiviId) }] : [],
       };
 
       await updatePatientMutation.mutateAsync({
-        id: patient.identifiantP,
+        id: patient.identifiantP as any,
         data: formattedData as any,
       });
 
@@ -304,7 +313,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Hôpital d'Admission *</label>
                 <select {...register('indexHopitalP')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-white font-bold text-[#2B5296]">
@@ -320,6 +329,16 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <select {...register('medecinInvestigateurId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-white font-bold text-[#2B5296]">
                   <option value="">Associer...</option>
                   {investigators?.map(doc => (
+                    <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Médecin de Suivi</label>
+                <select {...register('medecinSuiviId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-white font-bold text-[#2B5296]">
+                  <option value="">Sélectionner...</option>
+                  {suiviDoctors?.map(doc => (
                     <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>
                   ))}
                 </select>

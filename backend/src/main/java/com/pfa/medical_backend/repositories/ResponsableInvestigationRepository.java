@@ -13,7 +13,7 @@ public interface ResponsableInvestigationRepository extends JpaRepository<Respon
     List<ResponsableInvestigation> findByPatient_IdentifiantP(String patientId);
 
 
-    List<ResponsableInvestigation> findByMedecin_IdentifiantM(Integer medecinId);
+    List<ResponsableInvestigation> findByMedecin_IdentifiantM(Long medecinId);
 
     List<ResponsableInvestigation> findByDateDebut(LocalDate date);
 

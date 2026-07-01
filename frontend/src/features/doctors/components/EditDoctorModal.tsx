@@ -109,6 +109,17 @@ export const EditDoctorModal = ({ isOpen, onClose, doctor }: EditDoctorProps) =>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Matricule Médecin (Identifiant unique - non modifiable)</label>
+              <input 
+                type="text" 
+                disabled 
+                value={doctor.identifiantM} 
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-slate-100 font-bold text-slate-500 cursor-not-allowed" 
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Nom *</label>

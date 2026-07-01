@@ -12,18 +12,22 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/donneurs")
+@CrossOrigin(origins = "*")
 public class DonneurController {
 
     @Autowired
     private DonneurService donneurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('READ_DONNEUR')")
-    public List<Donneur> getAll(@RequestParam(required = false) String type) {
+    @PreAuthorize("hasAnyAuthority('READ_DONNEUR')") 
+    public List<Donneur> getAll(
+            @RequestParam(required = false) String type,
+            @RequestParam(name = "hopitalId", required = false) String hopitalId) {
+        
         if (type != null) {
             return donneurService.getByType(type);
         }
-        return donneurService.getAll();
+        return donneurService.getAll(hopitalId);
     }
 
     @GetMapping("/{id}")
@@ -37,12 +41,10 @@ public class DonneurController {
     @PostMapping
     @PreAuthorize("hasAnyAuthority('WRITE_DONNEUR')")
     public ResponseEntity<Donneur> create(@RequestBody Donneur donneur) {
-        // Remarque n°10 : L'objet reçu est l'équivalent exact du patient
         return new ResponseEntity<>(donneurService.create(donneur), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-
     @PreAuthorize("hasAnyAuthority('WRITE_DONNEUR')")
     public Donneur update(@PathVariable Integer id, @RequestBody Donneur details) {
         return donneurService.update(id, details);

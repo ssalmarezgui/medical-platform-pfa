@@ -11,7 +11,7 @@ import com.pfa.medical_backend.entities.ServiceMedical;
 import java.util.List;
 
 @Repository
-public interface MedecinRepository extends JpaRepository<Medecin, Integer> {
+public interface MedecinRepository extends JpaRepository<Medecin, Long> {
 
 
     List<Medecin> findByNomMContainingIgnoreCase(String nom);

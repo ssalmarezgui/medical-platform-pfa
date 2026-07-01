@@ -30,7 +30,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
 
   const isInvestigateur = user?.roleU === 'MEDECIN_INVESTIGATEUR';
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<PatientFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<PatientFormValues & { medecinSuiviId?: any }>({
     resolver: zodResolver(patientSchema) as any,
     defaultValues: {
       nomP: '', 
@@ -52,6 +52,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
       niveauEducation: '', 
       enEtatActivite: true, 
       medecinInvestigateurId: undefined,
+      medecinSuiviId: undefined,
       numeroCin: '' as any,
       indexHopitalP: ''
     }
@@ -73,6 +74,11 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
 
   const investigators = doctors?.filter(doc => 
     doc.typeMedecin === 'INVESTIGATEUR' && 
+    (selectedHospital === '' || doc.indexHopitalM === selectedHospital)
+  );
+
+  const suiviDoctors = doctors?.filter(doc => 
+    doc.typeMedecin === 'SUIVI' && 
     (selectedHospital === '' || doc.indexHopitalM === selectedHospital)
   );
 
@@ -108,7 +114,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
     onClose(); 
   };
 
-  const onSubmit = async (data: PatientFormValues) => {
+  const onSubmit = async (data: PatientFormValues & { medecinSuiviId?: any }) => {
     const isPatientAdulte = typeof data.adulteP === 'string' ? data.adulteP === 'true' : !!data.adulteP;
 
     const checkCin = String(data.numeroCin).trim();
@@ -154,6 +160,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
         adulteP: isPatientAdulte,
         enEtatActivite: typeof data.enEtatActivite === 'string' ? data.enEtatActivite === 'true' : !!data.enEtatActivite,
         medecinInvestigateur: data.medecinInvestigateurId ? { identifiantM: Number(data.medecinInvestigateurId) } : null,
+        medecinsSuivi: data.medecinSuiviId ? [{ identifiantM: Number(data.medecinSuiviId) }] : [],
         affectations: [],
       };
 
@@ -334,9 +341,8 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
               </div>
             </div>
 
-            {/* SI MEDECIN INVESTIGATEUR CONNECTÉ, CES CHAMPS SONT AUTO-COMPLÉTÉS ET MASQUÉS DU VISUEL */}
             {!isInvestigateur ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Hôpital *</label>
                   <select {...register('indexHopitalP')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-[#2B5296] outline-none">
@@ -351,13 +357,29 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
                     {investigators?.map(doc => <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Médecin de Suivi</label>
+                  <select {...register('medecinSuiviId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-[#2B5296] outline-none">
+                    <option value="">Sélectionner un médecin de suivi...</option>
+                    {suiviDoctors?.map(doc => <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>)}
+                  </select>
+                </div>
               </div>
             ) : (
-              <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[#2B5296] uppercase tracking-wider">Affectation automatique</span>
-                <span className="text-[10px] font-bold text-slate-600">
-                  Hôpital : {hospitals?.find(h => h.identifiantH === selectedHospital)?.libelleH || selectedHospital}
-                </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#2B5296] uppercase tracking-wider">Affectation hôpital</span>
+                  <span className="text-[10px] font-bold text-slate-600">
+                    {hospitals?.find(h => h.identifiantH === selectedHospital)?.libelleH || selectedHospital}
+                  </span>
+                </div>
+                {/* L'investigateur connecté peut directement assigner le médecin de suivi de son hôpital lors de l'admission */}
+                <div>
+                  <select {...register('medecinSuiviId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-[#2B5296] outline-none">
+                    <option value="">Associer un médecin de suivi...</option>
+                    {suiviDoctors?.map(doc => <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>)}
+                  </select>
+                </div>
               </div>
             )}
 

@@ -17,14 +17,17 @@ public class DonneurService {
     @Autowired
     private DonneurRepository donneurRepo;
 
-    public List<Donneur> getAll() {
-        return donneurRepo.findAll();
+    public List<Donneur> getAll(String hopitalId) {
+        if (hopitalId == null || hopitalId.trim().isEmpty()) {
+            return donneurRepo.findAll();
+        }
+
+        return donneurRepo.findByIndexHopitalD(hopitalId);
     }
 
     public Optional<Donneur> getById(Integer id) {
         return donneurRepo.findById(id);
     }
-
 
     public List<Donneur> getByType(String type) {
         return donneurRepo.findByTypeDonneur(type);
@@ -47,7 +50,6 @@ public class DonneurService {
         if (details.getTypeDonneur() != null) existing.setTypeDonneur(details.getTypeDonneur());
         if (details.getStatut() != null) existing.setStatut(details.getStatut());
         if (details.getAdresseDomD() != null) existing.setAdresseDomD(details.getAdresseDomD());
-        // ajout des autres champs dans le futur enshallah
 
         return donneurRepo.save(existing);
     }

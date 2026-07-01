@@ -6,7 +6,6 @@ export const usePatients = (serviceId?: number, medecinId?: number, hopitalId?: 
   return useQuery<Patient[], Error>({
     queryKey: ['patients', serviceId, medecinId, hopitalId],
     queryFn: () => patientService.getAll(serviceId, medecinId, hopitalId),
-    staleTime: 5 * 60 * 1000,
   });
 };
 

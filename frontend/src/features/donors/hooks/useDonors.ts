@@ -2,11 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { donorService } from '../api/donorService';
 import { Donneur, CreateDonneurDTO } from '../types/donors';
 
-export const useDonors = () => {
+export const useDonors = (hopitalId?: string) => {
   return useQuery<Donneur[], Error>({
-    queryKey: ['donors'],
-    queryFn: donorService.getAll,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['donors', hopitalId],
+    queryFn: () => donorService.getAll(hopitalId),
   });
 };
 
