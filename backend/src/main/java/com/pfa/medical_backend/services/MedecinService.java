@@ -4,6 +4,7 @@ import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
 
 
+import com.pfa.medical_backend.security.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,8 @@ import java.util.Optional;
 @Service
 public class MedecinService {
 
+    private final SecurityConfig securityConfig;
+
     @Autowired
     private MedecinRepository medecinRepository;
 
@@ -22,6 +25,15 @@ public class MedecinService {
 
     @Autowired
     private PatientIdAdminRepository patientRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+
+
+    MedecinService(SecurityConfig securityConfig) {
+        this.securityConfig = securityConfig;
+    }
 
 
     
@@ -119,7 +131,6 @@ public class MedecinService {
                 hopitalUpdated = true;
             }
 
-            // Relation
             if (medecinDetails.getService() != null) {
                 serviceRepository.findById(medecinDetails.getService().getIdentifiantS())
                     .ifPresent(service -> {
@@ -141,12 +152,26 @@ public class MedecinService {
         Medecin medecin = medecinRepository.findById(medecinId)
             .orElseThrow(() -> new RuntimeException("Médecin non trouvé"));
 
+        if (medecin.getUtilisateur() != null) {
+            User user = medecin.getUtilisateur();
+            user.setMedecin(null);
+            medecin.setUtilisateur(null); 
+            userRepository.delete(user);
+        }
+
+        List<PatientIdAdmin> patientsInvestigues = patientRepository.findByMedecinInvestigateur(medecin);
+        for (PatientIdAdmin patient : patientsInvestigues) {
+            patient.setMedecinInvestigateur(null);
+            patientRepository.save(patient);
+        }
+
         for (PatientIdAdmin patient : new HashSet<>(medecin.getPatientsSuivis())) {
             patient.getMedecinsSuivi().remove(medecin);
             patientRepository.save(patient);
         }
         medecin.getPatientsSuivis().clear();
         medecin.setService(null);
+
         medecinRepository.delete(medecin);
     }
 

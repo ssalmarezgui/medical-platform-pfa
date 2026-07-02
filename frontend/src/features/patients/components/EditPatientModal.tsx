@@ -62,6 +62,8 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
     if (patient) {
       const initialSuiviId = patient.medecinsSuivi?.[0]?.identifiantM || (patient as any).medecinSuiviId || undefined;
 
+      const initialSuiviIdStr = initialSuiviId ? String(initialSuiviId) : '';
+
       reset({
         nomP: patient.nomP,
         prenomP: patient.prenomP,
@@ -84,7 +86,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
         medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
-        medecinSuiviId: initialSuiviId
+        medecinSuiviId: initialSuiviIdStr
       });
     }
   }, [patient, reset]);
@@ -123,6 +125,8 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
   const onSubmit = async (data: PatientFormValues & { medecinSuiviId?: any }) => {
     if (!patient || patient.identifiantP === undefined) return;
 
+    const rawSuiviId = watch('medecinSuiviId');
+
     const finalCin = data.numeroCin; 
 
     try {
@@ -134,7 +138,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         medecinInvestigateur: data.medecinInvestigateurId 
           ? { identifiantM: Number(data.medecinInvestigateurId) } 
           : null,
-        medecinsSuivi: data.medecinSuiviId ? [{ identifiantM: Number(data.medecinSuiviId) }] : [],
+        medecinsSuivi: rawSuiviId ? [{ identifiantM: Number(rawSuiviId) }] : [],
       };
 
       await updatePatientMutation.mutateAsync({

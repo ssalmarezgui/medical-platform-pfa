@@ -458,6 +458,12 @@ public class PatientService {
             dto.setMedecinInvestigateurId(p.getMedecinInvestigateur().getIdentifiantM());
             dto.setMedecinInvestigateurNom(p.getMedecinInvestigateur().getPrenomM() + " " + p.getMedecinInvestigateur().getNomM());
         }
+
+        if (p.getMedecinsSuivi() != null && !p.getMedecinsSuivi().isEmpty()) {
+            Long suiviId = p.getMedecinsSuivi().iterator().next().getIdentifiantM();
+            dto.setMedecinSuiviId(suiviId);
+        }
+
         return dto;
     }
 }

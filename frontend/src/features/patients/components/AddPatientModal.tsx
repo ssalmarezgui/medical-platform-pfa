@@ -115,6 +115,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
   };
 
   const onSubmit = async (data: PatientFormValues & { medecinSuiviId?: any }) => {
+    const rawSuiviId = watch('medecinSuiviId');
     const isPatientAdulte = typeof data.adulteP === 'string' ? data.adulteP === 'true' : !!data.adulteP;
 
     const checkCin = String(data.numeroCin).trim();
@@ -160,7 +161,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
         adulteP: isPatientAdulte,
         enEtatActivite: typeof data.enEtatActivite === 'string' ? data.enEtatActivite === 'true' : !!data.enEtatActivite,
         medecinInvestigateur: data.medecinInvestigateurId ? { identifiantM: Number(data.medecinInvestigateurId) } : null,
-        medecinsSuivi: data.medecinSuiviId ? [{ identifiantM: Number(data.medecinSuiviId) }] : [],
+        medecinsSuivi: rawSuiviId ? [{ identifiantM: Number(rawSuiviId) }] : [],
         affectations: [],
       };
 

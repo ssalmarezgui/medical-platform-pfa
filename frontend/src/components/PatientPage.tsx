@@ -15,6 +15,8 @@ export const PatientPage = () => {
   const { user } = useAuthStore();
   const userHopitalId = user?.hopitalId;
 
+  console.log("=== UTILISATEUR CONNECTÉ EN MÉMOIRE ===", user);
+
   const { hasPermission } = usePermission();
 
   const { data: hospitals } = useHospitals();
@@ -28,7 +30,6 @@ export const PatientPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
-  const isReadOnly = !hasPermission('WRITE_PATIENT');
   const canCreateOrUpdate = hasPermission('WRITE_PATIENT');
   const canDelete = hasPermission('DELETE_PATIENT');
 

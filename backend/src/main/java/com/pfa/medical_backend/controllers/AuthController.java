@@ -17,7 +17,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -35,6 +37,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getLoginU(), loginRequest.getMotPasseU())
         );
@@ -49,7 +52,12 @@ public class AuthController {
                 .findFirst()
                 .orElse("ROLE_USER");
 
-        return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role));
+
+        List<String> authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
 
     @PostMapping("/register")

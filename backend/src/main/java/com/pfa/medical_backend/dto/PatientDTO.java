@@ -37,7 +37,10 @@ public class PatientDTO {
     private Boolean enEtatActivite;
 
 
-    private long medecinInvestigateurId;
+    private Long medecinInvestigateurId;
     private String medecinInvestigateurNom;
+
+    private Long medecinSuiviId;
+
     private List<Integer> serviceIds;
 }
