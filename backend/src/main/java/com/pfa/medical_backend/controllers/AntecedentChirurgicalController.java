@@ -36,15 +36,14 @@ public class AntecedentChirurgicalController {
         }
         return dto;
     }
-    
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentChirurgicalDTO> getAll(
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
-
     ) {
-        List<AntecedentChirurgical> list ; 
+        List<AntecedentChirurgical> list; 
         if (patientId != null && !patientId.trim().isEmpty()) {
             list = acService.getByPatient(patientId);
         } else if (donorId != null){
@@ -81,7 +80,6 @@ public class AntecedentChirurgicalController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
     public ResponseEntity<AntecedentChirurgicalDTO> update(@PathVariable Integer id, @RequestBody AntecedentChirurgical details) {
         AntecedentChirurgical updated = acService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));

@@ -13,13 +13,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/dosages-sanguins")
-
 public class DosageMedSangController {
 
     @Autowired
     private DosageMedSangService dmsService;
 
-    // Convertisseur d'Entité vers DTO
     private DosageMedSangDTO toDTO(DosageMedSang dms) {
         DosageMedSangDTO dto = new DosageMedSangDTO();
         dto.setIdentifiantDMS(dms.getIdentifiantDMS());
@@ -34,6 +32,7 @@ public class DosageMedSangController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('READ_IMMUNO')")
     public List<DosageMedSangDTO> getAll(@RequestParam(required = false) Integer traitementId) {
         List<DosageMedSang> list = (traitementId != null) 
             ? dmsService.getByTraitement(traitementId) 
@@ -43,6 +42,7 @@ public class DosageMedSangController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('READ_IMMUNO')")
     public ResponseEntity<DosageMedSangDTO> getById(@PathVariable Integer id) {
         return dmsService.getById(id)
             .map(this::toDTO)
@@ -51,6 +51,7 @@ public class DosageMedSangController {
     }
 
     @PostMapping("/traitement/{traitementId}")
+    @PreAuthorize("hasAnyAuthority('WRITE_IMMUNO', 'WRITE_IMMUNO_COMPLICATION')")
     public ResponseEntity<DosageMedSangDTO> create(
             @PathVariable Integer traitementId, 
             @RequestBody DosageMedSang dms) {
@@ -59,15 +60,14 @@ public class DosageMedSangController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
+    @PreAuthorize("hasAnyAuthority('WRITE_IMMUNO', 'WRITE_IMMUNO_COMPLICATION')")
     public ResponseEntity<DosageMedSangDTO> update(@PathVariable Integer id, @RequestBody DosageMedSang details) {
         DosageMedSang updated = dmsService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         dmsService.delete(id);
         return ResponseEntity.noContent().build();

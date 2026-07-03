@@ -15,10 +15,23 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorImagingHistory } from '../features/imaging/hooks/useImaging';
+import { usePermission } from '../hooks/usePermission';
 
 export const ImagingHistoryPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_LABO');
+  const isReadOnly = !hasPermission('WRITE_LABO');
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique d'imagerie.
+      </div>
+    );
+  }
 
   const location = useLocation();
   const isDonorMode = location.pathname.startsWith('/donors');
@@ -26,12 +39,10 @@ export const ImagingHistoryPage = () => {
 
   const subjects = isDonorMode ? donors : patients;
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
-  // Récupération des examens d'imagerie (aiguillage dynamique)
   const { data: patientImaging, isLoading: loadingPatientImaging } = useImagingHistory(
     !isDonorMode ? (patientIdString || undefined) : undefined
   );
@@ -72,22 +83,18 @@ export const ImagingHistoryPage = () => {
     "Bilan osseux (Bassin, Face)"
   ];
 
-  // États du formulaire
   const [examenIm, setExamenIm] = useState(listExamensPapier[0]);
   const [dateIm, setDateIm] = useState('');
   const [resultatIm, setResultatIm] = useState('');
 
-  // Édition
   const [selectedImaging, setSelectedImaging] = useState<any | null>(null);
 
-  // CONFIGURATION MODALS & TOASTS
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -95,7 +102,6 @@ export const ImagingHistoryPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -107,7 +113,6 @@ export const ImagingHistoryPage = () => {
     return nomComplet.includes(query) || String(identifiant).toLowerCase().includes(query);
   });
 
-  // Filtrage local des images (Vue Personnelle)
   const filteredLocalImagings = imagings?.filter(im => {
     const nameStr = im.examenIm?.toLowerCase() || '';
     const dateStr = im.dateIm || '';
@@ -128,7 +133,6 @@ export const ImagingHistoryPage = () => {
     setResultatIm('');
   };
 
-  // Enregistrer / Modifier
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId || !dateIm || !resultatIm) return;
@@ -186,7 +190,6 @@ export const ImagingHistoryPage = () => {
     if (idToDelete === null) return;
     try {
       if (isDonorMode) {
-        // CORRIGÉ : Appel de la bonne route de suppression d'imagerie (/api/imageries)
         await axios.delete(`http://localhost:8081/api/imageries/${idToDelete}`);
       } else {
         await deleteMutation.mutateAsync(idToDelete);
@@ -206,7 +209,6 @@ export const ImagingHistoryPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -250,7 +252,6 @@ export const ImagingHistoryPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "examenIm", "dateIm", "resultatIm"]
@@ -331,7 +332,6 @@ export const ImagingHistoryPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -339,15 +339,16 @@ export const ImagingHistoryPage = () => {
             Registre d'Imagerie & Autres Explorations
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -414,7 +415,6 @@ export const ImagingHistoryPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -460,51 +460,47 @@ export const ImagingHistoryPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-              <IconPlus size={20} /> {selectedImaging ? "Modifier l'Examen" : "Saisir un Examen"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              {/* Type d'Examen */}
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type d'examen / Exploration *</label>
-                <select value={examenIm} onChange={(e) => setExamenIm(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
-                  {listExamensPapier.map(ex => (
-                    <option key={ex} value={ex}>{ex}</option>
-                  ))}
-                </select>
-              </div>
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+              <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                <IconPlus size={20} /> {selectedImaging ? "Modifier l'Examen" : "Saisir un Examen"}
+              </h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type d'examen / Exploration *</label>
+                  <select value={examenIm} onChange={(e) => setExamenIm(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
+                    {listExamensPapier.map(ex => (
+                      <option key={ex} value={ex}>{ex}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Date de l'examen */}
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de l'examen *</label>
-                <input type="date" value={dateIm} onChange={(e) => setDateIm(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white" />
-              </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de l'examen *</label>
+                  <input type="date" value={dateIm} onChange={(e) => setDateIm(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white" />
+                </div>
 
-              {/* Résultat */}
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Rapport de résultats *</label>
-                <textarea value={resultatIm} onChange={(e) => setResultatIm(e.target.value)} required rows={4} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" placeholder="Observations médicales..." />
-              </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Rapport de résultats *</label>
+                  <textarea value={resultatIm} onChange={(e) => setResultatIm(e.target.value)} required rows={4} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" placeholder="Observations médicales..." />
+                </div>
 
-              <div className="flex gap-2 pt-4">
-                {selectedImaging && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  {selectedImaging ? "Sauvegarder" : "Enregistrer l'Examen"}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="flex gap-2 pt-4">
+                  {selectedImaging && (
+                    <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    {selectedImaging ? "Sauvegarder" : "Enregistrer l'Examen"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
-          {/* Registre à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -514,7 +510,6 @@ export const ImagingHistoryPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -526,13 +521,15 @@ export const ImagingHistoryPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -562,10 +559,12 @@ export const ImagingHistoryPage = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50/50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(im)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
-                        <button onClick={() => triggerDelete(im.identifiantIm!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50/50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(im)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
+                          <button onClick={() => triggerDelete(im.identifiantIm!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -581,13 +580,12 @@ export const ImagingHistoryPage = () => {
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
             <div className="flex justify-between items-center border-b pb-4">
               <h2 className="text-lg font-bold text-[#2B5296]">
-                {importMode === 'global' ? "Importation Radiologique Globale (CSV)" : `Importer les examens de ${isDonorMode ? selectedPatient?.prenomD : selectedPatient?.prenomP}`}
+                {importMode === 'global' ? "Importation de Cohorte Biochimique (CSV)" : `Importer les examens de ${isDonorMode ? selectedPatient?.prenomD : selectedPatient?.prenomP}`}
               </h2>
               <button onClick={() => { setIsImportOpen(false); setFile(null); setPreviewData([]); }} className="border-none bg-transparent cursor-pointer p-1 rounded-lg hover:bg-slate-100 text-slate-400"><IconX size={20} /></button>
             </div>
@@ -633,7 +631,6 @@ export const ImagingHistoryPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer le rapport d'imagerie ?" message="Cette action effacera définitivement l'intégralité du compte-rendu radiologique du patient." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

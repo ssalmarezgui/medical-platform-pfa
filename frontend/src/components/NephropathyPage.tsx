@@ -11,50 +11,56 @@ import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import axios from 'axios';
 
+import { usePermission } from '../hooks/usePermission';
+
 export const NephropathyPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('WRITE_PATIENT');
+
+  const isReadOnly = !hasPermission('WRITE_PATIENT');
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique de néphropathie.
+      </div>
+    );
+  }
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
   const { data: history, isLoading: loadingHistory } = useNephropathyHistory(patientIdString || undefined);
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // --- ÉTAT DE MODIFICATION (ÉDITION) ---
   const [selectedNI, setSelectedNI] = useState<any | null>(null);
   const [selectedDialyse, setSelectedDialyse] = useState<any | null>(null);
   const [selectedBilan, setSelectedBilan] = useState<any | null>(null);
 
-  // Formulaire Néphropathie (Strict MCD)
   const [typeCliniqueNI, setTypeCliniqueNI] = useState('');
   const [causeNI, setCauseNI] = useState('');
   const [typeHistologiqueNI, setTypeHistologiqueNI] = useState('');
   const [stadeMaladiNI, setStadeMaladiNI] = useState('Stade 5');
 
-  // Sélection d'une Néphropathie active pour l'affichage de ses sous-modules (Dialyse, Biopsie, Bilan)
   const [selectedNIId, setSelectedNIId] = useState<number | null>(null);
   const { data: bilans } = useBilanHistory(selectedNIId || undefined);
   const { data: dialyses } = useDialyseHistory(selectedNIId || undefined);
   const { data: biopsie } = useBiopsieHistory(selectedNIId || undefined);
 
-  // Saisie Dialyse
   const [typeDialyse, setTypeDialyse] = useState('');
 
-  // Saisie Biopsie
   const [noteBiopsie, setNoteBiopsie] = useState('à traiter après réunion avec madame');
 
-  // Saisie Bilan Pré-greffe
   const [dateBilanB, setDateBilanB] = useState('');
   const [descriptionBilanB, setDescriptionBilanB] = useState('');
   const [resultatBilanB, setResultatBilanB] = useState('');
   const [rapportBilanB, setRapportBilanB] = useState('');
 
-  // Toasts & Confirmation
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -62,7 +68,6 @@ export const NephropathyPage = () => {
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [deleteType, setDeleteType] = useState<'NI' | 'DIALYSE' | 'BILAN'>('NI');
 
-  // ÉTATS IMPORTATION (MULTI-MODES)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal' | 'dialyse' | 'bilan' | 'biopsie'>('global');
@@ -70,13 +75,11 @@ export const NephropathyPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = patients?.filter(p => {
     const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
     return nomComplet.includes(patientSearch.toLowerCase()) || String(p.identifiantP) === patientSearch;
   });
 
-  // Filtrage local des néphropathies (Vue Personnelle)
   const filteredLocalNephropathies = history?.filter(ni => {
     const typeStr = ni.typeCliniqueNI?.toLowerCase() || '';
     const causeStr = ni.causeNI?.toLowerCase() || '';
@@ -87,7 +90,6 @@ export const NephropathyPage = () => {
 
   const selectedPatient = patients?.find(p => p.identifiantP === selectedPatientId);
 
-  // REMPLISSAGE DU FORMULAIRE POUR MODIFICATION (ÉDITION)
   useEffect(() => {
     if (selectedNI) {
       setTypeCliniqueNI(selectedNI.typeCliniqueNI);
@@ -97,14 +99,12 @@ export const NephropathyPage = () => {
     }
   }, [selectedNI]);
 
-  // REMPLISSAGE FORMULAIRE DIALYSE (ÉDITION)
   useEffect(() => {
     if (selectedDialyse) {
       setTypeDialyse(selectedDialyse.typeDialyse);
     }
   }, [selectedDialyse]);
 
-  // REMPLISSAGE FORMULAIRE BILAN (ÉDITION)
   useEffect(() => {
     if (selectedBilan) {
       setDateBilanB(selectedBilan.dateBilanB);
@@ -113,6 +113,14 @@ export const NephropathyPage = () => {
       setRapportBilanB(selectedBilan.rapportBilanB);
     }
   }, [selectedBilan]);
+
+  useEffect(() => {
+    if (biopsie) {
+      setNoteBiopsie(biopsie.noteBiopsie || '');
+    } else {
+      setNoteBiopsie('à traiter après réunion avec madame');
+    }
+  }, [biopsie]);
 
   const resetForm = () => {
     setSelectedNI(null);
@@ -177,12 +185,22 @@ export const NephropathyPage = () => {
     e.preventDefault();
     if (!selectedNIId) return;
 
+    const payload = {
+      noteBiopsie,
+      nephropathieId: selectedNIId
+    };
+
     try {
-      await nephropathyService.saveBiopsie(selectedNIId, {
-        nephropathieId: selectedNIId
-      });
+      if (biopsie && biopsie.identifiantPB) {
+        await axios.put(`http://localhost:8081/api/biopsies/${biopsie.identifiantPB}`, payload);
+        setToastMessage("Note biopsique mise à jour !");
+      } else {
+        await nephropathyService.saveBiopsie(selectedNIId, payload);
+        setToastMessage("Relation biopsique établie !");
+      }
       queryClient.invalidateQueries({ queryKey: ['biopsieHistory', selectedNIId] });
-      setToastType('success'); setToastMessage("Relation biopsique établie !"); setToastOpen(true);
+      setToastType('success'); 
+      setToastOpen(true);
     } catch {
       alert("Erreur d'enregistrement de la biopsie.");
     }
@@ -251,7 +269,6 @@ export const NephropathyPage = () => {
     }
   };
 
-  // --- DOUBLE FLUX : EXPORTS ADAPTATIFS ---
   const handleExportCSV = async (mode: 'global' | 'personal' | 'dialyse' | 'bilan' | 'biopsie') => {
     let datasetToExport: any[] = [];
     let headers: string[] = [];
@@ -333,7 +350,6 @@ export const NephropathyPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- DOUBLE FLUX : IMPORT CSV ---
   const handleDownloadTemplate = (mode: 'global' | 'personal' | 'dialyse' | 'bilan' | 'biopsie') => {
     let headers: string[] = [];
     if (mode === 'global') {
@@ -345,7 +361,7 @@ export const NephropathyPage = () => {
     } else if (mode === 'bilan') {
       headers = ["dateBilanB", "descriptionBilanB", "resultatBilanB", "rapportBilanB"];
     } else if (mode === 'biopsie') {
-      headers = ["noteBiopsie"]; // Champ facultatif fictif
+      headers = ["noteBiopsie"];
     }
 
     const csvContent = "\ufeff" + headers.join(";");
@@ -410,7 +426,6 @@ export const NephropathyPage = () => {
       }
       setToastMessage(`${successCount} néphropathie(s) initiale(s) importée(s) !`);
     } else if (importMode === 'dialyse' && selectedNIId) {
-      // Importation de séances de dialyse
       for (const row of previewData) {
         try {
           await nephropathyService.createDialyse(selectedNIId, {
@@ -425,7 +440,6 @@ export const NephropathyPage = () => {
       setToastMessage(`${successCount} séance(s) de dialyse liée(s) !`);
       queryClient.invalidateQueries({ queryKey: ['dialyseHistory', selectedNIId] });
     } else if (importMode === 'bilan' && selectedNIId) {
-      // Importation du bilan de pré-greffe
       if (previewData[0]) {
         setDateBilanB(previewData[0].dateBilanB || '');
         setDescriptionBilanB(previewData[0].descriptionBilanB || '');
@@ -455,7 +469,6 @@ export const NephropathyPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -463,15 +476,16 @@ export const NephropathyPage = () => {
             Bilan de Néphropathie & Enquête Pré-greffe
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -530,7 +544,6 @@ export const NephropathyPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -564,57 +577,55 @@ export const NephropathyPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire Néphropathie (Gauche) */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
-            <h3 className="text-base font-bold text-[#2B5296] flex items-center gap-1.5">
-              <IconPlus size={20} /> {selectedNI ? "Modifier la Néphropathie" : "Saisir la Néphropathie d'Origine"}
-            </h3>
-            
-            <form onSubmit={handleSaveNI} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Clinique *</label>
-                <input type="text" value={typeCliniqueNI} onChange={(e) => setTypeCliniqueNI(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none text-xs bg-white" placeholder="" />
-              </div>
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
+              <h3 className="text-base font-bold text-[#2B5296] flex items-center gap-1.5">
+                <IconPlus size={20} /> {selectedNI ? "Modifier la Néphropathie" : "Saisir la Néphropathie d'Origine"}
+              </h3>
+              
+              <form onSubmit={handleSaveNI} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Clinique *</label>
+                  <input type="text" value={typeCliniqueNI} onChange={(e) => setTypeCliniqueNI(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none text-xs bg-white" placeholder="" />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause *</label>
-                <input type="text" value={causeNI} onChange={(e) => setCauseNI(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none text-xs bg-white" />
-              </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause / Pathologie initiale</label>
+                  <input type="text" value={causeNI} onChange={(e) => setCauseNI(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white outline-none animate-none" placeholder="" />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Histologique</label>
-                <input type="text" value={typeHistologiqueNI} onChange={(e) => setTypeHistologiqueNI(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none text-xs bg-white" placeholder="Ex: HSF" />
-              </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Histologique</label>
+                  <input type="text" value={typeHistologiqueNI} onChange={(e) => setTypeHistologiqueNI(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs bg-white" placeholder="" />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Stade IRC *</label>
-                <select value={stadeMaladiNI} onChange={(e) => setStadeMaladiNI(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white font-bold outline-none text-xs text-slate-800">
-                  <option value="Stade 3 - Modérée">Stade 3 - Modérée</option>
-                  <option value="Stade 4 - Sévère">Stade 4 - Sévère</option>
-                  <option value="Stade 5 - Terminal">Stade 5 - Terminal</option>
-                </select>
-              </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Stade IRC *</label>
+                  <select value={stadeMaladiNI} onChange={(e) => setStadeMaladiNI(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white font-bold outline-none text-xs text-slate-800">
+                    <option value="Stade 3 - Modérée">Stade 3 - Modérée</option>
+                    <option value="Stade 4 - Sévère">Stade 4 - Sévère</option>
+                    <option value="Stade 5 - Terminal">Stade 5 - Terminal</option>
+                  </select>
+                </div>
 
-              <div className="flex gap-2">
-                {selectedNI && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-                    Annuler
+                <div className="flex gap-2">
+                  {selectedNI && (
+                    <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
+                      Annuler
+                    </button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
+                    {selectedNI ? "Sauvegarder" : "Enregistrer"}
                   </button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-                  {selectedNI ? "Sauvegarder" : "Enregistrer"}
-                </button>
-              </div>
-            </form>
-          </div>
+                </div>
+              </form>
+            </div>
+          )}
 
-          {/* Grille d'affichage & Sous-formulaires (Droite) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
             
-            {/* A. Grille des néphropathies initiales */}
             <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -622,7 +633,6 @@ export const NephropathyPage = () => {
                   Historique des Néphropathies d'Origine
                 </h3>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -634,13 +644,15 @@ export const NephropathyPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -675,10 +687,12 @@ export const NephropathyPage = () => {
                       <h4 className="text-sm font-bold text-slate-800 mt-2">Cause : {ni.causeNI}</h4>
                       {ni.typeHistologiqueNI && <p className="text-xs text-[#6588BB] mt-1 font-semibold">Histologie : {ni.typeHistologiqueNI}</p>}
 
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setSelectedNI(ni)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors" title="Modifier"><IconEdit size={14} /></button>
-                        <button onClick={() => triggerDelete(ni.identifiantNI!, 'NI')} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer" title="Supprimer"><IconTrash size={14} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => setSelectedNI(ni)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors" title="Modifier"><IconEdit size={14} /></button>
+                          <button onClick={() => triggerDelete(ni.identifiantNI!, 'NI')} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer" title="Supprimer"><IconTrash size={14} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -687,40 +701,39 @@ export const NephropathyPage = () => {
               )}
             </div>
 
-            {/* B. SOUS-MODULES STRICTS (S'affichent uniquement si une pathologie est sélectionnée) */}
             {selectedNIId && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-5 duration-300">
                 
-                {/* 1. SUIVI DES SEANCES DE DIALYSE */}
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-6 shadow-sm space-y-4">
                   <div className="flex justify-between items-center border-b pb-3">
                     <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5"><IconInfoCircle size={18} /> Historique de la Dialyse</h4>
                     
-                    {/* IMPORTS & EXPORTS DE DIALYSE */}
                     <div className="flex gap-1">
-                      <button onClick={() => { setImportMode('dialyse'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer des dialyses"><IconDatabaseImport size={14} /></button>
+                      {!isReadOnly && <button onClick={() => { setImportMode('dialyse'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer des dialyses"><IconDatabaseImport size={14} /></button>}
                       <button onClick={() => handleExportCSV('dialyse')} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Exporter l'historique"><IconFileSpreadsheet size={14} /></button>
                     </div>
                   </div>
                   
-                  <form onSubmit={handleAddDialyse} className="space-y-3">
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        value={typeDialyse} 
-                        onChange={(e) => setTypeDialyse(e.target.value)} 
-                        required 
-                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[11px]" 
-                        placeholder={selectedDialyse ? "Modifier le nom de la dialyse" : ""} 
-                      />
-                      <button type="submit" className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer">
-                        {selectedDialyse ? "Enregistrer" : "Lier"}
-                      </button>
-                    </div>
-                    {selectedDialyse && (
-                      <button type="button" onClick={() => { setSelectedDialyse(null); setTypeDialyse(''); }} className="text-[10px] text-red-500 font-bold hover:underline bg-transparent border-none cursor-pointer">Annuler la modification</button>
-                    )}
-                  </form>
+                  {!isReadOnly && (
+                    <form onSubmit={handleAddDialyse} className="space-y-3">
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={typeDialyse} 
+                          onChange={(e) => setTypeDialyse(e.target.value)} 
+                          required 
+                          className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[11px]" 
+                          placeholder={selectedDialyse ? "Modifier le nom de la dialyse" : ""} 
+                        />
+                        <button type="submit" className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer">
+                          {selectedDialyse ? "Enregistrer" : "Lier"}
+                        </button>
+                      </div>
+                      {selectedDialyse && (
+                        <button type="button" onClick={() => { setSelectedDialyse(null); setTypeDialyse(''); }} className="text-[10px] text-red-500 font-bold hover:underline bg-transparent border-none cursor-pointer">Annuler la modification</button>
+                      )}
+                    </form>
+                  )}
 
                   <div className="border border-slate-50 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                     <table className="w-full text-left text-[11px]">
@@ -730,10 +743,12 @@ export const NephropathyPage = () => {
                             <tr key={d.identifiantDia} className="hover:bg-slate-50">
                               <td className="px-3 py-2 font-bold text-[#2B5296]">{d.typeDialyse}</td>
                               <td className="px-3 py-2 text-right">
-                                <div className="flex justify-end gap-1">
-                                  <button onClick={() => setSelectedDialyse(d)} className="p-1 hover:bg-blue-50 text-[#006591] rounded border-none cursor-pointer"><IconEdit size={12} /></button>
-                                  <button onClick={() => triggerDelete(d.identifiantDia!, 'DIALYSE')} className="p-1 hover:bg-red-50 text-red-500 rounded border-none cursor-pointer"><IconTrash size={12} /></button>
-                                </div>
+                                {!isReadOnly && (
+                                  <div className="flex justify-end gap-1">
+                                    <button onClick={() => setSelectedDialyse(d)} className="p-1 hover:bg-blue-50 text-[#006591] rounded border-none cursor-pointer"><IconEdit size={12} /></button>
+                                    <button onClick={() => triggerDelete(d.identifiantDia!, 'DIALYSE')} className="p-1 hover:bg-red-50 text-red-500 rounded border-none cursor-pointer"><IconTrash size={12} /></button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -745,90 +760,94 @@ export const NephropathyPage = () => {
                   </div>
                 </div>
 
-                {/* 2. RAPPORT BIOPSIQUE */}
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-6 shadow-sm space-y-4">
                   <div className="flex justify-between items-center border-b pb-3">
                     <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5"><IconFlask size={18} /> Paramètres Biopsiques</h4>
                     
-                    {/* IMPORTS & EXPORTS DE BIOPSIE */}
                     <div className="flex gap-1">
-                      <button onClick={() => { setImportMode('biopsie'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer la note biopsique"><IconDatabaseImport size={14} /></button>
+                      {!isReadOnly && <button onClick={() => { setImportMode('biopsie'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer la note biopsique"><IconDatabaseImport size={14} /></button>}
                       <button onClick={() => handleExportCSV('biopsie')} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Exporter la biopsie"><IconFileSpreadsheet size={14} /></button>
                     </div>
                   </div>
                   
-                  <form onSubmit={handleSaveBiopsie} className="space-y-3">
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase">Note des paramètres biopsiques</label>
-                      <input 
-                        type="text" 
-                        value={noteBiopsie} 
-                        onChange={(e) => setNoteBiopsie(e.target.value)} 
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-[11px] font-semibold text-slate-700 bg-[#F8FAFC]/50" 
-                        placeholder="Ex: à traiter après réunion avec madame"
-                      />
+                  {isReadOnly ? (
+                    <div className="space-y-2 text-xs text-slate-600 bg-[#F8FAFC]/50 p-4 rounded-2xl border">
+                      <p className="font-bold text-[#2B5296]">Biopsie :</p>
+                      <p className="italic font-semibold text-slate-800">"{biopsie ? noteBiopsie : 'Aucune biopsie enregistrée.'}"</p>
                     </div>
-                    <button type="submit" className="w-full bg-[#2B5296] text-white py-2.5 rounded-xl text-xs font-bold border-none cursor-pointer">
-                      {!biopsie ? "Lier & Établir la biopsie" : "Mettre à jour la biopsie"}
-                    </button>
-                  </form>
+                  ) : (
+                    <form onSubmit={handleSaveBiopsie} className="space-y-3">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black text-[#6588BB] uppercase">Note des paramètres biopsiques</label>
+                        <input 
+                          type="text" 
+                          value={noteBiopsie} 
+                          onChange={(e) => setNoteBiopsie(e.target.value)} 
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-[11px] font-semibold text-slate-700 bg-[#F8FAFC]/50" 
+                          placeholder=""
+                        />
+                      </div>
+                      <button type="submit" className="w-full bg-[#2B5296] text-white py-2.5 rounded-xl text-xs font-bold border-none cursor-pointer">
+                        {!biopsie ? "Lier & Établir la biopsie" : "Mettre à jour la biopsie"}
+                      </button>
+                    </form>
+                  )}
                 </div>
 
-                {/* 3. BILAN PRE-GREFFE */}
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-6 shadow-sm space-y-4 col-span-2">
                   <div className="flex justify-between items-center border-b pb-3">
                     <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5"><IconReportMedical size={18} /> Rapport de Bilan Pré-greffe</h4>
                     
-                    {/* IMPORTS & EXPORTS DE BILAN */}
                     <div className="flex gap-1">
-                      <button onClick={() => { setImportMode('bilan'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer le bilan"><IconDatabaseImport size={14} /></button>
+                      {!isReadOnly && <button onClick={() => { setImportMode('bilan'); setIsImportOpen(true); }} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Importer le bilan"><IconDatabaseImport size={14} /></button>}
                       <button onClick={() => handleExportCSV('bilan')} className="p-1.5 hover:bg-slate-100 text-[#006591] rounded cursor-pointer border-none bg-transparent" title="Exporter le bilan"><IconFileSpreadsheet size={14} /></button>
                     </div>
                   </div>
                   
-                  <form onSubmit={handleSaveBilan} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date du bilan *</label>
-                        <input type="date" value={dateBilanB} onChange={(e) => setDateBilanB(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px]" />
+                  {!isReadOnly && (
+                    <form onSubmit={handleSaveBilan} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date du bilan *</label>
+                          <input type="date" value={dateBilanB} onChange={(e) => setDateBilanB(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px]" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat Décisionnel *</label>
+                          <textarea 
+                            value={resultatBilanB} 
+                            onChange={(e) => setResultatBilanB(e.target.value)} 
+                            required 
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" 
+                            placeholder=""
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat Décisionnel *</label>
-                        <textarea 
-                          value={resultatBilanB} 
-                          onChange={(e) => setResultatBilanB(e.target.value)} 
-                          required 
-                          rows={2}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" 
-                          placeholder=""
-                        />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Description Synthétique *</label>
-                        <textarea value={descriptionBilanB} onChange={(e) => setDescriptionBilanB(e.target.value)} required rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Description Synthétique *</label>
+                          <textarea value={descriptionBilanB} onChange={(e) => setDescriptionBilanB(e.target.value)} required rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Compte-rendu détaillé *</label>
+                          <textarea value={rapportBilanB} onChange={(e) => setRapportBilanB(e.target.value)} required rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Compte-rendu détaillé *</label>
-                        <textarea value={rapportBilanB} onChange={(e) => setRapportBilanB(e.target.value)} required rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] resize-none bg-white outline-none" />
-                      </div>
-                    </div>
 
-                    <div className="flex justify-end gap-2">
-                      {selectedBilan && (
-                        <button type="button" onClick={() => { setSelectedBilan(null); setDateBilanB(''); setDescriptionBilanB(''); setResultatBilanB(''); setRapportBilanB(''); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold border-none cursor-pointer">
-                          Annuler
+                      <div className="flex justify-end gap-2">
+                        {selectedBilan && (
+                          <button type="button" onClick={() => { setSelectedBilan(null); setDateBilanB(''); setDescriptionBilanB(''); setResultatBilanB(''); setRapportBilanB(''); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold border-none cursor-pointer">
+                            Annuler
+                          </button>
+                        )}
+                        <button type="submit" className="bg-[#2B5296] text-white px-6 py-2.5 rounded-xl text-xs font-bold border-none cursor-pointer">
+                          {selectedBilan ? "Sauvegarder" : "Enregistrer"}
                         </button>
-                      )}
-                      <button type="submit" className="bg-[#2B5296] text-white px-6 py-2.5 rounded-xl text-xs font-bold border-none cursor-pointer">
-                        {selectedBilan ? "Sauvegarder" : "Enregistrer"}
-                      </button>
-                    </div>
-                  </form>
+                      </div>
+                    </form>
+                  )}
 
-                  {/* NOUVEAU : AFFICHAGE DE L'HISTORIQUE DES BILANS ENREGISTRÉS */}
                   <div className="border-t pt-4">
                     <h5 className="text-xs font-bold text-[#6588BB] mb-3 uppercase tracking-wider">Bilans Enregistrés</h5>
                     <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -840,10 +859,12 @@ export const NephropathyPage = () => {
                             <p className="mt-1 text-slate-600">Synthèse : {b.descriptionBilanB}</p>
                             <p className="mt-1 italic text-slate-500">Détails : "{b.rapportBilanB}"</p>
                             
-                            <div className="absolute top-3 right-3 flex gap-1.5">
-                              <button onClick={() => setSelectedBilan(b)} className="p-1 hover:bg-blue-100 text-[#006591] rounded border-none cursor-pointer" title="Modifier"><IconEdit size={12} /></button>
-                              <button onClick={() => triggerDelete(b.identifiantB!, 'BILAN')} className="p-1 hover:bg-red-100 text-red-500 rounded border-none cursor-pointer" title="Supprimer"><IconTrash size={12} /></button>
-                            </div>
+                            {!isReadOnly && (
+                              <div className="absolute top-3 right-3 flex gap-1.5">
+                                <button onClick={() => setSelectedBilan(b)} className="p-1 hover:bg-blue-100 text-[#006591] rounded border-none cursor-pointer" title="Modifier"><IconEdit size={12} /></button>
+                                <button onClick={() => triggerDelete(b.identifiantB!, 'BILAN')} className="p-1 hover:bg-red-100 text-red-500 rounded border-none cursor-pointer" title="Supprimer"><IconTrash size={12} /></button>
+                              </div>
+                            )}
                           </div>
                         ))
                       ) : (
@@ -861,7 +882,6 @@ export const NephropathyPage = () => {
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -913,7 +933,6 @@ export const NephropathyPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer l'élément ?" message="Cette action effacera définitivement cette ligne du registre clinique." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

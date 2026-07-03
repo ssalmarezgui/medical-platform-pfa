@@ -1,7 +1,6 @@
 package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.repositories.HemotologieHemostaseRepository;
-
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.FicheHematologieService;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hematologie")
-
 public class FicheHematologieController {
 
     @Autowired
@@ -24,7 +22,6 @@ public class FicheHematologieController {
     @Autowired
     private HemotologieHemostaseRepository hhRepository;
 
-    // Convertisseur d'Entité vers DTO
     private HemotologieHemostaseDTO toDTO(HemotologieHemostase hh) {
         HemotologieHemostaseDTO dto = new HemotologieHemostaseDTO();
         dto.setIdentifiantHH(hh.getIdentifiantHH());
@@ -54,14 +51,15 @@ public class FicheHematologieController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<HemotologieHemostaseDTO> getAll() {
         return hhRepository.findAll().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-     @GetMapping("/patient/{patientId}")
+    @GetMapping("/patient/{patientId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<HemotologieHemostaseDTO> getByPatient(@PathVariable String patientId) {
         return fhService.getByPatient(patientId)
             .map(this::toDTO)
@@ -70,13 +68,14 @@ public class FicheHematologieController {
     }
 
     @PostMapping("/patient/{patientId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<HemotologieHemostaseDTO> save(@PathVariable String patientId, @RequestBody HemotologieHemostase hh) {
         HemotologieHemostase saved = fhService.createOrUpdate(patientId, hh);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @GetMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<HemotologieHemostaseDTO> getByDonneur(@PathVariable Integer donorId) {
         return fhService.getByDonneur(donorId)
             .map(this::toDTO)
@@ -85,14 +84,14 @@ public class FicheHematologieController {
     }
 
     @PostMapping("/donneur/{donorId}")
-    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<HemotologieHemostaseDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HemotologieHemostase hh) {
         HemotologieHemostase saved = fhService.createOrUpdateForDonor(donorId, hh);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         fhService.delete(id);
         return ResponseEntity.noContent().build();

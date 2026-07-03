@@ -17,9 +17,8 @@ import jakarta.persistence.EntityManager;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/traitements-immuno") // L'adresse URL exacte attendue par React !
+@RequestMapping("/api/traitements-immuno")
 @Slf4j
- // Autorise les connexions CORS de React
 public class TraitementImmunoSuppresseurController {
 
     @Autowired
@@ -32,7 +31,7 @@ public class TraitementImmunoSuppresseurController {
     private PatientIdAdminRepository patientRepository;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('READ_PATIENT')")
+    @PreAuthorize("hasAuthority('READ_IMMUNO')")
     public ResponseEntity<List<TraitementImmunoSuppresseur>> getAllByPatient(@RequestParam(required = false) String patientId) {
         log.info("Consultation de l'historique d'immuno-suppression");
         entityManager.clear(); 
@@ -47,7 +46,7 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('READ_PATIENT')")
+    @PreAuthorize("hasAuthority('READ_IMMUNO')")
     public ResponseEntity<TraitementImmunoSuppresseur> getById(@PathVariable Integer id) {
         return tisRepository.findById(id)
                 .map(ResponseEntity::ok)
@@ -55,13 +54,12 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<TraitementImmunoSuppresseur> create(@RequestBody TraitementImmunoSuppresseur tis) {
         if (tis.getPatient() == null || tis.getPatient().getIdentifiantP() == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        // On vérifie s'il s'agit d'un objet TISInduction ou TISEntretien
         log.info("Création d'un traitement d'immuno-suppression pour le patient : {}", tis.getPatient().getIdentifiantP());
         PatientIdAdmin patient = patientRepository.findById(tis.getPatient().getIdentifiantP())
                 .orElseThrow(() -> new RuntimeException("Patient non trouvé"));
@@ -73,7 +71,7 @@ public class TraitementImmunoSuppresseurController {
 
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<TraitementImmunoSuppresseur> update(@PathVariable Integer id, @RequestBody TraitementImmunoSuppresseur details) {
         return tisRepository.findById(id).map(existing -> {
             existing.setDciTIS(details.getDciTIS());
@@ -103,7 +101,7 @@ public class TraitementImmunoSuppresseurController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         if (!tisRepository.existsById(id)) {
             return ResponseEntity.notFound().build();

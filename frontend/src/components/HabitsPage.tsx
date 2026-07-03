@@ -14,6 +14,8 @@ import { useLocation } from 'react-router-dom';
 import { useDonors } from '../features/donors/hooks/useDonors';
 import { useDonorHabits } from '../features/habits/hooks/useHabits';
 import axios from 'axios';
+import { usePermission } from '../hooks/usePermission'; 
+import { useAuthStore } from '../store/useAuthStore';
 
 export const HabitsPage = () => {
   const queryClient = useQueryClient();
@@ -24,13 +26,25 @@ export const HabitsPage = () => {
   const { data: donors } = useDonors();
 
   const subjects = isDonorMode ? donors : patients;
+
+  const { hasPermission } = usePermission();
+  const userRole = useAuthStore((state) => state.role);
+
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
+  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter les habitudes de vie.
+      </div>
+    );
+  }
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
-  // Récupération des habitudes (si patientId est vide, le backend retourne toutes les habitudes de la cohorte)
   const { data: patientHabits, isLoading: loadingPatientHabits } = useHabits(
     !isDonorMode ? (patientIdString || undefined) : undefined
   );
@@ -45,10 +59,8 @@ export const HabitsPage = () => {
   const createMutation = useCreateHabit();
   const deleteMutation = useDeleteHabit(selectedPatientId || 0);
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) & RECHERCHE COHORTE (Vue Globale) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // --- ÉTATS FORMULAIRE HABITUDE ---
   const [libelleHA, setLibelleHA] = useState('Tabagisme');
   const [tabacType, setTabacType] = useState('Actif');
   const [tabacSubstance, setTabacSubstance] = useState('Fumeur cigarettes');
@@ -62,7 +74,6 @@ export const HabitsPage = () => {
   const [autreExpo, setAutreExpo] = useState('');
   const [autreSevrage, setAutreSevrage] = useState('');
 
-  // --- CONFIGURATION MODALS & TOASTS ---
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -71,7 +82,6 @@ export const HabitsPage = () => {
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [selectedHabit, setSelectedHabit] = useState<any | null>(null);
 
-  // --- ÉTATS DE L'IMPORTATION DE FICHIER ---
   const [importOpen, setImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -83,8 +93,6 @@ export const HabitsPage = () => {
     isDonorMode ? p.identifiantD === selectedPatientId : p.identifiantP === selectedPatientId
   );
 
-  // --- FILTRES DE RECHERCHE ---
-  // 1. Filtrer les patients sur la vue globale (Cohorte)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -96,7 +104,6 @@ export const HabitsPage = () => {
     return nomComplet.includes(query) || String(identifiant).toLowerCase().includes(query);
   });
 
-  // 2. Filtrer les habitudes d'un patient ouvert (Vue locale)
   const filteredLocalHabits = habits?.filter(h => {
     const substance = h.typeSubstance?.toLowerCase() || '';
     const details = h.details?.toLowerCase() || '';
@@ -105,7 +112,6 @@ export const HabitsPage = () => {
     return substance.includes(query) || details.includes(query) || categorie.includes(query);
   });
 
-  // --- LOGIQUE EXPORT CLINIQUE (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -152,7 +158,6 @@ export const HabitsPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- LOGIQUE IMPORT CLINIQUE (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "libelleHA", "typeSubstance", "quantiteConsomme", "periodeExposition", "sevrage", "details"]
@@ -236,7 +241,6 @@ export const HabitsPage = () => {
     queryClient.invalidateQueries({ queryKey: isDonorMode ? ['donorHabits', selectedPatientId] : ['habits', patientIdString] });
   };
 
-  // --- ENREGISTREMENT SÉCURISÉ ---
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId) return;
@@ -348,10 +352,20 @@ export const HabitsPage = () => {
     }
   };
 
+  const resetForm = () => {
+    setSelectedHabit(null);
+    setTabacConsom('');
+    setTabacExpo('');
+    setTabacSevrageDuree('');
+    setAlcoolRythme('');
+    setAutreSubstance('');
+    setAutreExpo('');
+    setAutreSevrage('');
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -359,16 +373,17 @@ export const HabitsPage = () => {
             Saisie des Habitudes Cliniques
           </h2>
           
-          {/* ACTIONS GLOBALES S'AFFICHANT SUR L'ETAT A (AUCUN PATIENT SELECTIONNE) */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-                title={isDonorMode ? "Importer des habitudes pour plusieurs donneurs" : "Importer des habitudes pour plusieurs patients"}
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                  title={isDonorMode ? "Importer des habitudes pour plusieurs donneurs" : "Importer des habitudes pour plusieurs patients"}
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -437,7 +452,6 @@ export const HabitsPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="flex justify-between items-center mb-6">
@@ -490,127 +504,119 @@ export const HabitsPage = () => {
         </div>
       ) : (
 
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (UN PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire de saisie à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6">
-              {selectedHabit ? "Modifier l'Habitude" : "Saisir une Habitude"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Catégorie d'addiction</label>
-                <select value={libelleHA} onChange={(e) => setLibelleHA(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
-                  <option value="Tabagisme">Tabagisme</option>
-                  <option value="Éthylisme">Éthylisme</option>
-                  <option value="Autres addictions">Autres addictions</option>
-                </select>
-              </div>
-
-              {/* TABAGISME */}
-              {libelleHA === 'Tabagisme' && (
-                <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type *</label>
-                    <select value={tabacType} onChange={(e) => setTabacType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
-                      <option value="Actif">Actif</option>
-                      <option value="Passif">Passif</option>
-                      <option value="Non exposé">Non exposé</option>
-                      <option value="Non précisé">Non précisé</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Substance *</label>
-                    <select value={tabacSubstance} onChange={(e) => setTabacSubstance(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
-                      <option value="Fumeur cigarettes">Fumeur cigarettes</option>
-                      <option value="Chicha">Chicha</option>
-                      <option value="Vape / Cigarette électronique">Vape / Cigarette électronique</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Quantité Journalière</label>
-                    <input type="text" value={tabacConsom} onChange={(e) => setTabacConsom(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 10 cigarettes" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Durée d'exposition</label>
-                    <input type="text" value={tabacExpo} onChange={(e) => setTabacExpo(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 5 ans" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sevrage clinique *</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                        <input type="radio" checked={tabacSevrage === 'Non'} onChange={() => setTabacSevrage('Non')} /> Non
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                        <input type="radio" checked={tabacSevrage === 'Oui'} onChange={() => setTabacSevrage('Oui')} /> Oui
-                      </label>
-                    </div>
-                  </div>
-                  {tabacSevrage === 'Oui' && (
-                    <div className="animate-in slide-in-from-top-2 duration-200">
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Durée du sevrage</label>
-                      <input type="text" value={tabacSevrageDuree} onChange={(e) => setTabacSevrageDuree(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 6 mois" />
-                    </div>
-                  )}
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+              <h3 className="text-base font-bold text-[#2B5296] mb-6">
+                {selectedHabit ? "Modifier l'Habitude" : "Saisir une Habitude"}
+              </h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Catégorie d'addiction</label>
+                  <select value={libelleHA} onChange={(e) => setLibelleHA(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
+                    <option value="Tabagisme">Tabagisme</option>
+                    <option value="Éthylisme">Éthylisme</option>
+                    <option value="Autres addictions">Autres addictions</option>
+                  </select>
                 </div>
-              )}
 
-              {/* ETHYLISME */}
-              {libelleHA === 'Éthylisme' && (
-                <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type *</label>
-                    <select value={alcoolType} onChange={(e) => setAlcoolType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
-                      <option value="Jamais">Jamais</option>
-                      <option value="Oui, régulière">Oui, régulière</option>
-                      <option value="Oui, occasionnelle">Oui, occasionnelle</option>
-                      <option value="Non précisé">Non précisé</option>
-                    </select>
-                  </div>
-                  {alcoolType.includes('Oui') && (
-                    <div className="animate-in slide-in-from-top-2 duration-200">
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Rythme de consommation</label>
-                      <input type="text" value={alcoolRythme} onChange={(e) => setAlcoolRythme(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 2 verres par semaine" />
+                {libelleHA === 'Tabagisme' && (
+                  <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type *</label>
+                      <select value={tabacType} onChange={(e) => setTabacType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        <option value="Actif">Actif</option>
+                        <option value="Passif">Passif</option>
+                        <option value="Non exposé">Non exposé</option>
+                        <option value="Non précisé">Non précisé</option>
+                      </select>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* AUTRES ADDICTIONS */}
-              {libelleHA === 'Autres addictions' && (
-                <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Substance *</label>
-                    <input type="text" value={autreSubstance} onChange={(e) => setAutreSubstance(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Caféine intensive, somnifères" />
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Substance *</label>
+                      <select value={tabacSubstance} onChange={(e) => setTabacSubstance(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        <option value="Fumeur cigarettes">Fumeur cigarettes</option>
+                        <option value="Fumeur pipe">Fumeur pipe</option>
+                        <option value="Chiqueur 'Neffa'">Chiqueur 'Neffa'</option>
+                        <option value="Sniffeur 'Neffa'">Sniffeur 'Neffa'</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Quantité Journalière</label>
+                      <input type="text" value={tabacConsom} onChange={(e) => setTabacConsom(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 10 cigarettes" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Durée d'exposition</label>
+                      <input type="text" value={tabacExpo} onChange={(e) => setTabacExpo(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 5 ans" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sevrage clinique *</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                          <input type="radio" checked={tabacSevrage === 'Non'} onChange={() => setTabacSevrage('Non')} /> Non
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                          <input type="radio" checked={tabacSevrage === 'Oui'} onChange={() => setTabacSevrage('Oui')} /> Oui
+                        </label>
+                      </div>
+                    </div>
+                    {tabacSevrage === 'Oui' && (
+                      <div className="animate-in slide-in-from-top-2 duration-200">
+                        <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Durée du sevrage</label>
+                        <input type="text" value={tabacSevrageDuree} onChange={(e) => setTabacSevrageDuree(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 6 mois" />
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Période d'exposition</label>
-                    <input type="text" value={autreExpo} onChange={(e) => setAutreExpo(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 2 ans" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sevrage</label>
-                    <input type="text" value={autreSevrage} onChange={(e) => setAutreSevrage(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Oui, depuis 3 mois" />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                {selectedHabit && (
-                  <button type="button" onClick={() => { setSelectedHabit(null); }} className="w-1/3 bg-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-                    Annuler
-                  </button>
                 )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  {selectedHabit ? "Mettre à jour" : "Enregistrer l'Habitude"}
-                </button>
-              </div>
-            </form>
-          </div>
 
-          {/* Tableau de l'historique personnel à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+                {libelleHA === 'Éthylisme' && (
+                  <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type *</label>
+                      <select value={alcoolType} onChange={(e) => setAlcoolType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        <option value="Jamais">Jamais</option>
+                        <option value="Oui, régulière">Oui, régulière</option>
+                        <option value="Oui, occasionnelle">Oui, occasionnelle</option>
+                        <option value="Non précisé">Non précisé</option>
+                      </select>
+                    </div>
+                    {alcoolType.includes('Oui') && (
+                      <div className="animate-in slide-in-from-top-2 duration-200">
+                        <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Rythme de consommation</label>
+                        <input type="text" value={alcoolRythme} onChange={(e) => setAlcoolRythme(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 2 verres par semaine" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {libelleHA === 'Autres addictions' && (
+                  <div className="space-y-4 border-t border-slate-50 pt-4 animate-in fade-in duration-200">
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Substance *</label>
+                      <input type="text" value={autreSubstance} onChange={(e) => setAutreSubstance(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Caféine intensive, somnifères" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Période d'exposition</label>
+                      <input type="text" value={autreExpo} onChange={(e) => setAutreExpo(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: 2 ans" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sevrage</label>
+                      <input type="text" value={autreSevrage} onChange={(e) => setAutreSevrage(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Oui, depuis 3 mois" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    {selectedHabit ? "Mettre à jour" : "Enregistrer l'Habitude"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -619,8 +625,6 @@ export const HabitsPage = () => {
                     Registre des Addictions ({isDonorMode ? `${selectedPatient?.prenomD} ${selectedPatient?.nomD}` : `${selectedPatient?.prenomP} ${selectedPatient?.nomP}`})
                   </h3>
                 </div>
-
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -632,13 +636,15 @@ export const HabitsPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer des habitudes pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer des habitudes pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -679,10 +685,12 @@ export const HabitsPage = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50/50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(h)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
-                        <button onClick={() => triggerDelete(h.identifiantHA!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={14} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50/50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(h)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
+                          <button onClick={() => triggerDelete(h.identifiantHA!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={14} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -693,12 +701,17 @@ export const HabitsPage = () => {
                 </div>
               )}
             </div>
+
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {importOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -748,7 +761,6 @@ export const HabitsPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal 
         isOpen={confirmOpen} 
         onClose={() => setConfirmOpen(false)} 

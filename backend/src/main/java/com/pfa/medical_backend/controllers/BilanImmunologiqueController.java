@@ -1,7 +1,6 @@
 package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.repositories.BilanImmunologiqueRepository;
-
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.BilanImmunologiqueService;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/immunologie")
-
 public class BilanImmunologiqueController {
 
     @Autowired
@@ -24,7 +22,6 @@ public class BilanImmunologiqueController {
     @Autowired
     private BilanImmunologiqueRepository biRepository;
 
-    // Convertisseur d'Entité vers DTO
     private BilanImmunologiqueDTO toDTO(BilanImmunologique bi) {
         BilanImmunologiqueDTO dto = new BilanImmunologiqueDTO();
         dto.setIdentifiantBI(bi.getIdentifiantBI());
@@ -52,7 +49,7 @@ public class BilanImmunologiqueController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<BilanImmunologiqueDTO> getAll() {
         return biRepository.findAll().stream()
                 .map(this::toDTO)
@@ -60,6 +57,7 @@ public class BilanImmunologiqueController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<BilanImmunologiqueDTO> getByPatient(@PathVariable String patientId) {
         return biService.getByPatient(patientId)
             .map(this::toDTO)
@@ -68,13 +66,14 @@ public class BilanImmunologiqueController {
     }
 
     @PostMapping("/patient/{patientId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<BilanImmunologiqueDTO> save(@PathVariable String patientId, @RequestBody BilanImmunologique bi) {
         BilanImmunologique saved = biService.createOrUpdate(patientId, bi);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @GetMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<BilanImmunologiqueDTO> getByDonneur(@PathVariable Integer donorId) {
         return biService.getByDonneur(donorId)
             .map(this::toDTO)
@@ -83,14 +82,14 @@ public class BilanImmunologiqueController {
     }
 
     @PostMapping("/donneur/{donorId}")
-    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<BilanImmunologiqueDTO> saveForDonneur(@PathVariable Integer donorId, @RequestBody BilanImmunologique bi) {
         BilanImmunologique saved = biService.createOrUpdateForDonor(donorId, bi);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         biService.delete(id);
         return ResponseEntity.noContent().build();

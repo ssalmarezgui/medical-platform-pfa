@@ -15,10 +15,23 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorMarkerHistory } from '../features/tumor-markers/hooks/useMarkers';
+import { usePermission } from '../hooks/usePermission';
 
 export const TumorMarkersPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_LABO');
+  const isReadOnly = !hasPermission('WRITE_LABO');
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter les marqueurs tumoraux.
+      </div>
+    );
+  }
 
   const location = useLocation();
   const isDonorMode = location.pathname.startsWith('/donors');
@@ -26,7 +39,7 @@ export const TumorMarkersPage = () => {
 
   const subjects = isDonorMode ? donors : patients;
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
+  
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
@@ -35,7 +48,6 @@ export const TumorMarkersPage = () => {
     isDonorMode ? p.identifiantD === selectedPatientId : p.identifiantP === selectedPatientId
   );
 
-  // Chargement de l'antécédent existant (Aiguillage dynamique)
   const { data: patientMarkers, isLoading: loadingPatientMarkers } = useMarkerHistory(
     !isDonorMode ? (patientIdString || undefined) : undefined
   );
@@ -50,18 +62,15 @@ export const TumorMarkersPage = () => {
   const saveMutation = useSaveMarker();
   const deleteMutation = useDeleteMarker(patientIdString);
 
-  // États du formulaire
   const [nomM, setNomM] = useState('PSA'); 
   const [resultat, setResultat] = useState('');
 
-  // TOASTS & SUPPRESSION
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modeEdition, setModeEdition] = useState(false);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -69,7 +78,6 @@ export const TumorMarkersPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Remplissage automatique si une fiche existe déjà
   useEffect(() => {
     if (markerHistory) {
       setNomM(markerHistory.nomM);
@@ -85,7 +93,6 @@ export const TumorMarkersPage = () => {
     setModeEdition(false);
   };
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -97,7 +104,6 @@ export const TumorMarkersPage = () => {
     return nomComplet.includes(query) || String(identifiant).toLowerCase().includes(query);
   });
 
-  // Enregistrer / Modifier la fiche complète
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId || !resultat) return;
@@ -150,7 +156,6 @@ export const TumorMarkersPage = () => {
       setToastMessage("Fiche de marqueurs tumoraux supprimée !");
       setToastOpen(true);
 
-      // Vidage instantané du cache
       queryClient.removeQueries({ queryKey: ['markerHistory'] });
       queryClient.removeQueries({ queryKey: ['donorMarkerHistory'] });
     } catch {
@@ -161,7 +166,6 @@ export const TumorMarkersPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -204,7 +208,6 @@ export const TumorMarkersPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "nomM", "resultat"]
@@ -293,23 +296,23 @@ export const TumorMarkersPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
             <IconShield size={24} />
-            Fiche de Suivi des Marqueurs Tumoraux (Biologie)
+            Fiche de Suivi des Marqueurs Tumoraux
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -375,7 +378,6 @@ export const TumorMarkersPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -398,7 +400,7 @@ export const TumorMarkersPage = () => {
               return (
                 <div 
                   key={idSujet}
-                  onClick={() => { setSelectedPatientId(idSujet!); }} // <-- Corrigé : retrait de setLocalSearchTerm non défini
+                  onClick={() => { setSelectedPatientId(idSujet!); }}
                   className="border border-slate-100 hover:border-[#2B5296]/50 bg-[#F8FAFC]/50 hover:bg-blue-50/10 p-5 rounded-2xl cursor-pointer transition-all flex items-center justify-between"
                 >
                   <div>
@@ -424,57 +426,58 @@ export const TumorMarkersPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          {(!markerHistory || modeEdition) ? (
-            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-              <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-                <IconPlus size={20} /> {markerHistory ? "Modifier la Fiche" : "Saisir un Dosage"}
-              </h3>
-              
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type de Marqueur *</label>
-                  <select value={nomM} onChange={(e) => setNomM(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
-                    <option value="PSA">PSA</option>
-                    <option value="Autres marqueurs">Autres marqueurs tumoraux</option>
-                  </select>
-                </div>
+          {!isReadOnly && (
+            <div className="lg:col-span-1">
+              {(!markerHistory || modeEdition) ? (
+                <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+                  <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                    <IconPlus size={20} /> {markerHistory ? "Modifier la Fiche" : "Saisir un Dosage"}
+                  </h3>
+                  
+                  <form onSubmit={handleSave} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type de Marqueur *</label>
+                      <select value={nomM} onChange={(e) => setNomM(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
+                        <option value="PSA">PSA</option>
+                        <option value="Autres marqueurs">Autres marqueurs tumoraux</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Résultat *</label>
-                  <textarea 
-                    value={resultat} 
-                    onChange={(e) => setResultat(e.target.value)} 
-                    required 
-                    rows={4} 
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" 
-                    placeholder="Saisissez la valeur du dosage ou les observations médicales..." 
-                  />
-                </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Résultat *</label>
+                      <textarea 
+                        value={resultat} 
+                        onChange={(e) => setResultat(e.target.value)} 
+                        required 
+                        rows={4} 
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" 
+                        placeholder="Saisissez la valeur du dosage ou les observations médicales..." 
+                      />
+                    </div>
 
-                <div className="flex gap-2 pt-4">
-                  {modeEdition && (
-                    <button type="button" onClick={() => setModeEdition(false)} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
-                  )}
-                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                    {modeEdition ? "Sauvegarder" : "Enregistrer la Fiche"}
-                  </button>
+                    <div className="flex gap-2 pt-4">
+                      {modeEdition && (
+                        <button type="button" onClick={() => setModeEdition(false)} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
+                      )}
+                      <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                        {modeEdition ? "Sauvegarder" : "Enregistrer la Fiche"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
-            </div>
-          ) : (
-            <div className="lg:col-span-1 bg-slate-50 border border-slate-100 rounded-[30px] p-8 text-center flex flex-col justify-center items-center">
-              <IconReportMedical size={32} className="text-[#6588BB] mb-2" />
-              <p className="text-xs font-bold text-slate-800">Dossier des Marqueurs Actif</p>
-              <p className="text-[10px] text-slate-500 mt-1 leading-relaxed font-semibold">La fiche de suivi a déjà été enregistrée pour ce dossier. Vous pouvez la consulter, l'exporter ou la modifier à droite.</p>
+              ) : (
+                <div className="bg-slate-50 border border-slate-100 rounded-[30px] p-8 text-center flex flex-col justify-center items-center">
+                  <IconReportMedical size={32} className="text-[#6588BB] mb-2" />
+                  <p className="text-xs font-bold text-slate-800">Dossier des Marqueurs Actif</p>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed font-semibold">La fiche de suivi a déjà été enregistrée pour ce dossier. Vous pouvez la consulter, l'exporter ou la modifier à droite.</p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Fiche de synthèse à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[400px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[400px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -482,16 +485,17 @@ export const TumorMarkersPage = () => {
                   Synthèse Clinique des Marqueurs Tumoraux
                 </h3>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 {markerHistory && (
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                      title="Importer le dosage"
-                    >
-                      <IconDatabaseImport size={16} />
-                    </button>
+                    {!isReadOnly && (
+                      <button 
+                        onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                        className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                        title="Importer le dosage"
+                      >
+                        <IconDatabaseImport size={16} />
+                      </button>
+                    )}
                     <button 
                       onClick={() => handleExportCSV('personal')}
                       className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -529,8 +533,7 @@ export const TumorMarkersPage = () => {
               )}
             </div>
 
-            {/* Actions */}
-            {markerHistory && !modeEdition && (
+            {markerHistory && !modeEdition && !isReadOnly && (
               <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-1.5">
                 <button 
                   onClick={() => setModeEdition(true)}
@@ -548,12 +551,17 @@ export const TumorMarkersPage = () => {
                 </button>
               </div>
             )}
+            
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -605,7 +613,6 @@ export const TumorMarkersPage = () => {
         </div>
       )}
 
-      {/* Confirmation de suppression */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la fiche des marqueurs ?" message="Cette action effacera définitivement l'intégralité du suivi des marqueurs tumoraux du patient." />
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />
     </div>

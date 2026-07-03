@@ -51,10 +51,8 @@ import { DiagnosticDonorHub } from './components/DiagnosticDonorHub';
 function App() {
   return (
     <Routes>
-      {/* 1. ROUTE PUBLIQUE : Page de Connexion Isolée */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* 2. ROUTES SÉCURISÉES : Enveloppées par le DashboardLayout et la protection RBAC */}
       <Route 
         path="/*" 
         element={

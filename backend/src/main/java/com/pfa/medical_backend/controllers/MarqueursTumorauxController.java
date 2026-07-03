@@ -1,7 +1,6 @@
 package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.repositories.MarqueursTumorauxRepository;
-
 import com.pfa.medical_backend.dto.MarqueursTumorauxDTO;
 import com.pfa.medical_backend.entities.MarqueursTumoraux;
 import com.pfa.medical_backend.services.MarqueursTumorauxService;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/marqueurs-tumoraux")
-
 public class MarqueursTumorauxController {
 
     @Autowired
@@ -40,7 +38,7 @@ public class MarqueursTumorauxController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<MarqueursTumorauxDTO> getAll() {
         return mtRepository.findAll().stream()
                 .map(this::toDTO)
@@ -48,10 +46,10 @@ public class MarqueursTumorauxController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<List<MarqueursTumorauxDTO>> getByPatient(@PathVariable String patientId) {
         List<MarqueursTumoraux> list = mtService.getByPatient(patientId);
         
-        // Nous ne retournons plus de 404. Si la liste est vide, dtos sera simplement un tableau vide []
         List<MarqueursTumorauxDTO> dtos = list.stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
@@ -60,10 +58,10 @@ public class MarqueursTumorauxController {
     }
 
     @GetMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<List<MarqueursTumorauxDTO>> getByDonneur(@PathVariable Integer donorId) {
         List<MarqueursTumoraux> list = mtService.getByDonneur(donorId);
         
-        //Si la liste est vide, dtos sera un tableau vide []
         List<MarqueursTumorauxDTO> dtos = list.stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
@@ -72,21 +70,21 @@ public class MarqueursTumorauxController {
     }
 
     @PostMapping("/patient/{patientId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<MarqueursTumorauxDTO> save(@PathVariable String patientId, @RequestBody MarqueursTumoraux mt) {
         MarqueursTumoraux saved = mtService.create(mt, patientId);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
-    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<MarqueursTumorauxDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody MarqueursTumoraux mt) {
         MarqueursTumoraux saved = mtService.createForDonor(mt, donorId);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         mtService.delete(id);
         return ResponseEntity.noContent().build();

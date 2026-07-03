@@ -15,10 +15,23 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorInfectiousHistory } from '../features/infectious/hooks/useInfectious';
+import { usePermission } from '../hooks/usePermission';
 
 export const InfectiousPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_LABO');
+  const isReadOnly = !hasPermission('WRITE_LABO');
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter le pôle de microbiologie et sérologie.
+      </div>
+    );
+  }
 
   const location = useLocation();
   const isDonorMode = location.pathname.startsWith('/donors');
@@ -69,27 +82,21 @@ export const InfectiousPage = () => {
     "Sérologie leishmaniose"
   ];
 
-  // États du formulaire principal
   const [typeMS, setTypeMS] = useState("Enquête Infectieuse et Sérologie");
   
-  // Saisie d'une analyse individuelle
   const [selectedExamen, setSelectedExamen] = useState(listExamensInfectieux[0]);
   const [dateAna, setDateAna] = useState(new Date().toISOString().split('T')[0]);
   const [valeurAna, setValeurAna] = useState('');
   
-  // Index de la ligne en modification
   const [editingAnalysisIndex, setEditingAnalysisIndex] = useState<number | null>(null);
 
-  // Tableau local des analyses (avant soumission)
   const [analysesSaisies, setAnalysesSaisies] = useState<any[]>([]);
 
-  // TOASTS & SUPPRESSION
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -97,7 +104,6 @@ export const InfectiousPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Remplissage automatique
   useEffect(() => {
     if (infectious) {
       setTypeMS(infectious.typeMS || "Enquête Infectieuse et Sérologie");
@@ -108,7 +114,6 @@ export const InfectiousPage = () => {
     }
   }, [infectious]);
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -120,7 +125,6 @@ export const InfectiousPage = () => {
     return nomComplet.includes(query) || String(identifiant).toLowerCase().includes(query);
   });
 
-  // Filtrage local des analyses (Vue Personnelle)
   const filteredLocalAnalyses = analysesSaisies?.filter(row => {
     const nameStr = row.resultatAna?.toLowerCase() || '';
     const dateStr = row.dateAna || '';
@@ -132,7 +136,6 @@ export const InfectiousPage = () => {
     isDonorMode ? p.identifiantD === selectedPatientId : p.identifiantP === selectedPatientId
   );
 
-  // Ajouter/Modifier ligne d'analyse locale
   const handleAddAnalysisRow = () => {
     if (!valeurAna) return;
 
@@ -170,7 +173,6 @@ export const InfectiousPage = () => {
     }
   };
 
-  // Enregistrer la fiche
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId) return;
@@ -217,12 +219,11 @@ export const InfectiousPage = () => {
       setToastMessage("Fiche de microbiologie/sérologie supprimée.");
       setToastOpen(true);
 
-      // Réinitialisation locale
       setTypeMS("Enquête Infectieuse et Sérologie");
       setAnalysesSaisies([]);
       setEditingAnalysisIndex(null);
 
-      // Vidage complet immédiat
+      
       queryClient.removeQueries({ queryKey: ['infectiousHistory'] });
       queryClient.removeQueries({ queryKey: ['donorInfectiousHistory'] });
     } catch {
@@ -233,7 +234,7 @@ export const InfectiousPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
+  
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -299,7 +300,7 @@ export const InfectiousPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
+  
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "typeMS", "dateAna", "resultatAna", "valeurAna"]
@@ -404,7 +405,7 @@ export const InfectiousPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
+      
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -412,15 +413,17 @@ export const InfectiousPage = () => {
             Fiche de Microbiologie & Sérologie
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
+          
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -487,7 +490,7 @@ export const InfectiousPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
+
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -533,63 +536,62 @@ export const InfectiousPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
-            <h3 className="text-base font-bold text-[#2B5296]">Saisie du Bilan</h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              {/* Libellé */}
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Libellé de la fiche *</label>
-                <input type="text" value={typeMS} onChange={(e) => setTypeMS(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none" />
-              </div>
-
-              {/* Saisie d'une ligne d'analyse individuelle */}
-              <div className="border-t pt-4 space-y-3">
-                <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">
-                  {editingAnalysisIndex !== null ? "Modification de la Ligne" : "Saisie des Résultats"}
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Examen *</label>
-                    <select value={selectedExamen} onChange={(e) => setSelectedExamen(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white font-bold text-[#2B5296]">
-                      {listExamensInfectieux.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date *</label>
-                    <input type="date" value={dateAna} onChange={(e) => setDateAna(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white" />
-                  </div>
-                </div>
-
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
+              <h3 className="text-base font-bold text-[#2B5296]">Saisie du Bilan</h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat *</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={valeurAna} onChange={(e) => setValeurAna(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white outline-none" placeholder="" />
-                    <button type="button" onClick={handleAddAnalysisRow} className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-blue-900 flex items-center justify-center shrink-0">
-                      {editingAnalysisIndex !== null ? "Modifier" : "Ajouter"}
-                    </button>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Libellé de la fiche *</label>
+                  <input type="text" value={typeMS} onChange={(e) => setTypeMS(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none" />
+                </div>
+
+
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">
+                    {editingAnalysisIndex !== null ? "Modification de la Ligne" : "Saisie des Résultats"}
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Examen *</label>
+                      <select value={selectedExamen} onChange={(e) => setSelectedExamen(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white font-bold text-[#2B5296]">
+                        {listExamensInfectieux.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date *</label>
+                      <input type="date" value={dateAna} onChange={(e) => setDateAna(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat *</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={valeurAna} onChange={(e) => setValeurAna(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white outline-none" placeholder="" />
+                      <button type="button" onClick={handleAddAnalysisRow} className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-blue-900 flex items-center justify-center shrink-0">
+                        {editingAnalysisIndex !== null ? "Modifier" : "Ajouter"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2 pt-4 border-t">
-                {infectious?.identifiantMS && (
-                  <button type="button" onClick={() => setConfirmOpen(true)} className="w-1/3 bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-red-100 flex items-center justify-center gap-1"><IconTrash size={14} /> Supprimer</button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  Sauvegarder la Fiche
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="flex gap-2 pt-4 border-t">
+                  {infectious?.identifiantMS && (
+                    <button type="button" onClick={() => setConfirmOpen(true)} className="w-1/3 bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-red-100 flex items-center justify-center gap-1"><IconTrash size={14} /> Supprimer</button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    Sauvegarder la Fiche
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
-          {/* Tableau de résultats à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -599,7 +601,7 @@ export const InfectiousPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
+
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -611,13 +613,15 @@ export const InfectiousPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -628,7 +632,7 @@ export const InfectiousPage = () => {
                 </div>
               </div>
 
-              {/* Tableau principal */}
+
               {loadingInfectious ? (
                 <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-b-2 border-[#2B5296] rounded-full"></div></div>
               ) : (
@@ -639,7 +643,7 @@ export const InfectiousPage = () => {
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Date</th>
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Examen (Analyse)</th>
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Résultat (Valeur)</th>
-                        <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                        {!isReadOnly && <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -649,17 +653,19 @@ export const InfectiousPage = () => {
                             <td className="px-4 py-3 font-medium text-slate-600">{row.dateAna}</td>
                             <td className="px-4 py-3 font-bold text-[#2B5296]">{row.resultatAna}</td>
                             <td className="px-4 py-3 font-extrabold text-slate-800">{row.valeurAna}</td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-1.5">
-                                <button onClick={() => triggerEditRow(idx)} type="button" className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
-                                <button onClick={() => handleRemoveAnalysisRow(idx)} type="button" className="p-1 hover:bg-red-50 text-red-500 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={14} /></button>
-                              </div>
-                            </td>
+                            {!isReadOnly && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <button onClick={() => triggerEditRow(idx)} type="button" className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
+                                  <button onClick={() => handleRemoveAnalysisRow(idx)} type="button" className="p-1 hover:bg-red-50 text-red-500 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={14} /></button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-semibold">Aucun résultat d'analyse d'infectiologie saisi ne correspond à vos critères.</td>
+                          <td colSpan={isReadOnly ? 3 : 4} className="px-4 py-8 text-center text-slate-400 font-semibold">Aucun résultat d'analyse d'infectiologie saisi ne correspond à vos critères.</td>
                         </tr>
                       )}
                     </tbody>
@@ -668,15 +674,21 @@ export const InfectiousPage = () => {
               )}
             </div>
 
-            <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic font-sans">
-              * Une fois les lignes ajoutées au tableau local, n'oubliez pas de cliquer sur "Sauvegarder la Fiche" en bas à gauche pour enregistrer définitivement le bilan d'infectiologie complet du patient.
-            </div>
+            {isReadOnly ? (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            ) : (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic font-sans">
+                * Une fois les lignes ajoutées au tableau local, n'oubliez pas de cliquer sur "Sauvegarder la Fiche" en bas à gauche pour enregistrer définitivement le bilan d'infectiologie complet du patient.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
+
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -728,7 +740,7 @@ export const InfectiousPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
+
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la fiche d'infectiologie ?" message="Cette action effacera définitivement l'intégralité du bilan de microbiologie et de sérologie ainsi que toutes les lignes de résultats associées." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

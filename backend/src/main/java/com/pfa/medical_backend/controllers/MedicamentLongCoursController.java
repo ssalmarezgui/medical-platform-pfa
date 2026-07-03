@@ -13,13 +13,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/medicaments-long-cours")
-
 public class MedicamentLongCoursController {
 
     @Autowired
     private MedicamentLongCoursService mlcService;
 
-    // Convertisseur d'Entité vers DTO
     private MedicamentLongCoursDTO toDTO(MedicamentLongCours mlc) {
         MedicamentLongCoursDTO dto = new MedicamentLongCoursDTO();
         dto.setIdentifiantMLC(mlc.getIdentifiantMLC());
@@ -72,7 +70,6 @@ public class MedicamentLongCoursController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
     public ResponseEntity<MedicamentLongCoursDTO> update(@PathVariable Integer id, @RequestBody MedicamentLongCours details) {
         MedicamentLongCours updated = mlcService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));

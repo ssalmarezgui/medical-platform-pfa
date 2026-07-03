@@ -13,13 +13,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/antecedents-medicaux")
-
 public class AntecedentMedicalController {
 
     @Autowired
     private AntecedentMedicalService amService;
 
-    // Convertisseur d'Entité vers DTO
     private AntecedentMedicalDTO toDTO(AntecedentMedical am) {
         AntecedentMedicalDTO dto = new AntecedentMedicalDTO();
         dto.setIdentifiantAMed(am.getIdentifiantAMed());
@@ -48,8 +46,7 @@ public class AntecedentMedicalController {
         @RequestParam(required = false) String patientId,
         @RequestParam(required = false) Integer donorId
     ) {
-        // Sécurisation contre les chaînes de caractères vides
-        List<AntecedentMedical> list ;
+        List<AntecedentMedical> list;
         if (patientId != null && !patientId.trim().isEmpty()) {
             list = amService.getByPatient(patientId);
         } else if (donorId != null) {
@@ -85,7 +82,6 @@ public class AntecedentMedicalController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
     public ResponseEntity<AntecedentMedicalDTO> update(@PathVariable Integer id, @RequestBody AntecedentMedical details) {
         AntecedentMedical updated = amService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));

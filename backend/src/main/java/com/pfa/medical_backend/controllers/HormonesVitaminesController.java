@@ -82,7 +82,7 @@ public class HormonesVitaminesController {
     }
 
     @PostMapping("/patient/{patientId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<HormonesVitaminesDTO> saveForPatient(@PathVariable String patientId, @RequestBody HormonesVitamines hv) {
         HormonesVitamines saved = hvService.createOrUpdate(patientId, hv);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
@@ -97,14 +97,14 @@ public class HormonesVitaminesController {
     }
 
     @PostMapping("/donneur/{donorId}")
-    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<HormonesVitaminesDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HormonesVitamines hv) {
         HormonesVitamines saved = hvService.createOrUpdateForDonor(donorId, hv);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('WRITE_LABO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         hvService.delete(id);
         return ResponseEntity.noContent().build();

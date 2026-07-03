@@ -14,10 +14,23 @@ import { useLocation } from 'react-router-dom';
 import { useDonors } from '../features/donors/hooks/useDonors';
 
 import { useDonorUrineHistory } from '../features/biochemistry-urine/hooks/useUrine';
+import { usePermission } from '../hooks/usePermission';
 
 export const BiochemistryUrinePage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_LABO');
+  const isReadOnly = !hasPermission('WRITE_LABO');
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter le pôle de biochimie urinaire.
+      </div>
+    );
+  }
 
   const location = useLocation();
   const isDonorMode = location.pathname.startsWith('/donors');
@@ -384,12 +397,14 @@ export const BiochemistryUrinePage = () => {
           
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -505,67 +520,69 @@ export const BiochemistryUrinePage = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
-            <h3 className="text-base font-bold text-[#2B5296]">Saisie du Bilan Urinaire</h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Libellé de la fiche *</label>
-                <input type="text" value={libelleBUF} onChange={(e) => setLibelleBUF(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Notes d'observations</label>
-                <textarea value={descriptionBUF} onChange={(e) => setDescriptionBUF(e.target.value)} rows={2} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" placeholder="Remarques cliniques..." />
-              </div>
-
-              <div className="border-t pt-4 space-y-3">
-                <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">
-                  {editingAnalysisIndex !== null ? "Modification de la Ligne" : "Saisie des Résultats"}
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Examen *</label>
-                    <select value={selectedExamen} onChange={(e) => setSelectedExamen(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white font-bold text-[#2B5296]">
-                      {listExamensUrines.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date *</label>
-                    <input type="date" value={dateAna} onChange={(e) => setDateAna(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white" />
-                  </div>
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
+              <h3 className="text-base font-bold text-[#2B5296]">Saisie du Bilan Urinaire</h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Libellé de la fiche *</label>
+                  <input type="text" value={libelleBUF} onChange={(e) => setLibelleBUF(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white outline-none" />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat *</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={valeurAna} onChange={(e) => setValeurAna(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white outline-none" placeholder="Ex: 150 mg/24h" />
-                    <button type="button" onClick={handleAddAnalysisRow} className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-blue-900 flex items-center justify-center shrink-0">
-                      {editingAnalysisIndex !== null ? "Modifier" : "Ajouter"}
-                    </button>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Notes d'observations</label>
+                  <textarea value={descriptionBUF} onChange={(e) => setDescriptionBUF(e.target.value)} rows={2} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs resize-none bg-white outline-none" placeholder="Remarques cliniques..." />
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">
+                    {editingAnalysisIndex !== null ? "Modification de la Ligne" : "Saisie des Résultats"}
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Examen *</label>
+                      <select value={selectedExamen} onChange={(e) => setSelectedExamen(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white font-bold text-[#2B5296]">
+                        {listExamensUrines.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Date *</label>
+                      <input type="date" value={dateAna} onChange={(e) => setDateAna(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Résultat *</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={valeurAna} onChange={(e) => setValeurAna(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[10px] bg-white outline-none" placeholder="Ex: 150 mg/24h" />
+                      <button type="button" onClick={handleAddAnalysisRow} className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-blue-900 flex items-center justify-center shrink-0">
+                        {editingAnalysisIndex !== null ? "Modifier" : "Ajouter"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2 pt-4 border-t">
-                {urine?.identifiantBUF && (
-                  <button 
-                    type="button" 
-                    onClick={() => setConfirmOpen(true)} 
-                    className="w-1/3 bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-red-100 flex items-center justify-center gap-1"
-                  >
-                    <IconTrash size={14} /> Supprimer
+                <div className="flex gap-2 pt-4 border-t">
+                  {urine?.identifiantBUF && (
+                    <button 
+                      type="button" 
+                      onClick={() => setConfirmOpen(true)} 
+                      className="w-1/3 bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-red-100 flex items-center justify-center gap-1"
+                    >
+                      <IconTrash size={14} /> Supprimer
+                    </button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    Sauvegarder la Fiche
                   </button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  Sauvegarder la Fiche
-                </button>
-              </div>
-            </form>
-          </div>
+                </div>
+              </form>
+            </div>
+          )}
 
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -586,13 +603,15 @@ export const BiochemistryUrinePage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -603,14 +622,12 @@ export const BiochemistryUrinePage = () => {
                 </div>
               </div>
 
-              {/* Synthèse Observations */}
               <div className="grid grid-cols-2 gap-4 mb-6 bg-[#F8FAFC] p-4 rounded-2xl border border-slate-100/50">
                 <div className="text-xs text-slate-600 col-span-2">
                   <p>Observations : <strong className="text-slate-800 italic">"{descriptionBUF || 'Aucune observation enregistrée.'}"</strong></p>
                 </div>
               </div>
 
-              {/* Tableau principal */}
               {loadingUrine ? (
                 <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-b-2 border-[#2B5296] rounded-full"></div></div>
               ) : (
@@ -621,7 +638,7 @@ export const BiochemistryUrinePage = () => {
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Date</th>
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Examen (Analyse)</th>
                         <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Résultat (Valeur)</th>
-                        <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                        {!isReadOnly && <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -631,17 +648,19 @@ export const BiochemistryUrinePage = () => {
                             <td className="px-4 py-3 font-medium text-slate-600">{row.dateAna}</td>
                             <td className="px-4 py-3 font-bold text-[#2B5296]">{row.resultatAna}</td>
                             <td className="px-4 py-3 font-extrabold text-slate-800">{row.valeurAna}</td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-1.5">
-                                <button onClick={() => triggerEditRow(idx)} type="button" className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
+                            {!isReadOnly && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <button onClick={() => triggerEditRow(idx)} type="button" className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
                                   <button onClick={() => handleRemoveAnalysisRow(idx)} type="button" className="p-1 hover:bg-red-50 text-red-500 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={14} /></button>
-                              </div>
-                            </td>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-semibold">Aucun résultat d'analyse saisi ne correspond à vos critères.</td>
+                          <td colSpan={isReadOnly ? 3 : 4} className="px-4 py-8 text-center text-slate-400 font-semibold">Aucun résultat d'analyse saisi ne correspond à vos critères.</td>
                         </tr>
                       )}
                     </tbody>
@@ -650,9 +669,15 @@ export const BiochemistryUrinePage = () => {
               )}
             </div>
 
-            <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
-              * Une fois les lignes ajoutées au tableau local, n'oubliez pas de cliquer sur "Sauvegarder la Fiche" en bas à gauche pour enregistrer définitivement le bilan de biochimie urinaire complet du patient.
-            </div>
+            {isReadOnly ? (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            ) : (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Une fois les lignes ajoutées au tableau local, n'oubliez pas de cliquer sur "Sauvegarder la Fiche" en bas à gauche pour enregistrer définitivement le bilan de biochimie urinaire complet du patient.
+              </div>
+            )}
           </div>
 
         </div>

@@ -62,27 +62,30 @@ public class DataInitializerConfig {
                 );
             }
 
-            // 1. CRÉATION DES RÔLES ET AFFECTATIONS DE PERMISSIONS DE MANIÈRE SÉCURISÉE
             Role roleAdmin = bootstrapRole(roleRepository, permissionRepository, "ROLE_ADMIN", Set.of(
                 "READ_PATIENT", "WRITE_PATIENT", "DELETE_PATIENT",
                 "READ_DONNEUR", "WRITE_DONNEUR", "DELETE_DONNEUR",
                 "READ_MEDECIN", "WRITE_MEDECIN",
                 "READ_SERVICE", "WRITE_SERVICE",
-                "READ_HOPITAL", "WRITE_HOPITAL"
+                "READ_HOPITAL", "WRITE_HOPITAL",
+                "READ_LABO",
+                "READ_IMMUNO"
             ));
 
             Role roleSuivi = bootstrapRole(roleRepository, permissionRepository, "ROLE_MEDECIN_SUIVI", Set.of(
-                "READ_PATIENT", "READ_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL"
+                "READ_PATIENT", "READ_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL", "READ_LABO",
+                "READ_IMMUNO", "WRITE_IMMUNO"
             ));
 
             Role roleInvestigateur = bootstrapRole(roleRepository, permissionRepository, "ROLE_MEDECIN_INVESTIGATEUR", Set.of(
-                "READ_PATIENT", "WRITE_PATIENT", "READ_DONNEUR", "WRITE_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL"
+                "READ_PATIENT", "WRITE_PATIENT", "READ_DONNEUR", "WRITE_DONNEUR", "READ_MEDECIN", "READ_SERVICE", "READ_HOPITAL", "READ_LABO"
             ));
 
-            Role roleLabo = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_LABORATOIRE", Set.of("READ_PATIENT", "READ_DONNEUR"));
-            Role roleImmuno = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_IMMUNO", Set.of("READ_PATIENT", "READ_DONNEUR"));
+            Role roleLabo = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_LABORATOIRE", Set.of("READ_PATIENT", "READ_DONNEUR", "READ_LABO", "WRITE_LABO"));
+            Role roleImmuno = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_IMMUNO", Set.of("READ_PATIENT", "READ_DONNEUR",
+                "READ_IMMUNO", "WRITE_IMMUNO_COMPLICATION"
+            ));
 
-            // 2. PEUPLEMENT DES HÔPITAUX DE RÉFÉRENCE TUNISIENS
             HopitalStructureSoin hcn = bootstrapHopital(hopitalRepository, serviceRepository, 
                 "HCN_TUNIS1", "HCN", "Boulevard du 9 avril 1938-Bab Saâdoun-1007-Tunisia", 30, 30, 1025, 
                 "Hôpital universitaire de référence nationale.", 
@@ -98,13 +101,11 @@ public class DataInitializerConfig {
                 "Hôpital militaire universitaire de référence.", 
                 LocalDate.of(1900, 1, 1));
 
-            // 3. SERVICE DE RÉFÉRENCE
             ServiceMedical referenceService = serviceRepository.findAll().stream()
                 .filter(s -> s.getHopital() != null && "HCN_TUNIS1".equals(s.getHopital().getIdentifiantH()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Service de référence de HCN introuvable"));
 
-            // 4. INITIALISATION DE L'ADMINISTRATEUR PRINCIPAL
             User admin = userRepository.findByLoginU(adminLogin).orElseGet(User::new);
             admin.setLoginU(adminLogin);
             admin.setMotPasseU(passwordEncoder.encode(adminPassword));
@@ -114,7 +115,6 @@ public class DataInitializerConfig {
             userRepository.save(admin);
             System.out.println("Admin synchronized: " + adminLogin + " (" + adminRole + ") rattaché à HCN");
 
-            // 5. INITIALISATION DES UTILISATEURS DE DÉMO
             bootstrapDemoUser(userRepository, passwordEncoder, "investigateur", "Invest1234!", roleInvestigateur, referenceService);
             bootstrapDemoUser(userRepository, passwordEncoder, "suivi", "Suivi1234!", roleSuivi, referenceService);
             bootstrapDemoUser(userRepository, passwordEncoder, "labo", "Labo1234!", roleLabo, referenceService);
@@ -122,7 +122,6 @@ public class DataInitializerConfig {
         };
     }
 
-    // Crée une permission si elle n'existe pas
     private Permission bootstrapPermission(PermissionRepository permissionRepository, String permissionName) {
         return permissionRepository.findByNomPermission(permissionName).orElseGet(() -> {
             Permission permission = new Permission();
@@ -131,7 +130,6 @@ public class DataInitializerConfig {
         });
     }
 
-    // Crée un rôle, résout ses permissions et les associe
     private Role bootstrapRole(RoleRepository roleRepository, PermissionRepository permissionRepository, String roleName, Set<String> permissionNames){
         Role role = roleRepository.findByNomRole(roleName).orElseGet(() -> {
             Role newRole = new Role();
@@ -140,7 +138,6 @@ public class DataInitializerConfig {
             return roleRepository.saveAndFlush(newRole);
         });
 
-        // Liaison des permissions au rôle
         Set<Permission> permissions = new HashSet<>();
         for (String pName : permissionNames) {
             Permission perm = bootstrapPermission(permissionRepository, pName);

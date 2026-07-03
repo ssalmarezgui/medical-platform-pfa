@@ -13,24 +13,41 @@ import { familyHistoryService } from '../features/family-history/api/familyHisto
 import { useLocation } from 'react-router-dom';
 import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
+import { usePermission } from '../hooks/usePermission'; 
+
+import { useAuthStore } from '../store/useAuthStore'; 
+
 
 export const FamilyHistoryPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
 
+  const { hasPermission } = usePermission();
+  const userRole = useAuthStore((state) => state.role);
+
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
+  
+  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique familial.
+      </div>
+    );
+  }
+
   const location = useLocation();
   const isDonorMode = location.pathname.startsWith('/donors');
-  const { data: donors } = useDonors(); // Récupère le registre des donneurs
+  const { data: donors } = useDonors();
   
-  // Source de données unifiée
   const subjects = isDonorMode ? donors : patients;
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
+ 
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
-  // Récupération des antécédents familiaux
   const { data: patientHistory, isLoading: loadingPatientHistory } = useFamilyHistory(
     !isDonorMode ? (patientIdString || undefined) : undefined
   );
@@ -39,18 +56,14 @@ export const FamilyHistoryPage = () => {
     isDonorMode ? (selectedPatientId || undefined) : undefined
   );
 
-  // 3. Aiguillage dynamique du jeu de données et de l'état de chargement
   const familyHistory = isDonorMode ? donorHistory : patientHistory;
   const loadingHistory = isDonorMode ? loadingDonorHistory : loadingPatientHistory;
-
 
   const createMutation = useCreateFamilyHistory();
   const deleteMutation = useDeleteFamilyHistory(selectedPatientId || 0);
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // --- ÉTATS FORMULAIRE ANTÉCÉDENT ---
   const [typeRelation, setTypeRelation] = useState('Père');
   const [dateDeNaissance, setDateDeNaissance] = useState('');
   const [profession, setProfession] = useState('');
@@ -58,7 +71,6 @@ export const FamilyHistoryPage = () => {
   const [consanguinite, setConsanguinite] = useState('Absente');
   const [autreTareTexte, setAutreTareTexte] = useState('');
 
-  // --- CONFIGURATION MODALS & TOASTS ---
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -66,7 +78,6 @@ export const FamilyHistoryPage = () => {
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [selectedAnt, setSelectedAnt] = useState<any | null>(null);
 
-  // --- ÉTATS IMPORTATION ---
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -78,7 +89,6 @@ export const FamilyHistoryPage = () => {
     isDonorMode ? p.identifiantD === selectedPatientId : p.identifiantP === selectedPatientId
   );
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -90,7 +100,6 @@ export const FamilyHistoryPage = () => {
     return nomComplet.includes(recherche) || String(identifiant) === recherche;
   });
 
-  // Filtrage local des antécédents (Vue Personnelle)
   const filteredAnts = familyHistory?.filter(af => {
     const relation = af.typeRelation?.toLowerCase() || '';
     const taresStr = af.tares?.toLowerCase() || '';
@@ -99,7 +108,6 @@ export const FamilyHistoryPage = () => {
     
     return relation.includes(query) || taresStr.includes(query) || professionStr.includes(query);
   }) || [];
-
 
   const handleTareChange = (tare: string) => {
     if (tares.includes(tare)) {
@@ -119,7 +127,6 @@ export const FamilyHistoryPage = () => {
     setConsanguinite('Absente');
   };
 
-  // --- ENREGISTREMENT SÉCURISÉ ---
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId) return;
@@ -146,10 +153,8 @@ export const FamilyHistoryPage = () => {
         setToastMessage("Antécédent mis à jour !");
       } else {
         if (isDonorMode) {
-          // Appel direct de l'API de création d'antécédent pour donneur
           await axios.post(`http://localhost:8081/api/antecedents-familiaux/donneur/${selectedPatientId}`, payload);
         } else {
-          // Appel existant de mutation pour patient
           await createMutation.mutateAsync({
             patientId: String(selectedPatientId),
             data: payload
@@ -207,7 +212,6 @@ export const FamilyHistoryPage = () => {
     }
   };
 
-  // --- DOUBLE FLUX : EXPORT CSV ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -253,7 +257,7 @@ export const FamilyHistoryPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- DOUBLE FLUX : IMPORT CSV ---
+  
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "typeRelation", "consanguinite", "dateDeNaissance", "profession", "tares"]
@@ -302,11 +306,17 @@ export const FamilyHistoryPage = () => {
     for (const row of previewData) {
       try {
         const payload = {
-          typeRelation: row.typeRelation,
-          consanguinite: row.consanguinite || 'Absente',
-          dateDeNaissance: row.dateDeNaissance || undefined,
-          profession: row.profession || undefined,
-          tares: row.tares || 'Aucune'
+          datePremieresRegles: row.datePremieresRegles || undefined,
+          menopause: row.menopause || 'Non',
+          grossessesNombreTotal: Number(row.grossessesNombreTotal || 0),
+          grossessesAvortementsProvoques: Number(row.grossessesAvortementsProvoques || 0),
+          grossessesPreeclampsie: Number(row.grossessesPreeclampsie || 0),
+          grossessesAccouchementsPrematures: Number(row.grossessesAccouchementsPrematures || 0),
+          grossessesAvortementsSpontanes: Number(row.grossessesAvortementsSpontanes || 0),
+          grossessesCesarienne: Number(row.grossessesCesarienne || 0),
+          contraceptionMethodes: row.contraceptionMethodes || undefined,
+          contraceptionDuree: row.contraceptionDuree || undefined,
+          pathologieMammaireGyneco: row.pathologieMammaireGyneco || undefined
         };
 
         const targetPatientId = importMode === 'global' ? row.patientId : patientIdString;
@@ -316,7 +326,7 @@ export const FamilyHistoryPage = () => {
           successCount++;
         }
       } catch (err) {
-        console.error("Erreur sur l'import de la ligne :", err);
+        console.error("Erreur d'import :", err);
       }
     }
 
@@ -325,17 +335,18 @@ export const FamilyHistoryPage = () => {
     setFile(null);
     setPreviewData([]);
     
-    setToastMessage(`${successCount} antécédent(s) familial(aux) importé(s).`);
+    setToastMessage(`${successCount} dossier(s) gynécologique(s) importé(s) !`);
     setToastType('success');
     setToastOpen(true);
     
-    queryClient.invalidateQueries({ queryKey: ['familyHistory', selectedPatientId] });
+    queryClient.invalidateQueries({ queryKey: ['obgynHistory'] });
+    queryClient.invalidateQueries({ queryKey: ['donorObgynHistory'] });
+    queryClient.invalidateQueries({ queryKey: ['obgyn-history'] });
   };
 
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU SUJET (PATIENT OU DONNEUR) AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -343,15 +354,16 @@ export const FamilyHistoryPage = () => {
             Antécédents Familiaux
           </h2>
           
-          {/* ACTIONS GLOBALES S'AFFICHANT SUR L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -428,7 +440,6 @@ export const FamilyHistoryPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN SUJET SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -486,109 +497,109 @@ export const FamilyHistoryPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (UN SUJET SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-              <IconPlus size={20} /> {selectedAnt ? "Modifier l'Antécédent" : "Saisir un Antécédent"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Membre de la famille *</label>
-                <select 
-                  value={typeRelation} 
-                  onChange={(e) => setTypeRelation(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white"
-                >
-                  <option value="Père">Père</option>
-                  <option value="Mère">Mère</option>
-                  <option value="Épouse/Époux">Épouse / Époux</option>
-                  <option value="Frère">Frère</option>
-                  <option value="Sœur">Sœur</option>
-                  <option value="Descendants">Descendants</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Consanguinité *</label>
-                <select 
-                  value={consanguinite} 
-                  onChange={(e) => setConsanguinite(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white"
-                >
-                  <option value="Absente">Absente</option>
-                  <option value="1er degré">1er degré</option>
-                  <option value="2ème degré">2ème degré</option>
-                  <option value="> 2ème degré">&gt; 2ème degré</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de Naissance</label>
-                <input 
-                  type="date" 
-                  value={dateDeNaissance} 
-                  onChange={(e) => setDateDeNaissance(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs" 
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Profession</label>
-                <input 
-                  type="text" 
-                  value={profession} 
-                  onChange={(e) => setProfession(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs" 
-                  placeholder="Ex: Enseignant, Retraité..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Tares détectées</label>
-                <div className="space-y-1.5">
-                    {["HTA", "Diabète sucré", "Autre"].map(tare => (
-                      <label key={tare} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={tares.includes(tare)} 
-                          onChange={() => handleTareChange(tare)}
-                          className="rounded border-slate-200 text-[#006591] focus:ring-[#006591]"
-                        />
-                        <span>{tare === "Autre" ? "Autre, à préciser :" : tare}</span>
-                      </label>
-                    ))}
-
-                    {tares.includes("Autre") && (
-                      <input 
-                        type="text"
-                        className="w-full px-3 py-2 mt-1 rounded-xl border border-slate-200 text-xs focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none transition-all bg-white font-bold"
-                        placeholder="Précisez la pathologie..."
-                        value={autreTareTexte}
-                        onChange={(e) => setAutreTareTexte(e.target.value)}
-                      />
-                    )}
+          
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+              <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                <IconPlus size={20} /> {selectedAnt ? "Modifier l'Antécédent" : "Saisir un Antécédent"}
+              </h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Membre de la famille *</label>
+                  <select 
+                    value={typeRelation} 
+                    onChange={(e) => setTypeRelation(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white"
+                  >
+                    <option value="Père">Père</option>
+                    <option value="Mère">Mère</option>
+                    <option value="Épouse/Époux">Épouse / Époux</option>
+                    <option value="Frère">Frère</option>
+                    <option value="Sœur">Sœur</option>
+                    <option value="Descendants">Descendants</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="flex gap-2">
-                {selectedAnt && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-                    Annuler
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Consanguinité *</label>
+                  <select 
+                    value={consanguinite} 
+                    onChange={(e) => setConsanguinite(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white"
+                  >
+                    <option value="Absente">Absente</option>
+                    <option value="1er degré">1er degré</option>
+                    <option value="2ème degré">2ème degré</option>
+                    <option value="> 2ème degré">&gt; 2ème degré</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de Naissance</label>
+                  <input 
+                    type="date" 
+                    value={dateDeNaissance} 
+                    onChange={(e) => setDateDeNaissance(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Profession</label>
+                  <input 
+                    type="text" 
+                    value={profession} 
+                    onChange={(e) => setProfession(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs" 
+                    placeholder="Ex: Enseignant, Retraité..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Tares détectées</label>
+                  <div className="space-y-1.5">
+                      {["HTA", "Diabète sucré", "Autre"].map(tare => (
+                        <label key={tare} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={tares.includes(tare)} 
+                            onChange={() => handleTareChange(tare)}
+                            className="rounded border-slate-200 text-[#006591] focus:ring-[#006591]"
+                          />
+                          <span>{tare === "Autre" ? "Autre, à préciser :" : tare}</span>
+                        </label>
+                      ))}
+
+                      {tares.includes("Autre") && (
+                        <input 
+                          type="text"
+                          className="w-full px-3 py-2 mt-1 rounded-xl border border-slate-200 text-xs focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none transition-all bg-white font-bold"
+                          placeholder="Précisez la pathologie..."
+                          value={autreTareTexte}
+                          onChange={(e) => setAutreTareTexte(e.target.value)}
+                        />
+                      )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {selectedAnt && (
+                    <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
+                      Annuler
+                    </button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    {selectedAnt ? "Mettre à jour" : "Enregistrer le membre"}
                   </button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  {selectedAnt ? "Mettre à jour" : "Enregistrer le membre"}
-                </button>
-              </div>
-            </form>
-          </div>
+                </div>
+              </form>
+            </div>
+          )}
 
-          {/* Arbre génétique à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -598,7 +609,6 @@ export const FamilyHistoryPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -610,13 +620,15 @@ export const FamilyHistoryPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -650,10 +662,12 @@ export const FamilyHistoryPage = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(af)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
-                        <button onClick={() => triggerDelete(af.identifiantAF!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(af)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={14} /></button>
+                          <button onClick={() => triggerDelete(af.identifiantAF!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -664,12 +678,17 @@ export const FamilyHistoryPage = () => {
                 </div>
               )}
             </div>
+
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -721,7 +740,6 @@ export const FamilyHistoryPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal 
         isOpen={confirmOpen} 
         onClose={() => setConfirmOpen(false)} 

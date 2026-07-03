@@ -1,8 +1,6 @@
 package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.repositories.MicrobiologieSerologieRepository;
-
-
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.MicrobiologieSerologieService;
@@ -16,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/microbiologie")
-
 public class MicrobiologieSerologieController {
 
     @Autowired
@@ -25,7 +22,6 @@ public class MicrobiologieSerologieController {
     @Autowired
     private MicrobiologieSerologieRepository msRepository;
 
-    // Convertisseur d'Entité vers DTO
     private MicrobiologieSerologieDTO toDTO(MicrobiologieSerologie ms) {
         MicrobiologieSerologieDTO dto = new MicrobiologieSerologieDTO();
         dto.setIdentifiantMS(ms.getIdentifiantMS());
@@ -52,7 +48,7 @@ public class MicrobiologieSerologieController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<MicrobiologieSerologieDTO> getAll() {
         return msRepository.findAll().stream()
                 .map(this::toDTO)
@@ -60,6 +56,7 @@ public class MicrobiologieSerologieController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<MicrobiologieSerologieDTO> getByPatient(@PathVariable String patientId) {
         return msService.getByPatient(patientId)
             .map(this::toDTO)
@@ -68,6 +65,7 @@ public class MicrobiologieSerologieController {
     }
 
     @GetMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public ResponseEntity<MicrobiologieSerologieDTO> getByDonneur(@PathVariable Integer donorId) {
         return msService.getByDonneur(donorId)
             .map(this::toDTO)
@@ -76,21 +74,21 @@ public class MicrobiologieSerologieController {
     }
 
     @PostMapping("/patient/{patientId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<MicrobiologieSerologieDTO> save(@PathVariable String patientId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
         MicrobiologieSerologie saved = msService.createOrUpdate(patientId, ms);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
-    @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<MicrobiologieSerologieDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
         MicrobiologieSerologie saved = msService.createOrUpdateForDonor(donorId, ms);
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAuthority('WRITE_LABO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         msService.delete(id);
         return ResponseEntity.noContent().build();

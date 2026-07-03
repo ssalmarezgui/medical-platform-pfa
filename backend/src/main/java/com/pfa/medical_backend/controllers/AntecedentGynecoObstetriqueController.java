@@ -1,6 +1,5 @@
 package com.pfa.medical_backend.controllers;
 
-import com.pfa.medical_backend.dto.AntecedentFamilialDTO;
 import com.pfa.medical_backend.dto.AntecedentGynecoObstetriqueDTO;
 import com.pfa.medical_backend.entities.AntecedentGynecoObstetrique;
 import com.pfa.medical_backend.services.AntecedentGynecoObstetriqueService;
@@ -25,7 +24,6 @@ public class AntecedentGynecoObstetriqueController {
     @Autowired
     private AntecedentGynecoObstetriqueRepository agoRepository;
 
-    // Convertisseur d'Entité vers DTO
     private AntecedentGynecoObstetriqueDTO toDTO(AntecedentGynecoObstetrique ago) {
         AntecedentGynecoObstetriqueDTO dto = new AntecedentGynecoObstetriqueDTO();
         dto.setIdentifiantAGO(ago.getIdentifiantAGO());
@@ -49,7 +47,6 @@ public class AntecedentGynecoObstetriqueController {
         return dto;
     }
 
-
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentGynecoObstetriqueDTO> getAll() {        
@@ -59,6 +56,7 @@ public class AntecedentGynecoObstetriqueController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> getByPatient(@PathVariable String patientId) {
         return agoService.getByPatient(patientId)
             .map(this::toDTO)
@@ -74,13 +72,13 @@ public class AntecedentGynecoObstetriqueController {
     }
 
     @GetMapping("/donneur/{donorId}")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> getByDonneur(@PathVariable Integer donorId) {
         return agoService.getByDonneur(donorId)
             .map(this::toDTO)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
-
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentGynecoObstetrique ago) {
@@ -90,7 +88,6 @@ public class AntecedentGynecoObstetriqueController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
     public ResponseEntity<AntecedentGynecoObstetriqueDTO> update(@PathVariable Integer id, @RequestBody AntecedentGynecoObstetrique details) {
         AntecedentGynecoObstetrique updated = agoService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));

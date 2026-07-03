@@ -81,6 +81,8 @@ export const LoginPage = () => {
         navigate('/diagnostic-hub');
       } else if (role === 'MEDECIN_SUIVI') {
         navigate('/patients');
+      } else if (role === 'AGENT_LABORATOIRE') {
+        navigate('/diagnostic-hub'); 
       } else {
         navigate('/hospitalisation-hub');
       }

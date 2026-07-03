@@ -15,6 +15,8 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorMedicalHistory } from '../features/medical-history/hooks/useMedical';
+import { usePermission } from '../hooks/usePermission';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const MedicalHistoryPage = () => {
   const queryClient = useQueryClient();
@@ -25,13 +27,25 @@ export const MedicalHistoryPage = () => {
   const { data : donors } = useDonors();
 
   const subjects = isDonorMode ? donors : patients;
+
+  const { hasPermission } = usePermission();
+  const userRole = useAuthStore((state) => state.role);
+
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
+  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique médical.
+      </div>
+    );
+  }
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
-  // Récupération des antécédents médicaux
   const { data: patientHistory, isLoading: LoadingPatientHistory } = useMedicalHistory(
     !isDonorMode ? (patientIdString || undefined) : undefined
   );
@@ -47,10 +61,8 @@ export const MedicalHistoryPage = () => {
   const deleteMutation = useDeleteMedical(patientIdString);
   const updatePatientMutation = useUpdatePatient();
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // Catégories principales
   const categories = [
     "Cardio-vasculaires",
     "Diabète sucré",
@@ -64,7 +76,6 @@ export const MedicalHistoryPage = () => {
     "Autre"
   ];
 
-  // États du formulaire
   const [type, setType] = useState(categories[0]);
   const [sousType, setSousType] = useState('HTA');
   const [dateDebut, setDateDebut] = useState('');
@@ -72,20 +83,16 @@ export const MedicalHistoryPage = () => {
   const [evolution, setEvolution] = useState('');
   const [complication, setComplication] = useState('');
   
-  // Champs secondaires spécifiques de la fiche
   const [typeLocalisation, setTypeLocalisation] = useState(''); 
   const [causeSiege, setCauseSiege] = useState(''); 
   const [lieuPriseEnCharge, setLieuPriseEnCharge] = useState(''); 
 
-  // États du Diabète
   const [diabeteType, setDiabeteType] = useState('Type 1');
   const [diabeteTraitement, setDiabeteTraitement] = useState('Aucun');
   const [diabeteComplications, setDiabeteComplications] = useState<string[]>([]);
 
-  // ÉTAT DE L'AUTONOMIE LOCAL POUR UN CONTROLE RÉACTIF IMMEDIAT
   const [localAutonomie, setLocalAutonomie] = useState<string>('');
 
-  // CONFIGURATION MODALS & TOASTS
   const [selectedAM, setSelectedAM] = useState<any | null>(null);
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -93,7 +100,6 @@ export const MedicalHistoryPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -105,7 +111,6 @@ export const MedicalHistoryPage = () => {
     isDonorMode ? p.identifiantD === selectedPatientId : p.identifiantP === selectedPatientId
   );
 
-  // Synchronisation de l'autonomie locale dès le chargement du patient
   useEffect(() => {
     if (selectedPatient) {
       setLocalAutonomie(selectedPatient.niveauEducation || '');
@@ -114,15 +119,14 @@ export const MedicalHistoryPage = () => {
     }
   }, [selectedPatientId, selectedPatient?.niveauEducation]);
 
-  // Met à jour la sous-catégorie par défaut
   useEffect(() => {
     if (type === 'Cardio-vasculaires') setSousType('HTA');
     else if (type === 'Diabète sucré') setSousType('Diabète');
     else if (type === 'Thromboses vasculaires') setSousType('Thrombose');
     else setSousType(type);
   }, [type]);
+  
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = subjects?.filter(p => {
     const nom = isDonorMode ? p.nomD : p.nomP;
     const prenom = isDonorMode ? p.prenomD : p.prenomP;
@@ -134,7 +138,6 @@ export const MedicalHistoryPage = () => {
     return nomComplet.includes(query) || String(identifiant).toLowerCase().includes(query);
   });
 
-  // Filtrage local des antécédents médicaux (Vue Personnelle)
   const filteredMedicals = history?.filter(am => {
     const typeStr = am.type?.toLowerCase() || '';
     const sousTypeStr = am.sousType?.toLowerCase() || '';
@@ -145,11 +148,10 @@ export const MedicalHistoryPage = () => {
     return typeStr.includes(query) || sousTypeStr.includes(query) || traitementStr.includes(query) || compStr.includes(query);
   }) || [];
 
-  // Évaluation d'autonomie avec mise à jour visuelle instantanée
   const handleAutonomieChange = async (niveauSelected: string) => {
     if (!selectedPatientId || !selectedPatient) return;
 
-    setLocalAutonomie(niveauSelected); // <--- Retour visuel instantané !
+    setLocalAutonomie(niveauSelected);
 
     try {
       if (isDonorMode) {
@@ -172,7 +174,6 @@ export const MedicalHistoryPage = () => {
       setToastMessage(`Autonomie mise à jour : ${niveauSelected}`);
       setToastOpen(true);
     } catch {
-      // Retour à l'état précédent en cas d'erreur
       setLocalAutonomie(selectedPatient.niveauEducation || '');
       setToastType('error');
       setToastMessage("Erreur lors de la mise à jour de l'autonomie.");
@@ -193,7 +194,6 @@ export const MedicalHistoryPage = () => {
     setType(categories[0]);
   };
 
-  // Enregistrer / Modifier
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId) return;
@@ -240,7 +240,6 @@ export const MedicalHistoryPage = () => {
       setToastType('success');
       setToastOpen(true);
 
-      // Invalidation complète des caches pour un rafraîchissement immédiat de la vue
       queryClient.invalidateQueries({ queryKey: ['medicalHistory'] });
       queryClient.invalidateQueries({ queryKey: ['donorMedicalHistory'] });
       queryClient.invalidateQueries({ queryKey: ['medical-history'] });
@@ -284,7 +283,6 @@ export const MedicalHistoryPage = () => {
       setToastMessage("Antécédent médical supprimé.");
       setToastOpen(true);
 
-      // Invalidation instantanée
       queryClient.invalidateQueries({ queryKey: ['medicalHistory'] });
       queryClient.invalidateQueries({ queryKey: ['donorMedicalHistory'] });
       queryClient.invalidateQueries({ queryKey: ['medical-history'] });
@@ -296,7 +294,6 @@ export const MedicalHistoryPage = () => {
     }
   };
 
-  // --- EXPORT CSV ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -346,7 +343,6 @@ export const MedicalHistoryPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "type", "sousType", "dateDebut", "complication", "traitement", "evolution", "typeLocalisation", "causeSiege", "lieuPriseEnCharge"]
@@ -434,7 +430,6 @@ export const MedicalHistoryPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -442,15 +437,16 @@ export const MedicalHistoryPage = () => {
             Registre des Antécédents Médicaux
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -522,7 +518,6 @@ export const MedicalHistoryPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -572,177 +567,180 @@ export const MedicalHistoryPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (UN PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-              <IconPlus size={20} /> {selectedAM ? "Modifier l'Antécédent" : "Saisir un Antécédent"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Catégorie Médicale *</label>
-                <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
-                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-
-              {/* CARDIO-VASCULAIRES */}
-              {type === 'Cardio-vasculaires' && (
-                <div className="space-y-4 border-t pt-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sous-pathologie *</label>
-                    <select value={sousType} onChange={(e) => setSousType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
-                      <option value="HTA">HTA</option>
-                      <option value="Insuffisance Coronaire">Insuffisance Coronaire</option>
-                      <option value="Valvulopathie">Valvulopathie</option>
-                      <option value="Arythmie">Arythmie</option>
-                      <option value="Péricardite">Péricardite</option>
-                      <option value="AVC">AVC</option>
-                      <option value="Artériopathie MI">Artériopathie MI</option>
-                      <option value="Amputation">Amputation</option>
-                    </select>
-                  </div>
-
-                  {sousType === 'HTA' && (
+          {!isReadOnly && (
+            <div className="lg:col-span-1">
+              {(!selectedAM || modeEdition) ? (
+                <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+                  <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                    <IconPlus size={20} /> {selectedAM ? "Modifier l'Antécédent" : "Saisir un Antécédent"}
+                  </h3>
+                  
+                  <form onSubmit={handleSave} className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Complications</label>
-                      <input type="text" value={complication} onChange={(e) => setComplication(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Catégorie Médicale *</label>
+                      <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white">
+                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
                     </div>
-                  )}
 
-                  {(sousType === 'AVC' || sousType === 'Artériopathie MI') && (
-                    <div>
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type / Localisation *</label>
-                      <input type="text" value={typeLocalisation} onChange={(e) => setTypeLocalisation(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Hémisphère gauche, Jambe droite..." />
-                    </div>
-                  )}
+                    {type === 'Cardio-vasculaires' && (
+                      <div className="space-y-4 border-t pt-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Sous-pathologie *</label>
+                          <select value={sousType} onChange={(e) => setSousType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                            <option value="HTA">HTA</option>
+                            <option value="Insuffisance Coronaire">Insuffisance Coronaire</option>
+                            <option value="Valvulopathie">Valvulopathie</option>
+                            <option value="Arythmie">Arythmie</option>
+                            <option value="Péricardite">Péricardite</option>
+                            <option value="AVC">AVC</option>
+                            <option value="Artériopathie MI">Artériopathie MI</option>
+                            <option value="Amputation">Amputation</option>
+                          </select>
+                        </div>
 
-                  {sousType === 'Amputation' && (
-                    <div>
-                      <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause / Siège *</label>
-                      <input type="text" value={causeSiege} onChange={(e) => setCauseSiege(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        {sousType === 'HTA' && (
+                          <div>
+                            <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Complications</label>
+                            <input type="text" value={complication} onChange={(e) => setComplication(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                          </div>
+                        )}
+
+                        {(sousType === 'AVC' || sousType === 'Artériopathie MI') && (
+                          <div>
+                            <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type / Localisation *</label>
+                            <input type="text" value={typeLocalisation} onChange={(e) => setTypeLocalisation(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Hémisphère gauche, Jambe droite..." />
+                          </div>
+                        )}
+
+                        {sousType === 'Amputation' && (
+                          <div>
+                            <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause / Siège *</label>
+                            <input type="text" value={causeSiege} onChange={(e) => setCauseSiege(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {type === 'Diabète sucré' && (
+                      <div className="space-y-4 border-t pt-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type de Diabète *</label>
+                          <div className="flex gap-4">
+                            {["Type 1", "Type 2", "Autre", "Non précisé"].map(t => (
+                              <label key={t} className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold cursor-pointer">
+                                <input type="radio" checked={diabeteType === t} onChange={() => setDiabeteType(t)} /> {t}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Traitement *</label>
+                          <select value={diabeteTraitement} onChange={(e) => setDiabeteTraitement(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                            <option value="Aucun">Aucun</option>
+                            <option value="Insuline">Insuline</option>
+                            <option value="Anti-diabétiques oraux">Anti-diabétiques oraux</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Complications associées</label>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {["Rétinopathie", "Neuropathie", "HypoTA orthostatique", "Gastroparésie", "Diarrhée motrice", "Troubles vésicaux", "Impuissance sexuelle"].map(c => (
+                              <label key={c} className="flex items-center gap-1.5 text-slate-700 cursor-pointer">
+                                <input type="checkbox" checked={diabeteComplications.includes(c)} onChange={() => {
+                                  setDiabeteComplications(diabeteComplications.includes(c) ? diabeteComplications.filter(v => v !== c) : [...diabeteComplications, c]);
+                                }} className="rounded" />
+                                <span>{c}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {type === 'Thromboses vasculaires' && (
+                      <div className="space-y-4 border-t pt-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Siège *</label>
+                          <input type="text" value={causeSiege} onChange={(e) => setCauseSiege(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                      </div>
+                    )}
+
+                    {['Hépathopathie', 'Maladie Neurologique', 'Maladie Gastro-intestinale', 'Maladie / Trouble métabolique', 'Autre'].includes(type) && (
+                      <div className="space-y-4 border-t pt-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de prise en charge & Médecin référent</label>
+                          <input type="text" value={lieuPriseEnCharge} onChange={(e) => setLieuPriseEnCharge(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t pt-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date Début *</label>
+                          <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Évolution *</label>
+                          <input type="text" value={evolution} onChange={(e) => setEvolution(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                      </div>
+
+                      {type !== 'Diabète sucré' && (
+                        <div>
+                          <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Traitement *</label>
+                          <input type="text" value={traitement} onChange={(e) => setTraitement(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    <div className="border-t border-slate-100 pt-4 pb-2">
+                      <label className="block text-[10px] font-black text-[#2B5296] uppercase mb-2.5">
+                        Évaluation de l'Autonomie
+                      </label>
+                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                        {["Autonome", "Marche avec aide", "Assis, Chaise roulante", "Alité"].map(niveau => (
+                          <label key={niveau} className="flex items-center gap-1.5 text-slate-700 cursor-pointer font-semibold">
+                            <input 
+                              type="radio" 
+                              name="autonomie" 
+                              checked={localAutonomie === niveau} 
+                              onChange={() => handleAutonomieChange(niveau)} 
+                              className="text-[#2B5296] focus:ring-[#2B5296]"
+                            />
+                            <span>{niveau}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {selectedAM && (
+                        <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
+                      )}
+                      <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                        {selectedAM ? "Sauvegarder" : "Enregistrer l'Antécédent"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-100 rounded-[30px] p-8 text-center flex flex-col justify-center items-center h-full min-h-[300px]">
+                  <IconReportMedical size={32} className="text-[#6588BB] mb-2" />
+                  <p className="text-xs font-bold text-slate-800">Dossier Médical Actif</p>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">Les pathologies de ce dossier ont été enregistrées. Utilisez le panneau de consultation à droite pour les examiner ou les exporter.</p>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* DIABÈTE SUCRÉ */}
-              {type === 'Diabète sucré' && (
-                <div className="space-y-4 border-t pt-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type de Diabète *</label>
-                    <div className="flex gap-4">
-                      {["Type 1", "Type 2", "Autre", "Non précisé"].map(t => (
-                        <label key={t} className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold cursor-pointer">
-                          <input type="radio" checked={diabeteType === t} onChange={() => setDiabeteType(t)} /> {t}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Traitement *</label>
-                    <select value={diabeteTraitement} onChange={(e) => setDiabeteTraitement(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
-                      <option value="Aucun">Aucun</option>
-                      <option value="Insuline">Insuline</option>
-                      <option value="Anti-diabétiques oraux">Anti-diabétiques oraux</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Complications associées</label>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {["Rétinopathie", "Neuropathie", "HypoTA orthostatique", "Gastroparésie", "Diarrhée motrice", "Troubles vésicaux", "Impuissance sexuelle"].map(c => (
-                        <label key={c} className="flex items-center gap-1.5 text-slate-700 cursor-pointer">
-                          <input type="checkbox" checked={diabeteComplications.includes(c)} onChange={() => {
-                            setDiabeteComplications(diabeteComplications.includes(c) ? diabeteComplications.filter(v => v !== c) : [...diabeteComplications, c]);
-                          }} className="rounded" />
-                          <span>{c}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* THROMBOSES VASCULAIRES */}
-              {type === 'Thromboses vasculaires' && (
-                <div className="space-y-4 border-t pt-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Siège *</label>
-                    <input type="text" value={causeSiege} onChange={(e) => setCauseSiege(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
-                  </div>
-                </div>
-              )}
-
-              {/* AUTRES PATHOLOGIES */}
-              {['Hépathopathie', 'Maladie Neurologique', 'Maladie Gastro-intestinale', 'Maladie / Trouble métabolique', 'Autre'].includes(type) && (
-                <div className="space-y-4 border-t pt-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de prise en charge & Médecin référent</label>
-                    <input type="text" value={lieuPriseEnCharge} onChange={(e) => setLieuPriseEnCharge(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
-                  </div>
-                </div>
-              )}
-
-              {/* Champs communs */}
-              <div className="border-t pt-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date Début *</label>
-                    <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Évolution *</label>
-                    <input type="text" value={evolution} onChange={(e) => setEvolution(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
-                  </div>
-                </div>
-
-                {type !== 'Diabète sucré' && (
-                  <div>
-                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Traitement *</label>
-                    <input type="text" value={traitement} onChange={(e) => setTraitement(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
-                  </div>
-                )}
-              </div>
-
-              {/* ÉVALUATION AUTONOMIE */}
-              <div className="border-t border-slate-100 pt-4 pb-2">
-                <label className="block text-[10px] font-black text-[#2B5296] uppercase mb-2.5">
-                  Évaluation de l'Autonomie
-                </label>
-                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                  {["Autonome", "Marche avec aide", "Assis, Chaise roulante", "Alité"].map(niveau => (
-                    <label key={niveau} className="flex items-center gap-1.5 text-slate-700 cursor-pointer font-semibold">
-                      <input 
-                        type="radio" 
-                        name="autonomie" 
-                        checked={localAutonomie === niveau} 
-                        onChange={() => handleAutonomieChange(niveau)} 
-                        className="text-[#2B5296] focus:ring-[#2B5296]"
-                      />
-                      <span>{niveau}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {selectedAM && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  {selectedAM ? "Sauvegarder" : "Enregistrer l'Antécédent"}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Registre d'affichage personnel à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -752,7 +750,6 @@ export const MedicalHistoryPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -764,13 +761,15 @@ export const MedicalHistoryPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -785,36 +784,38 @@ export const MedicalHistoryPage = () => {
                 <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-b-2 border-[#2B5296] rounded-full"></div></div>
               ) : filteredMedicals && filteredMedicals.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredMedicals.map((am) => (
-                    <div key={am.identifiantAMed} className="border border-slate-100 bg-[#F8FAFC]/50 p-5 rounded-2xl flex flex-col justify-between">
+                  {filteredMedicals.map((m) => (
+                    <div key={m.identifiantAMed} className="border border-slate-100 bg-[#F8FAFC]/50 p-5 rounded-2xl flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between items-start mb-3">
                           <span className="text-xs font-black text-[#2B5296] bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase truncate max-w-[200px]">
-                            {am.type}
+                            {m.type}
                           </span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-500">
-                            Évolution : {am.evolution}
+                            Évolution : {m.evolution}
                           </span>
                         </div>
 
                         <h4 className="text-sm font-bold text-slate-800 mt-3">
-                          Pathologie : {am.sousType}
+                          Pathologie : {m.sousType}
                         </h4>
 
                         <div className="space-y-1.5 text-xs text-slate-600 mt-4 border-t border-slate-100 pt-3">
-                          <p><IconCalendar size={14} className="inline mr-1" /> Diagnostiqué le : <strong>{am.dateDebut}</strong></p>
-                          {am.traitement && <p>Traitement : <strong>{am.traitement}</strong></p>}
-                          {am.complication && <p className="text-red-500 font-bold">Complications : {am.complication}</p>}
-                          {am.typeLocalisation && <p>Localisation : {am.typeLocalisation}</p>}
-                          {am.causeSiege && <p>Cause / Siège : {am.causeSiege}</p>}
-                          {am.lieuPriseEnCharge && <p className="text-slate-500 italic"><IconNotes size={14} className="inline mr-1" /> Prise en charge : {am.lieuPriseEnCharge}</p>}
+                          <p><IconCalendar size={14} className="inline mr-1" /> Diagnostiqué le : <strong>{m.dateDebut}</strong></p>
+                          {m.traitement && <p>Traitement : <strong>{m.traitement}</strong></p>}
+                          {m.complication && <p className="text-red-500 font-bold">Complications : {m.complication}</p>}
+                          {m.typeLocalisation && <p>Localisation : {m.typeLocalisation}</p>}
+                          {m.causeSiege && <p>Cause / Siège : {m.causeSiege}</p>}
+                          {m.lieuPriseEnCharge && <p className="text-slate-500 italic"><IconNotes size={14} className="inline mr-1" /> Prise en charge : {m.lieuPriseEnCharge}</p>}
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(am)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
-                        <button onClick={() => triggerDelete(am.identifiantAMed!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(m)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
+                          <button onClick={() => triggerDelete(m.identifiantAMed!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -825,12 +826,17 @@ export const MedicalHistoryPage = () => {
                 </div>
               )}
             </div>
+
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Consultation : Vous disposez d'un accès en lecture seule sur cette fiche.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -882,7 +888,6 @@ export const MedicalHistoryPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer l'antécédent ?" message="Cette action effacera définitivement cette pathologie du registre clinique." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

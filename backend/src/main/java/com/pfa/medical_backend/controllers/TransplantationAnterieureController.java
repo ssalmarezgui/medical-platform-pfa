@@ -13,13 +13,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/transplantations-anterieures")
-
 public class TransplantationAnterieureController {
 
     @Autowired
     private TransplantationAnterieureService taService;
 
-    // Convertisseur d'Entité vers DTO
     private TransplantationAnterieureDTO toDTO(TransplantationAnterieure ta) {
         TransplantationAnterieureDTO dto = new TransplantationAnterieureDTO();
         dto.setIdentifiantTR(ta.getIdentifiantTR());

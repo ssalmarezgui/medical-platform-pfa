@@ -10,15 +10,34 @@ import {
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 
+import { useLocation } from 'react-router-dom';
+import { useDonors } from '../features/donors/hooks/useDonors';
+import axios from 'axios';
+import { usePermission } from '../hooks/usePermission'; 
+import { useAuthStore } from '../store/useAuthStore';
+
 export const TransplantHistoryPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { hasPermission } = usePermission();
+  const userRole = useAuthStore((state) => state.role);
+
+  const canAccess = hasPermission('READ_PATIENT') || hasPermission('WRITE_PATIENT');
+  const isReadOnly = !hasPermission('WRITE_PATIENT') || userRole === 'ADMIN';
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
+        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique de transplantation rénale.
+      </div>
+    );
+  }
   
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
   
-  // Récupération des greffes
   const { data: transplants, isLoading: loadingTransplants } = useTransplantHistory(patientIdString || undefined);
   const createMutation = useCreateTransplant();
   const deleteMutation = useDeleteTransplant(patientIdString);
@@ -28,7 +47,6 @@ export const TransplantHistoryPage = () => {
   const optionsInduction = ["Corticoïdes", "Anticorps polyclonaux", "Anticorps anti-CD25", "Anticorps monoclonal anti-CD3", "Autres"];
   const optionsEntretien = ["Corticoïdes", "Azathioprine", "MMF", "Ciclosporine", "Tacrolimus", "Rapamune", "Autres"];
 
-  // États du formulaire
   const [dateTR, setDateTR] = useState('');
   const [lieuTR, setLieuTR] = useState('');
   const [lieuSuiviTR, setLieuSuiviTR] = useState('');
@@ -43,17 +61,14 @@ export const TransplantHistoryPage = () => {
   const [transplantectomie, setTransplantectomie] = useState(false);
   const [transplantectomieIndication, setTransplantectomieIndication] = useState('');
 
-  // Édition
   const [selectedTransplant, setSelectedTransplant] = useState<any | null>(null);
 
-  // CONFIGURATION MODALS & TOASTS
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -61,13 +76,11 @@ export const TransplantHistoryPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filtrage cohorte (Vue Globale)
   const filteredPatients = patients?.filter(p => {
     const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
     return nomComplet.includes(patientSearch.toLowerCase()) || String(p.identifiantP) === patientSearch;
   });
 
-  // Filtrage local des greffes (Vue Personnelle)
   const filteredTransplants = transplants?.filter(tr => {
     const placeStr = tr.lieuTR?.toLowerCase() || '';
     const donorStr = tr.typeDonneur?.toLowerCase() || '';
@@ -80,7 +93,6 @@ export const TransplantHistoryPage = () => {
 
   const selectedPatient = patients?.find(p => p.identifiantP === selectedPatientId);
 
-  // Cases à cocher
   const handleCheckboxChange = (value: string, type: 'induction' | 'entretien') => {
     if (type === 'induction') {
       setInduction(induction.includes(value) ? induction.filter(v => v !== value) : [...induction, value]);
@@ -179,7 +191,6 @@ export const TransplantHistoryPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -231,7 +242,6 @@ export const TransplantHistoryPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "dateTR", "lieuTR", "lieuSuiviTR", "typeDonneur", "hlaDonneur", "traitementImmunoSuppresseurInduction", "traitementImmunoSuppresseurEntretien", "causePerteGreffonRenale", "dateRetourDialyse", "transplantectomie", "transplantectomieIndication"]
@@ -319,7 +329,6 @@ export const TransplantHistoryPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -327,15 +336,16 @@ export const TransplantHistoryPage = () => {
             Registre de Transplantation Rénale Antérieure
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -392,7 +402,6 @@ export const TransplantHistoryPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -426,110 +435,105 @@ export const TransplantHistoryPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-              <IconPlus size={20} /> {selectedTransplant ? "Modifier la Greffe" : "Saisir une Greffe"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de transplantation *</label>
-                  <input type="date" value={dateTR} onChange={(e) => setDateTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de greffe *</label>
-                  <input type="text" value={lieuTR} onChange={(e) => setLieuTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de suivi</label>
-                  <input type="text" value={lieuSuiviTR} onChange={(e) => setLieuSuiviTR(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Donneur</label>
-                  <input type="text" value={typeDonneur} onChange={(e) => setTypeDonneur(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">HLA du Donneur</label>
-                <input type="text" value={hlaDonneur} onChange={(e) => setHlaDonneur(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-              </div>
-
-              {/* Traitement Induction */}
-              <div className="border-t pt-3">
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Traitement d'induction</label>
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+              <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                <IconPlus size={20} /> {selectedTransplant ? "Modifier la Greffe" : "Saisir une Greffe"}
+              </h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
-                  {optionsInduction.map(opt => (
-                    <label key={opt} className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
-                      <input type="checkbox" checked={induction.includes(opt)} onChange={() => handleCheckboxChange(opt, 'induction')} className="rounded border-slate-200" />
-                      <span>{opt}</span>
-                    </label>
-                  ))}
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de transplantation *</label>
+                    <input type="date" value={dateTR} onChange={(e) => setDateTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de greffe *</label>
+                    <input type="text" value={lieuTR} onChange={(e) => setLieuTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                  </div>
                 </div>
-              </div>
 
-              {/* Traitement Entretien */}
-              <div className="border-t pt-3">
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Traitement d'entretien</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {optionsEntretien.map(opt => (
-                    <label key={opt} className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
-                      <input type="checkbox" checked={entretien.includes(opt)} onChange={() => handleCheckboxChange(opt, 'entretien')} className="rounded border-slate-200" />
-                      <span>{opt}</span>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de suivi</label>
+                    <input type="text" value={lieuSuiviTR} onChange={(e) => setLieuSuiviTR(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Type Donneur</label>
+                    <input type="text" value={typeDonneur} onChange={(e) => setTypeDonneur(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">HLA du Donneur</label>
+                  <input type="text" value={hlaDonneur} onChange={(e) => setHlaDonneur(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                </div>
+
+                <div className="border-t pt-3">
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Traitement d'induction</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {optionsInduction.map(opt => (
+                      <label key={opt} className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={induction.includes(opt)} onChange={() => handleCheckboxChange(opt, 'induction')} className="rounded border-slate-200" />
+                        <span>{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-3">
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-2">Traitement d'entretien</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {optionsEntretien.map(opt => (
+                      <label key={opt} className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={entretien.includes(opt)} onChange={() => handleCheckboxChange(opt, 'entretien')} className="rounded border-slate-200" />
+                        <span>{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-3 space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause de la perte de greffon</label>
+                    <input type="text" value={causePerte} onChange={(e) => setCausePerte(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" placeholder="Raison médicale..." />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de retour en dialyse</label>
+                    <input type="date" value={dateRetourDialyse} onChange={(e) => setDateRetourDialyse(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
+                  </div>
+                </div>
+
+                <div className="border-t pt-3">
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Transplantectomie *</label>
+                  <div className="flex gap-4 mb-2">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                      <input type="radio" checked={transplantectomie === false} onChange={() => setTransplantectomie(false)} /> Non
                     </label>
-                  ))}
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                      <input type="radio" checked={transplantectomie === true} onChange={() => setTransplantectomie(true)} /> Oui
+                    </label>
+                  </div>
+                  {transplantectomie && (
+                    <input type="text" value={transplantectomieIndication} onChange={(e) => setTransplantectomieIndication(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" placeholder="Indiquez l'indication..." />
+                  )}
                 </div>
-              </div>
 
-              {/* Rejet & Dialyse */}
-              <div className="border-t pt-3 space-y-3">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Cause de la perte de greffon</label>
-                  <input type="text" value={causePerte} onChange={(e) => setCausePerte(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" placeholder="Raison médicale..." />
+                <div className="flex gap-2 pt-4">
+                  {selectedTransplant && (
+                    <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
+                    {selectedTransplant ? "Sauvegarder" : "Enregistrer la Greffe"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date de retour en dialyse</label>
-                  <input type="date" value={dateRetourDialyse} onChange={(e) => setDateRetourDialyse(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" />
-                </div>
-              </div>
+              </form>
+            </div>
+          )}
 
-              {/* Transplantectomie */}
-              <div className="border-t pt-3">
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Transplantectomie *</label>
-                <div className="flex gap-4 mb-2">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                    <input type="radio" checked={transplantectomie === false} onChange={() => setTransplantectomie(false)} /> Non
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                    <input type="radio" checked={transplantectomie === true} onChange={() => setTransplantectomie(true)} /> Oui
-                  </label>
-                </div>
-                {transplantectomie && (
-                  <input type="text" value={transplantectomieIndication} onChange={(e) => setTransplantectomieIndication(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" placeholder="Indiquez l'indication..." />
-                )}
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                {selectedTransplant && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer">
-                  {selectedTransplant ? "Sauvegarder" : "Enregistrer la Greffe"}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Registre à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -539,7 +543,6 @@ export const TransplantHistoryPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -551,13 +554,15 @@ export const TransplantHistoryPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -596,10 +601,12 @@ export const TransplantHistoryPage = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(tr)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
-                        <button onClick={() => triggerDelete(tr.identifiantTR!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(tr)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
+                          <button onClick={() => triggerDelete(tr.identifiantTR!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -610,12 +617,17 @@ export const TransplantHistoryPage = () => {
                 </div>
               )}
             </div>
+
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Mode consultation : Vous disposez d'un accès en lecture seule sur cette fiche d'historique de transplantations.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -667,7 +679,6 @@ export const TransplantHistoryPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la greffe ?" message="Cette action effacera définitivement cette transplantation du registre clinique du patient." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />
