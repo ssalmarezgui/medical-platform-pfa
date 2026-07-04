@@ -24,7 +24,7 @@ export const Sidebar = () => {
   const queryClient = useQueryClient();
 
   const handleConfirmLogout = () => {
-    queryClient.clear(); // Clear the React Query cache
+    queryClient.clear(); 
     logout();
     setShowLogoutConfirm(false);
     navigate('/login');
@@ -41,7 +41,6 @@ export const Sidebar = () => {
       <aside className="h-screen w-[260px] bg-[#F8FAFC] border-r border-slate-200 flex flex-col justify-between shrink-0">
         
         <div>
-          {/* En-tête de l'application */}
           <div className="p-6 mb-2 flex justify-between items-start">
             <div>
               <h1 className="text-[#2B5296] font-bold text-xl">MedPlatform</h1>
@@ -57,10 +56,8 @@ export const Sidebar = () => {
             </button>
           </div>
 
-          {/* Menu de Navigation */}
           <nav className="mt-4 px-2 space-y-4">
             
-            {/* --- SECTION 1 : RECEVEURS (PATIENTS) --- */}
             {(isInvestigateur || isMedecinSuivi || isAgentLabo) && (
               <div className="space-y-1.5">
                 <div className="px-4 pb-1">
@@ -85,7 +82,6 @@ export const Sidebar = () => {
               </div>
             )}
 
-            {/* --- SECTION 2 : DONNEURS --- */}
             {(isInvestigateur || isMedecinSuivi || isAgentLabo) && (
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
                 <div className="px-4 pb-1">
@@ -110,7 +106,6 @@ export const Sidebar = () => {
               </div>
             )}
 
-            {/* --- SECTION 3 : POST-OPÉRATOIRE / HOSPITALISATION --- */}
             {(isSystemAdmin || isMedecinSuivi || isAgentImmuno) && (
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
                 <div className="px-4 pb-1">
@@ -140,12 +135,20 @@ export const Sidebar = () => {
                     active={location.pathname === '/immuno-treatments'} 
                   />
                 )}
+                
+                {(isSystemAdmin || isMedecinSuivi) && (
+                  <NavItem 
+                    icon={<IconPill size={20} />} 
+                    label="Catalogue Molécules" 
+                    path="/medicaments-catalog" 
+                    active={location.pathname === '/medicaments-catalog'} 
+                  />
+                )}
               </div>
             )}
           </nav>
         </div>
 
-        {/* Déconnexion */}
         <div className="p-4 border-t border-slate-100">
           <button 
             onClick={() => setShowLogoutConfirm(true)} 
@@ -157,7 +160,6 @@ export const Sidebar = () => {
         </div>
       </aside>
 
-      {/* Modal Déconnexion */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
           <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 max-w-sm w-full shadow-2xl space-y-4 text-xs animate-in zoom-in-95 duration-150">

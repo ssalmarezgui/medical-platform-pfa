@@ -5,8 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuthStore } from './store/useAuthStore';
 import axios from 'axios'; 
 
-// --- AJOUT DE L'INTERCEPTEUR GLOBAL AXIOS ---
-// Cet intercepteur injecte automatiquement le jeton JWT dans l'en-tête de chaque requête
 axios.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
@@ -20,7 +18,6 @@ axios.interceptors.request.use(
   }
 );
 
-// Vos imports existants des composants de pages...
 import { HospitalPage } from './components/HospitalPage';
 import { ServicePage } from './components/ServicePage';
 import { DoctorPage } from './components/DoctorPage';
@@ -47,6 +44,7 @@ import { DonorPage } from './components/DonorPage';
 import { ImmunoTreatmentsPage } from './components/ImmunoTreatmentsPage';
 import { NephropathyPage } from './components/NephropathyPage';
 import { DiagnosticDonorHub } from './components/DiagnosticDonorHub';
+import { MedicamentsCatalogPage } from './components/MedicamentsCatalogPage';
 
 function App() {
   return (
@@ -75,14 +73,11 @@ function App() {
 
                 <Route path="/nephropathy-initial" element={<NephropathyPage />} />
 
-
-
                 <Route path="/family-history" element={<FamilyHistoryPage />} />
                 <Route path="/donors/family-history" element={<FamilyHistoryPage />} />
 
                 <Route path="/habits" element={<HabitsPage />} />
                 <Route path="/donors/habits" element={<HabitsPage />} />
-
 
                 <Route path="/surgery-history" element={<SurgeryHistoryPage />} />
                 <Route path="/donors/surgery-history" element={<SurgeryHistoryPage />} />
@@ -122,11 +117,10 @@ function App() {
                 <Route path="/immunology" element={<ImmunologyPage />} />
                 <Route path="/donors/immunology" element={<ImmunologyPage />} />
 
-
-
-
                 <Route path="/transplantations-hub" element={<ActiveTransplantPage />} />
                 <Route path="/immuno-treatments" element={<ImmunoTreatmentsPage />} />
+                
+                <Route path="/medicaments-catalog" element={<MedicamentsCatalogPage />} />
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>

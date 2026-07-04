@@ -13,13 +13,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/prescriptions")
-
 public class PrescriptionController {
 
     @Autowired
     private PrescriptionService prescriptionService;
 
-    // Convertisseur d'Entité vers DTO
     private PrescriptionDTO toDTO(Prescription p) {
         PrescriptionDTO dto = new PrescriptionDTO();
         dto.setIdentifiantPrescription(p.getIdentifiantPrescription());
@@ -39,7 +37,7 @@ public class PrescriptionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('READ_PATIENT')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_IMMUNO')")
     public List<PrescriptionDTO> getAll(@RequestParam(required = false) Integer traitementId) {
         List<Prescription> list = (traitementId != null) 
             ? prescriptionService.getByTraitement(traitementId) 
@@ -49,7 +47,7 @@ public class PrescriptionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('READ_PATIENT')")
+    @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_IMMUNO')") 
     public ResponseEntity<PrescriptionDTO> getById(@PathVariable Integer id) {
         return prescriptionService.getById(id)
             .map(this::toDTO)
@@ -58,7 +56,7 @@ public class PrescriptionController {
     }
 
     @PostMapping("/traitement/{traitementId}/medicament/{medicamentId}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<PrescriptionDTO> create(
             @PathVariable Integer traitementId, 
             @PathVariable Integer medicamentId, 
@@ -68,14 +66,14 @@ public class PrescriptionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<PrescriptionDTO> update(@PathVariable Integer id, @RequestBody Prescription details) {
         Prescription updated = prescriptionService.update(id, details);
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('WRITE_PATIENT')") 
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         prescriptionService.delete(id);
         return ResponseEntity.noContent().build();

@@ -937,7 +937,7 @@ export const ImmunoTreatmentsPage = () => {
                   value={inputLibelleEFS} 
                   onChange={(e) => setInputLibelleEFS(e.target.value)} 
                   required 
-                  placeholder="Ex: Néphrotoxicité hépatique, Tremblements..." 
+                  placeholder="" 
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none bg-white text-xs font-bold" 
                 />
               </div>
@@ -947,7 +947,7 @@ export const ImmunoTreatmentsPage = () => {
                 <textarea 
                   value={inputDescriptionEFS} 
                   onChange={(e) => setInputDescriptionEFS(e.target.value)} 
-                  placeholder="Description détaillée des symptômes..." 
+                  placeholder="" 
                   rows={3} 
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none resize-none bg-white text-xs" 
                 />
@@ -959,7 +959,7 @@ export const ImmunoTreatmentsPage = () => {
                   type="text" 
                   value={inputRecommendationEFS} 
                   onChange={(e) => setInputRecommendationEFS(e.target.value)} 
-                  placeholder="Ex: Réduction du dosage de 50%, Surveillance accrue" 
+                  placeholder="" 
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none bg-white text-xs" 
                 />
               </div>
