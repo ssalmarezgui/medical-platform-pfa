@@ -3,6 +3,8 @@ package com.pfa.medical_backend.security;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -14,9 +16,8 @@ import java.util.Date;
 @Component
 public class JwtUtils {
 
-    // Clé secrète de signature (doit faire au moins 256 bits).
-    // À externaliser dans application.properties en production.
-    private final String jwtSecret = "***REMOVED***";
+    @Value("${jwt.secret}")
+    private String jwtSecret;
     private final int jwtExpirationMs = 86400000; // 24 heures
 
     private SecretKey getSigningKey() {
@@ -47,7 +48,6 @@ public class JwtUtils {
             Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // Dans un contexte d'audit, on va logguer les tentatives invalides ou expirées
         }
         return false;
     }

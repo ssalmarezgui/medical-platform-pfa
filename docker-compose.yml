@@ -13,7 +13,7 @@ services:
     image: neo4j:5
     container_name: medical-neo4j
     environment:
-      NEO4J_AUTH: neo4j/***REMOVED*** # Nom d'utilisateur et mot de passe pour Neo4j
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
     ports:
       - "7474:7474" # Interface web
       - "7687:7687" # Connexion Java (Bolt)
