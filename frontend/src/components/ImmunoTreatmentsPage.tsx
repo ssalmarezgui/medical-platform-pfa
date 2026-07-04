@@ -18,28 +18,24 @@ export const ImmunoTreatmentsPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
 
-  // Appels API
   const { data: treatments, isLoading: loadingHistory } = useImmunoHistory(patientIdString || undefined);
   const { data: listMeds } = useMedicaments();
 
-  // --- HABILITATIONS & SÉCURITÉ ---
   const { hasPermission } = usePermission();
   const user = useAuthStore((state) => state.user);
   const userRole = user?.roleU;
   
-  // Prise en charge des rôles avec ou sans le préfixe "ROLE_"
   const isSuivi = userRole === 'ROLE_MEDECIN_SUIVI' || userRole === 'MEDECIN_SUIVI';
   const isImmuno = userRole === 'ROLE_AGENT_IMMUNO' || userRole === 'AGENT_IMMUNO';
   const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
 
   const canAccess = isSuivi || isImmuno || isAdmin;
   const isReadOnly = isAdmin;
-  const canDelete = isSuivi; // Seul le médecin de suivi peut supprimer (CRUD complet)
+  const canDelete = isSuivi;
 
   if (!canAccess) {
     return (
@@ -49,15 +45,12 @@ export const ImmunoTreatmentsPage = () => {
     );
   }
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // États du formulaire principal (Traitement Maître)
   const [typeTIS, setTypeTIS] = useState<'INDUCTION' | 'ENTRETIEN'>('INDUCTION');
   const [dciTIS, setDciTIS] = useState('');
   const [durerTraitementTIS, setDurerTraitementTIS] = useState('');
 
-  // Molécules cochées (Héritage)
   const [grafalonTISI, setGrafalonTISI] = useState(false);
   const [atgTISI, setAtgTISI] = useState(false);
   const [tymoglobulineTISI, setTymoglobulineTISI] = useState(false);
@@ -71,22 +64,18 @@ export const ImmunoTreatmentsPage = () => {
   const [prednisoluneTISE, setPrednisoluneTISE] = useState(false);
   const [sirolimus, setSirolimus] = useState(false);
 
-  // États pour les sous-formulaires (Prescriptions & Dosages)
   const [selectedTreatmentId, setSelectedTreatmentId] = useState<number | null>(null);
   const { data: prescriptions } = usePrescriptions(selectedTreatmentId || undefined);
   const { data: dosages } = useDosages(selectedTreatmentId || undefined);
 
-  // Saisie prescription
   const [selectedMedId, setSelectedMedId] = useState<number | null>(null);
   const [datePremierePrise, setDatePremierePrise] = useState('');
   const [dosageMed, setDosageMed] = useState('');
 
-  // Saisie dosage sanguin
   const [dateDMS, setDateDMS] = useState('');
-  const [labelDMS, setLabelDMS] = useState('T0 - Taux résiduel');
+  const [labelDMS, setLabelDMS] = useState('');
   const [valeurDMS, setValeurDMS] = useState('');
 
-  // --- ÉTATS POUR LES EFFETS SECONDAIRES ---
   const [effetsSecondaires, setEffetsSecondaires] = useState<any[]>([]);
   const [effetModalOpen, setEffetModalOpen] = useState(false);
   const [targetPrescription, setTargetPrescription] = useState<any | null>(null);
@@ -94,7 +83,6 @@ export const ImmunoTreatmentsPage = () => {
   const [inputDescriptionEFS, setInputDescriptionEFS] = useState('');
   const [inputRecommendationEFS, setInputRecommendationEFS] = useState('');
 
-  // TOASTS & SUPPRESSION
   const [selectedTIS, setSelectedTIS] = useState<any | null>(null);
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -103,7 +91,6 @@ export const ImmunoTreatmentsPage = () => {
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [deleteType, setDeleteType] = useState<'TIS' | 'PRESCRIPTION' | 'DOSAGE'>('TIS');
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -111,13 +98,71 @@ export const ImmunoTreatmentsPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filtrage cohorte (Vue Globale)
+  const [selectedDosage, setSelectedDosage] = useState<any | null>(null);
+  const [observationDMS, setObservationDMS] = useState('');
+
+  const triggerEditDosage = (d: any) => {
+    setSelectedDosage(d);
+    setDateDMS(d.dateDMS);
+    setLabelDMS(d.labelDMS);
+    setValeurDMS(d.valeurDMS);
+    setObservationDMS(d.observationDMS || '');
+  };
+
+  const handleAddDosage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTreatmentId || !dateDMS || !valeurDMS) return;
+
+    try {
+      const payload = {
+        dateDMS,
+        labelDMS,
+        valeurDMS,
+        observationDMS,
+        traitementId: selectedTreatmentId
+      };
+
+      if (selectedDosage) {
+        // --- MODE ÉDITION (PUT) ---
+        await axios.put(`http://localhost:8081/api/dosages-sanguins/${selectedDosage.identifiantDMS}`, payload);
+        setToastMessage("Dosage sanguin modifié avec succès !");
+      } else {
+        // --- MODE CRÉATION (POST) ---
+        await immunoService.createDosage(selectedTreatmentId, payload);
+        setToastMessage("Dosage sanguin enregistré avec succès !");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['dosages', selectedTreatmentId] });
+      
+      // Réinitialisation
+      setValeurDMS('');
+      setDateDMS('');
+      setObservationDMS('');
+      setSelectedDosage(null);
+      
+      setToastType('success');
+      setToastOpen(true);
+    } catch {
+      setToastMessage("Erreur d'enregistrement.");
+      setToastType('error');
+      setToastOpen(true);
+    }
+  };
+
+  const [selectedPrescription, setSelectedPrescription] = useState<any | null>(null);
+
+  const triggerEditPrescription = (p: any) => {
+    setSelectedPrescription(p);
+    setSelectedMedId(p.medicamentId);
+    setDatePremierePrise(p.datePremierePrise);
+    setDosageMed(p.dosageMed);
+  };
+
   const filteredPatients = patients?.filter(p => {
     const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
     return nomComplet.includes(patientSearch.toLowerCase()) || String(p.identifiantP) === patientSearch;
   });
 
-  // Filtrage local des immunosuppresseurs (Vue Personnelle)
   const filteredLocalTreatments = treatments?.filter(t => {
     const nameStr = t.dciTIS?.toLowerCase() || '';
     const query = localSearchTerm.toLowerCase();
@@ -126,7 +171,6 @@ export const ImmunoTreatmentsPage = () => {
 
   const selectedPatient = patients?.find(p => p.identifiantP === selectedPatientId);
 
-  // Remplissage automatique
   useEffect(() => {
     if (selectedTIS) {
       setTypeTIS(selectedTIS.typeTIS);
@@ -222,42 +266,37 @@ export const ImmunoTreatmentsPage = () => {
     }
 
     try {
-      await immunoService.createPrescription(selectedTreatmentId, selectedMedId, {
-        datePremierePrise,
-        dosageMed,
-        traitementId: selectedTreatmentId,
-        medicamentId: selectedMedId
-      });
+      if (selectedPrescription) {
+        await axios.put(`http://localhost:8081/api/prescriptions/${selectedPrescription.identifiantPrescription}`, {
+          datePremierePrise,
+          dosageMed,
+          traitementId: selectedTreatmentId,
+          medicamentId: selectedMedId
+        });
+        setToastMessage("Prescription modifiée avec succès !");
+      } else {
+        await immunoService.createPrescription(selectedTreatmentId, selectedMedId, {
+          datePremierePrise,
+          dosageMed,
+          traitementId: selectedTreatmentId,
+          medicamentId: selectedMedId
+        });
+        setToastMessage("Prescription enregistrée avec succès !");
+      }
+
       queryClient.invalidateQueries({ queryKey: ['prescriptions', selectedTreatmentId] });
+      
       setDatePremierePrise('');
       setDosageMed('');
       setSelectedMedId(null);
+      setSelectedPrescription(null);
       
-      setToastMessage("Prescription enregistrée avec succès !");
       setToastType('success');
       setToastOpen(true);
     } catch {
-      setToastMessage("Erreur lors de la prescription.");
+      setToastMessage("Erreur lors de l'enregistrement.");
       setToastType('error');
       setToastOpen(true);
-    }
-  };
-
-  const handleAddDosage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTreatmentId || !dateDMS || !valeurDMS) return;
-
-    try {
-      await immunoService.createDosage(selectedTreatmentId, {
-        dateDMS,
-        labelDMS,
-        valeurDMS,
-        traitementId: selectedTreatmentId
-      });
-      queryClient.invalidateQueries({ queryKey: ['dosages', selectedTreatmentId] });
-      setValeurDMS('');
-    } catch {
-      alert("Erreur d'enregistrement du dosage.");
     }
   };
 
@@ -322,7 +361,6 @@ export const ImmunoTreatmentsPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -377,7 +415,6 @@ export const ImmunoTreatmentsPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "typeTIS", "dciTIS", "durerTraitementTIS", "grafalonTISI", "atgTISI", "tymoglobulineTISI", "simulectTISI", "mmfTISE", "azathioprineTISE", "cyclusporineTISE", "tacrolimusTISE", "prednisoleTISE", "prednisoluneTISE", "sirolimus"]
@@ -468,7 +505,6 @@ export const ImmunoTreatmentsPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
@@ -476,7 +512,6 @@ export const ImmunoTreatmentsPage = () => {
             Bilan Thérapeutique d'Immuno-suppression
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
               {!isReadOnly && (
@@ -544,7 +579,6 @@ export const ImmunoTreatmentsPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -578,10 +612,8 @@ export const ImmunoTreatmentsPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche - Affiché pour Médecin Suivi et Agent Immuno (CRU) */}
           {!isReadOnly && (
             <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
               <h3 className="text-base font-bold text-[#2B5296] flex items-center gap-1.5"><IconPlus size={20} /> {selectedTIS ? "Modifier le Protocole" : "Saisir un Protocole"}</h3>
@@ -648,10 +680,8 @@ export const ImmunoTreatmentsPage = () => {
             </div>
           )}
 
-          {/* Grille de droite */}
           <div className={`${!isReadOnly ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
             
-            {/* A. Grille des protocoles de fond */}
             <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -659,7 +689,6 @@ export const ImmunoTreatmentsPage = () => {
                   Dossier Clinique d'Immuno-suppression actifs
                 </h3>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -739,13 +768,13 @@ export const ImmunoTreatmentsPage = () => {
               )}
             </div>
 
-            {/* B. SOUS-MODULES (Prescriptions & Dosages Sanguins) */}
             {selectedTreatmentId && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-5 duration-300">
                 
-                {/* 1. SUIVI DES PRESCRIPTIONS ET PHARMACOVIGILANCE */}
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-6 shadow-sm space-y-4">
-                  <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5 border-b pb-3"><IconPill size={18} /> Ordonnances & Prescriptions</h4>
+                  <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5 border-b pb-3">
+                    <IconPill size={18} /> Ordonnances & Prescriptions
+                  </h4>
                   
                   {isSuivi && (
                     <form onSubmit={handleAddPrescription} className="space-y-3">
@@ -764,11 +793,42 @@ export const ImmunoTreatmentsPage = () => {
                             </option>
                           ))}
                         </select>
-                        <input type="date" value={datePremierePrise} onChange={(e) => setDatePremierePrise(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" />
+                        <input 
+                          type="date" 
+                          value={datePremierePrise} 
+                          onChange={(e) => setDatePremierePrise(e.target.value)} 
+                          required 
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" 
+                        />
                       </div>
                       <div className="flex gap-2">
-                        <input type="text" value={dosageMed} onChange={(e) => setDosageMed(e.target.value)} required className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" placeholder="Dosage (ex: 2mg/jour)" />
-                        <button type="submit" className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer">Prescrire</button>
+                        <input 
+                          type="text" 
+                          value={dosageMed} 
+                          onChange={(e) => setDosageMed(e.target.value)} 
+                          required 
+                          className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" 
+                          placeholder="Dosage (ex: 2mg/jour)" 
+                        />
+                        
+                        {selectedPrescription && (
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setSelectedPrescription(null);
+                              setDatePremierePrise('');
+                              setDosageMed('');
+                              setSelectedMedId(null);
+                            }} 
+                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer"
+                          >
+                            Annuler
+                          </button>
+                        )}
+                        
+                        <button type="submit" className="bg-[#2B5296] text-white px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer">
+                          {selectedPrescription ? "Modifier" : "Prescrire"}
+                        </button>
                       </div>
                     </form>
                   )}
@@ -793,7 +853,6 @@ export const ImmunoTreatmentsPage = () => {
                                   <span className="font-bold text-[#2B5296] text-xs">{p.medicamentNomCommercial}</span>
                                   <p className="text-[9px] text-[#6588BB] mt-0.5">{p.medicamentType}</p>
                                   
-                                  {/* Affichage des effets secondaires */}
                                   {aDesEffets && aDesEffets.map(es => (
                                     <div key={es.identifiantEFS} className="mt-1.5 p-2 bg-red-50/50 border border-red-100/50 rounded-lg text-[9px] text-red-700 font-semibold leading-relaxed">
                                       ⚠️ <strong>Complication :</strong> {es.libelleEFS} <br/>
@@ -809,6 +868,16 @@ export const ImmunoTreatmentsPage = () => {
 
                                 <td className="px-3 py-3 text-right">
                                   <div className="flex justify-end gap-1">
+                                    {isSuivi && (
+                                      <button 
+                                        onClick={() => triggerEditPrescription(p)}
+                                        title="Modifier la prescription"
+                                        className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded border-none cursor-pointer focus:outline-none"
+                                      >
+                                        <IconEdit size={14} />
+                                      </button>
+                                    )}
+                                    
                                     {(isSuivi || isImmuno) && (
                                       <button 
                                         onClick={() => triggerAddEffetSecondaire(p)}
@@ -840,14 +909,134 @@ export const ImmunoTreatmentsPage = () => {
                   </div>
                 </div>
 
-                {/* 2. SUIVI DES DOSAGES RÉSIDUELS (DOSAGES SANGUINS) */}
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-6 shadow-sm space-y-4">
-                  <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5 border-b pb-3"><IconFlask size={18} /> Dosages Sanguins</h4>
+                  <h4 className="text-sm font-bold text-[#2B5296] flex items-center gap-1.5 border-b pb-3">
+                    <IconFlask size={18} /> Dosages Sanguins
+                  </h4>
                   
-                  {/* METTRE UN MESSAGE DU REGISTRE DE SUIVI SI BESOIN */}
-                  <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
-                    <IconActivity className="text-[#6588BB] mb-2 animate-bounce" size={24} />
-                    <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">Le suivi et l'importation de masse des dosages sanguins résiduels (Tacrolimus, Ciclosporine) s'effectuent directement via le **Bilan Biochimique Sanguin** du dossier patient.</p>
+                  {(isSuivi || isImmuno) && (
+                    <form onSubmit={handleAddDosage} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 mb-1">Date du prélèvement</label>
+                          <input 
+                            type="date" 
+                            value={dateDMS} 
+                            onChange={(e) => setDateDMS(e.target.value)} 
+                            required 
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 mb-1">Label</label>
+                          <input 
+                            value={labelDMS} 
+                            onChange={(e) => setLabelDMS(e.target.value)} 
+                            required
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none"
+                          >
+                          </input>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          type="text" 
+                          value={valeurDMS} 
+                          onChange={(e) => setValeurDMS(e.target.value)} 
+                          required 
+                          className="px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" 
+                          placeholder="Valeur (ex: 8.5 ng/mL)" 
+                        />
+                        <input 
+                          type="text" 
+                          value={observationDMS} 
+                          onChange={(e) => setObservationDMS(e.target.value)} 
+                          className="px-3 py-2 rounded-xl border border-slate-200 text-[11px] bg-white outline-none" 
+                          placeholder="Observation" 
+                        />
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        {selectedDosage && (
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setSelectedDosage(null);
+                              setValeurDMS('');
+                              setDateDMS('');
+                              setObservationDMS('');
+                            }} 
+                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold border-none cursor-pointer"
+                          >
+                            Annuler
+                          </button>
+                        )}
+                        <button 
+                          type="submit" 
+                          className="bg-[#2B5296] text-white px-5 py-2 rounded-xl text-xs font-bold border-none cursor-pointer"
+                        >
+                          {selectedDosage ? "Modifier" : "Enregistrer"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  <div className="border border-slate-50 rounded-xl overflow-hidden max-h-48 overflow-y-auto mt-4">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-[#F8FAFC]">
+                        <tr>
+                          <th className="px-3 py-2 font-bold text-slate-500">Date</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Label</th>
+                          <th className="px-3 py-2 font-bold text-slate-500 text-right">Valeur</th>
+                          <th className="px-3 py-2 font-bold text-slate-500 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {dosages && dosages.length > 0 ? (
+                          dosages.map((d: any) => (
+                            <tr key={d.identifiantDMS} className="hover:bg-slate-50/50">
+                              <td className="px-3 py-2 text-slate-600">
+                                {d.dateDMS}
+                                {d.observationDMS && (
+                                  <p className="text-[9px] text-[#6588BB] mt-0.5 italic">Obs: {d.observationDMS}</p>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-slate-500 font-semibold">{d.labelDMS}</td>
+                              <td className="px-3 py-2 text-right font-bold text-[#2B5296]">{d.valeurDMS}</td>
+                              <td className="px-3 py-2 text-right">
+                                <div className="flex justify-end gap-1">
+                              
+                                  {(isSuivi || isImmuno) && (
+                                    <button 
+                                      onClick={() => triggerEditDosage(d)}
+                                      title="Modifier le dosage"
+                                      className="p-1 hover:bg-[#DCE6F5]/50 text-[#006591] rounded border-none cursor-pointer focus:outline-none"
+                                    >
+                                      <IconEdit size={12} />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button 
+                                      onClick={() => triggerDelete(d.identifiantDMS!, 'DOSAGE')} 
+                                      className="p-1 hover:bg-red-50 text-red-500 rounded border-none cursor-pointer focus:outline-none"
+                                    >
+                                      <IconTrash size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="p-4 text-center text-slate-400">
+                              Aucun dosage résiduel consigné pour ce patient.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -865,7 +1054,6 @@ export const ImmunoTreatmentsPage = () => {
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
@@ -917,13 +1105,12 @@ export const ImmunoTreatmentsPage = () => {
         </div>
       )}
 
-      {/* --- FENÊTRE DE SAISIE MODALE DE COMPLICATION (Effet Secondaire) --- */}
       {effetModalOpen && targetPrescription && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
           <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 max-w-md w-full shadow-2xl space-y-4 text-xs animate-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-[#2B5296] flex items-center gap-1.5 border-b pb-3">
               <IconAlertCircle size={20} className="text-[#2B5296]" />
-              Signaler une complication / effet secondaire
+              Signaler une complication 
             </h3>
             <p className="text-slate-500 font-semibold font-sans">
               Molécule concernée : <span className="text-[#2B5296] font-bold">{targetPrescription.medicamentNomCommercial}</span>
@@ -984,7 +1171,6 @@ export const ImmunoTreatmentsPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer l'élément ?" message="Cette action effacera définitivement cette ligne du registre clinique thérapeutique du patient." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />
