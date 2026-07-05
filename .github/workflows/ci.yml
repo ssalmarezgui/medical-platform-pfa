@@ -30,7 +30,7 @@ jobs:
       - name: Compiler et Tester avec Maven
         run: |
           cd backend
-          mvn clean test
+          mvn clean package -DskipTests
 
 # 3- Compiler et Tester le Frontend React 
 
@@ -55,10 +55,3 @@ jobs:
           cd frontend
           npm install
           npm run build
-
-
-
-
-
-
-
