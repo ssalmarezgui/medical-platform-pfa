@@ -11,6 +11,23 @@ on:
 # 2- JOBS : on définit les taches principales à exécuter
 
 jobs:
+
+  gitleaks-ci:
+    name: Gitleaks security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperer le code source (historique complet)
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # pour analyser tous les commits passés
+        
+      - name: Executer Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
   backend-ci:
     name: Build & Test Backend 
     runs-on: ubuntu-latest
