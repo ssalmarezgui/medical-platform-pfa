@@ -1,72 +1,72 @@
 name: Integration Continue (CI)
 
 # 1- EVENT (déclencheur) : on lance ce pipeline sur toutes les branches
-
 on:
   push:
     branches: ["*"]
   pull_request:
     branches: ["*"]
 
-# 2- JOBS : on définit les taches principales à exécuter
-
+# 2- JOBS : on définit les tâches principales à exécuter
 jobs:
 
+  # Scanner les secrets avec Gitleaks
   gitleaks-ci:
-    name: Gitleaks security Scan
+    name: Gitleaks Security Scan
     runs-on: ubuntu-latest
     steps:
       - name: Recuperer le code source (historique complet)
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # pour analyser tous les commits passés
-        
+          fetch-depth: 0
+
       - name: Executer Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-
+  # Compiler et Analyser le Backend avec SonarCloud
   backend-ci:
     name: Build & Test Backend 
     runs-on: ubuntu-latest
     steps: 
-    # Action réutilisable officielle GitHub pour récupérer le code source du projet
-      - name: Recuperer le code source
+      # Étape 1 : Récupérer le code source avec l'historique complet
+      - name: Recuperer le code source (historique complet)
         uses: actions/checkout@v3 
-    
-    # Installer Java Portable 
+        with:
+          fetch-depth: 0 # Permet à Sonar de lier les bugs aux bons commits/auteurs
+
+      # Étape 2 : Installer Java 17
       - name: Installer Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-    # Compiler et lancer les tess unitaires Java avec Maven
-      - name: Compiler et Tester avec Maven
+      # Étape 3 : Compiler et analyser le code avec le scanner SonarCloud 
+      - name: Compiler et Analyser avec SonarCloud
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd backend
-          mvn clean package -DskipTests
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ssalmarezgui_medical-platform-pfa -DskipTests
 
-# 3- Compiler et Tester le Frontend React 
 
+  # Compiler et Tester le Frontend React
   frontend-ci:
     name: Build & Test Frontend
     runs-on: ubuntu-latest
-
     steps:
-    # Recuperer le code
       - name: Recuperer le code source
         uses: actions/checkout@v3
 
-    # Installer Node.js Portable
       - name: Installer Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-    # Installer les dependances npm et tester le code React
       - name: Installer et compiler le Frontend React
         run: |
           cd frontend
