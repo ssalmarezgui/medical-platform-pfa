@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/marqueurs-tumoraux")
@@ -42,7 +42,7 @@ public class MarqueursTumorauxController {
     public List<MarqueursTumorauxDTO> getAll() {
         return mtRepository.findAll().stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @GetMapping("/patient/{patientId}")
@@ -52,7 +52,7 @@ public class MarqueursTumorauxController {
         
         List<MarqueursTumorauxDTO> dtos = list.stream()
             .map(this::toDTO)
-            .collect(Collectors.toList());
+            .toList();
 
         return ResponseEntity.ok(dtos);
     }
@@ -64,7 +64,7 @@ public class MarqueursTumorauxController {
         
         List<MarqueursTumorauxDTO> dtos = list.stream()
             .map(this::toDTO)
-            .collect(Collectors.toList());
+            .toList();
 
         return ResponseEntity.ok(dtos);
     }

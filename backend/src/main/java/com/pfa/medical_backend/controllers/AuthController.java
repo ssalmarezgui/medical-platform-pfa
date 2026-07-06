@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -52,16 +51,15 @@ public class AuthController {
                 .findFirst()
                 .orElse("ROLE_USER");
 
-
         List<String> authorities = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
+    public ResponseEntity<Object> registerUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
         try {
             UserResponseDTO response = userService.createUser(userRequestDTO);
             return new ResponseEntity<>(response, HttpStatus.CREATED);

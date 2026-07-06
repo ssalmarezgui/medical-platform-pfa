@@ -2,10 +2,7 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-
-
 import com.pfa.medical_backend.security.SecurityConfig;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
@@ -16,26 +13,24 @@ import java.util.Optional;
 public class MedecinService {
 
     private final SecurityConfig securityConfig;
+    private final MedecinRepository medecinRepository;
+    private final ServiceRepository serviceRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private MedecinRepository medecinRepository;
-
-    @Autowired
-    private ServiceRepository serviceRepository;
-
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-
-
-    MedecinService(SecurityConfig securityConfig) {
+    public MedecinService(
+        SecurityConfig securityConfig,
+        MedecinRepository medecinRepository,
+        ServiceRepository serviceRepository,
+        PatientIdAdminRepository patientRepository,
+        UserRepository userRepository
+    ) {
         this.securityConfig = securityConfig;
+        this.medecinRepository = medecinRepository;
+        this.serviceRepository = serviceRepository;
+        this.patientRepository = patientRepository;
+        this.userRepository = userRepository;
     }
-
-
     
     @Transactional("transactionManager")
     public Medecin assignerMedecinAuService(Long medecinId, Integer serviceId) {
@@ -52,7 +47,6 @@ public class MedecinService {
         throw new RuntimeException("Médecin ou Service non trouvé");
     }
 
-
     @Transactional("transactionManager")
     public Medecin retirerMedecinDuService(Long medecinId, Integer serviceId) {
         Optional<Medecin> medecin = medecinRepository.findById(medecinId);
@@ -66,11 +60,9 @@ public class MedecinService {
         throw new RuntimeException("Médecin ou Service non trouvé");
     }
 
-
     public List<Medecin> getAllMedecins() {
         return medecinRepository.findAll();
     }
-
 
     public List<Medecin> getMedecinsByService(Integer serviceId) {
         Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
@@ -79,7 +71,6 @@ public class MedecinService {
         }
         return List.of();
     }
-
   
     public List<Medecin> getMedecinsParService(Integer serviceId) {
         if (!serviceRepository.existsById(serviceId)) {
@@ -92,17 +83,15 @@ public class MedecinService {
         return medecinRepository.findByHopitalId(hopitalId);
     }
 
-
     public Optional<Medecin> getMedecinById(Long medecinId) {
         return medecinRepository.findById(medecinId);
     }
-
 
     @Transactional("transactionManager")
     public Medecin createMedecin(Medecin medecin) {
         if (medecin.getService() != null && medecin.getService().getIdentifiantS() != null) {
             ServiceMedical service = serviceRepository.findById(medecin.getService().getIdentifiantS())
-                .orElseThrow(() -> new RuntimeException("Service non trouvÃ©"));
+                .orElseThrow(() -> new RuntimeException("Service non trouvé"));
             validateServiceBelongsToMedecinHopital(medecin, service);
             medecin.setService(service);
         }
@@ -111,41 +100,47 @@ public class MedecinService {
 
     @Transactional("transactionManager")
     public Medecin updateMedecin(Long medecinId, Medecin medecinDetails) {
-        Optional<Medecin> medecin = medecinRepository.findById(medecinId);
-        if (medecin.isPresent()) {
-            Medecin m = medecin.get();
-            boolean hopitalUpdated = false;
-            
-            if (medecinDetails.getNomM() != null) m.setNomM(medecinDetails.getNomM());
-            if (medecinDetails.getPrenomM() != null) m.setPrenomM(medecinDetails.getPrenomM());
-            if (medecinDetails.getDateNaissM() != null) m.setDateNaissM(medecinDetails.getDateNaissM());
-            if (medecinDetails.getSexeM() != null) m.setSexeM(medecinDetails.getSexeM());
-            if (medecinDetails.getNumTelM() != null) m.setNumTelM(medecinDetails.getNumTelM());
-            if (medecinDetails.getNumTelWhapAPPM() != null) m.setNumTelWhapAPPM(medecinDetails.getNumTelWhapAPPM());
-            if (medecinDetails.getAdresseDomM() != null) m.setAdresseDomM(medecinDetails.getAdresseDomM());
-            if (medecinDetails.getSpecialiteM() != null) m.setSpecialiteM(medecinDetails.getSpecialiteM());
-            if (medecinDetails.getDateDernierDiplomeM() != null) m.setDateDernierDiplomeM(medecinDetails.getDateDernierDiplomeM());
-            if (medecinDetails.getTypeMedecin() != null) m.setTypeMedecin(medecinDetails.getTypeMedecin());
-            if (medecinDetails.getIndexHopitalM() != null) {
-                m.setIndexHopitalM(medecinDetails.getIndexHopitalM());
-                hopitalUpdated = true;
-            }
+        Medecin m = medecinRepository.findById(medecinId)
+            .orElseThrow(() -> new RuntimeException("Médecin non trouvé"));
 
-            if (medecinDetails.getService() != null) {
-                serviceRepository.findById(medecinDetails.getService().getIdentifiantS())
-                    .ifPresent(service -> {
-                        validateServiceBelongsToMedecinHopital(m, service);
-                        m.setService(service);
-                    });
-            } else if (hopitalUpdated && m.getService() != null) {
-                validateServiceBelongsToMedecinHopital(m, m.getService());
-            }
+        boolean hopitalUpdated = updateMedecinFields(m, medecinDetails);
+        resolveMedecinService(m, medecinDetails, hopitalUpdated);
 
-            return medecinRepository.save(m);
-        }
-        throw new RuntimeException("Médecin non trouvé");
+        return medecinRepository.save(m);
     }
 
+    private boolean updateMedecinFields(Medecin target, Medecin source) {
+        boolean hopitalUpdated = false;
+
+        if (source.getNomM() != null) target.setNomM(source.getNomM());
+        if (source.getPrenomM() != null) target.setPrenomM(source.getPrenomM());
+        if (source.getDateNaissM() != null) target.setDateNaissM(source.getDateNaissM());
+        if (source.getSexeM() != null) target.setSexeM(source.getSexeM());
+        if (source.getNumTelM() != null) target.setNumTelM(source.getNumTelM());
+        if (source.getNumTelWhapAPPM() != null) target.setNumTelWhapAPPM(source.getNumTelWhapAPPM());
+        if (source.getAdresseDomM() != null) target.setAdresseDomM(source.getAdresseDomM());
+        if (source.getSpecialiteM() != null) target.setSpecialiteM(source.getSpecialiteM());
+        if (source.getDateDernierDiplomeM() != null) target.setDateDernierDiplomeM(source.getDateDernierDiplomeM());
+        if (source.getTypeMedecin() != null) target.setTypeMedecin(source.getTypeMedecin());
+        if (source.getIndexHopitalM() != null) {
+            target.setIndexHopitalM(source.getIndexHopitalM());
+            hopitalUpdated = true;
+        }
+
+        return hopitalUpdated;
+    }
+
+    private void resolveMedecinService(Medecin m, Medecin medecinDetails, boolean hopitalUpdated) {
+        if (medecinDetails.getService() != null) {
+            serviceRepository.findById(medecinDetails.getService().getIdentifiantS())
+                .ifPresent(service -> {
+                    validateServiceBelongsToMedecinHopital(m, service);
+                    m.setService(service);
+                });
+        } else if (hopitalUpdated && m.getService() != null) {
+            validateServiceBelongsToMedecinHopital(m, m.getService());
+        }
+    }
 
     @Transactional("transactionManager")
     public void deleteMedecin(Long medecinId) {
@@ -183,7 +178,6 @@ public class MedecinService {
             return;
         }
 
-        // Comparaison
         if (!medecinHopitalId.trim().equalsIgnoreCase(serviceHopitalId.trim())) {
             throw new IllegalArgumentException("Le médecin ne peut choisir qu'un service lié à son hôpital.");
         }
@@ -196,4 +190,3 @@ public class MedecinService {
         return service.getIdHopital();
     }
 }
-

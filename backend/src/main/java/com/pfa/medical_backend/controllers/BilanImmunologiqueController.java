@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/immunologie")
@@ -42,7 +42,7 @@ public class BilanImmunologiqueController {
                 adto.setValeurAna(a.getValeurAna());
                 adto.setTypeAnalyse(a.getTypeAnalyse());
                 return adto;
-            }).collect(Collectors.toList());
+            }).toList();
             dto.setAnalyses(list);
         }
         return dto;
@@ -53,7 +53,7 @@ public class BilanImmunologiqueController {
     public List<BilanImmunologiqueDTO> getAll() {
         return biRepository.findAll().stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @GetMapping("/patient/{patientId}")

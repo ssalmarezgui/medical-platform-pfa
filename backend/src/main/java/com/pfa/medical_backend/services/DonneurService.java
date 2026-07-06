@@ -3,7 +3,6 @@ package com.pfa.medical_backend.services;
 import com.pfa.medical_backend.entities.Donneur;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,8 +13,11 @@ import java.util.Optional;
 @Slf4j
 public class DonneurService {
 
-    @Autowired
-    private DonneurRepository donneurRepo;
+    private final DonneurRepository donneurRepo;
+
+    public DonneurService(DonneurRepository donneurRepo) {
+        this.donneurRepo = donneurRepo;
+    }
 
     public List<Donneur> getAll(String hopitalId) {
         if (hopitalId == null || hopitalId.trim().isEmpty()) {

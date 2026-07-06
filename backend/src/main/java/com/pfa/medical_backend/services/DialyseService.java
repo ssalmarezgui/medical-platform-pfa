@@ -4,7 +4,6 @@ import com.pfa.medical_backend.entities.Dialyse;
 import com.pfa.medical_backend.entities.NephropathieInitiale;
 import com.pfa.medical_backend.repositories.DialyseRepository;
 import com.pfa.medical_backend.repositories.NephropathieInitialeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -13,11 +12,16 @@ import java.util.Optional;
 @Service
 public class DialyseService {
 
-    @Autowired
-    private DialyseRepository dialyseRepository;
+    private final DialyseRepository dialyseRepository;
+    private final NephropathieInitialeRepository niRepository;
 
-    @Autowired
-    private NephropathieInitialeRepository niRepository;
+    public DialyseService(
+        DialyseRepository dialyseRepository,
+        NephropathieInitialeRepository niRepository
+    ) {
+        this.dialyseRepository = dialyseRepository;
+        this.niRepository = niRepository;
+    }
 
     public List<Dialyse> getByNephropathie(Integer nephropathieId) {
         return dialyseRepository.findByNephropathie_IdentifiantNI(nephropathieId);

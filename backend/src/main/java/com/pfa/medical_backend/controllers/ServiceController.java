@@ -1,5 +1,6 @@
 package com.pfa.medical_backend.controllers;
 
+import com.pfa.medical_backend.dto.ServiceDTO;
 import com.pfa.medical_backend.entities.ServiceMedical;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.services.ServiceHospitalierService;
@@ -22,44 +23,70 @@ public class ServiceController {
         this.serviceHospitalierService = serviceHospitalierService;
     }
 
-   
+    private ServiceDTO toServiceDTO(ServiceMedical s) {
+        ServiceDTO dto = new ServiceDTO();
+        dto.setIdentifiantS(s.getIdentifiantS());
+        dto.setLibelleS(s.getLibelleS());
+        dto.setNbLitsS(s.getNbLitsS());
+        dto.setNbMedecinsS(s.getNbMedecinsS());
+        if (s.getHopital() != null) {
+            dto.setHopitalId(s.getHopital().getIdentifiantH());
+            dto.setHopitalLibelle(s.getHopital().getLibelleH());
+        }
+        return dto;
+    }
+
+    private ServiceMedical toServiceEntity(ServiceDTO dto) {
+        ServiceMedical s = new ServiceMedical();
+        s.setIdentifiantS(dto.getIdentifiantS());
+        s.setLibelleS(dto.getLibelleS());
+        s.setNbLitsS(dto.getNbLitsS());
+        s.setNbMedecinsS(dto.getNbMedecinsS());
+        return s;
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('READ_SERVICE')")
-    public List<ServiceMedical> getAll(@RequestParam(required = false) String hopitalId) { 
+    public List<ServiceDTO> getAll(@RequestParam(required = false) String hopitalId) { 
+        List<ServiceMedical> list;
         if (hopitalId != null) {
-            return serviceHospitalierService.getServicesByHopital(hopitalId);
+            list = serviceHospitalierService.getServicesByHopital(hopitalId);
+        } else {
+            list = serviceHospitalierService.getAllServices();
         }
-        return serviceHospitalierService.getAllServices();
+        return list.stream().map(this::toServiceDTO).toList();
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('READ_SERVICE')")
-    public ResponseEntity<ServiceMedical> getById(@PathVariable Integer id) {
-   
+    public ResponseEntity<ServiceDTO> getById(@PathVariable Integer id) {
         return serviceHospitalierService.getServiceById(id)
+                .map(this::toServiceDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     @GetMapping("/hopital/{hopitalId}")
     @PreAuthorize("hasAuthority('READ_SERVICE')")
-    public List<ServiceMedical> getByHopital(@PathVariable String hopitalId) { 
-        return serviceHospitalierService.getServicesByHopital(hopitalId);
+    public List<ServiceDTO> getByHopital(@PathVariable String hopitalId) { 
+        return serviceHospitalierService.getServicesByHopital(hopitalId).stream()
+                .map(this::toServiceDTO)
+                .toList();
     }
 
     @PostMapping("/hopital/{hopitalId}")
     @PreAuthorize("hasAuthority('WRITE_SERVICE')")
-    public ResponseEntity<ServiceMedical> create(@PathVariable String hopitalId, @RequestBody ServiceMedical service) { 
-        log.info("Création du service {} pour l'hôpital {}", service.getLibelleS(), hopitalId);
-        return new ResponseEntity<>(serviceHospitalierService.createService(service, hopitalId), HttpStatus.CREATED);
+    public ResponseEntity<ServiceDTO> create(@PathVariable String hopitalId, @RequestBody ServiceDTO serviceDto) { 
+        log.info("Création du service {} pour l'hôpital {}", serviceDto.getLibelleS(), hopitalId);
+        ServiceMedical created = serviceHospitalierService.createService(toServiceEntity(serviceDto), hopitalId);
+        return new ResponseEntity<>(toServiceDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-
     @PreAuthorize("hasAuthority('WRITE_SERVICE')")
-    public ServiceMedical update(@PathVariable Integer id, @RequestBody ServiceMedical details) {
-        return serviceHospitalierService.updateService(id, details);
+    public ResponseEntity<ServiceDTO> update(@PathVariable Integer id, @RequestBody ServiceDTO detailsDto) {
+        ServiceMedical updated = serviceHospitalierService.updateService(id, toServiceEntity(detailsDto));
+        return ResponseEntity.ok(toServiceDTO(updated));
     }
 
     @DeleteMapping("/{id}")
@@ -80,7 +107,8 @@ public class ServiceController {
 
     @PostMapping("/{serviceId}/users/{userId}")
     @PreAuthorize("hasAuthority('WRITE_SERVICE')")
-    public ServiceMedical assignUser(@PathVariable Integer serviceId, @PathVariable Integer userId) {
-        return serviceHospitalierService.assignerUtilisateurAuService(serviceId, userId);
+    public ResponseEntity<ServiceDTO> assignUser(@PathVariable Integer serviceId, @PathVariable Integer userId) {
+        ServiceMedical updatedService = serviceHospitalierService.assignerUtilisateurAuService(serviceId, userId);
+        return ResponseEntity.ok(toServiceDTO(updatedService));
     }
 }

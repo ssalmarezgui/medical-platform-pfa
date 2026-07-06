@@ -2,23 +2,26 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 public class BiochimieUrinesService {
 
-    @Autowired
-    private BiochimieUrinesRepository buRepository;
+    private final BiochimieUrinesRepository buRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public BiochimieUrinesService(
+        BiochimieUrinesRepository buRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.buRepository = buRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public Optional<BiochimieUrines> getByPatient(String patientId) {
         return buRepository.findByPatient_IdentifiantP(patientId);
@@ -47,7 +50,6 @@ public class BiochimieUrinesService {
             bu.setDescriptionBUF(incoming.getDescriptionBUF());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             bu.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {
@@ -59,7 +61,6 @@ public class BiochimieUrinesService {
 
         return buRepository.save(bu);
     }
-
 
     @Transactional("transactionManager")
     public BiochimieUrines createOrUpdateForDonor(Integer donorId, BiochimieUrines incoming) {
@@ -81,7 +82,6 @@ public class BiochimieUrinesService {
             bu.setDescriptionBUF(incoming.getDescriptionBUF());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             bu.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {

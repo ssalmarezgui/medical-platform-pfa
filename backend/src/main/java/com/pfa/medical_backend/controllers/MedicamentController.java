@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/medicaments")
@@ -37,7 +37,7 @@ public class MedicamentController {
             ? medicamentService.getByType(type) 
             : medicamentService.getAll();
             
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     @GetMapping("/{id}")

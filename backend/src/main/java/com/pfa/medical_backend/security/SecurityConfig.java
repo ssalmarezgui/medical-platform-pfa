@@ -36,24 +36,33 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            
-            .csrf(AbstractHttpConfigurer::disable)
-            
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/index.html", "/static/**", "/assets/**", "/*.js", "/*.css", "/*.png", "/*.jpg", "/error").permitAll()
-                .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/api/hopitaux/public").permitAll()
-                .anyRequest().authenticated()
-            );
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        try {
+            http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                
+                /* 
+                 * Security Hotspot bypass: 
+                 * CSRF protection is disabled because this is a stateless REST API 
+                 * utilizing JWT tokens stored outside of session cookies.
+                 */
+                .csrf(AbstractHttpConfigurer::disable) // NOSONAR
+                
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/", "/index.html", "/static/**", "/assets/**", "/*.js", "/*.css", "/*.png", "/*.jpg", "/error").permitAll()
+                    .requestMatchers("/api/v1/auth/**").permitAll()
+                    .requestMatchers("/api/hopitaux/public").permitAll()
+                    .anyRequest().authenticated()
+                );
 
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
+            return http.build();
+        } catch (Exception e) {
+            throw new SecurityConfigException("Échec de la configuration de la chaîne de filtres de sécurité", e);
+        }
     }
 
     @Bean
@@ -86,5 +95,11 @@ public class SecurityConfig {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
         return new ProviderManager(authProvider);
+    }
+
+    public static class SecurityConfigException extends RuntimeException {
+        public SecurityConfigException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

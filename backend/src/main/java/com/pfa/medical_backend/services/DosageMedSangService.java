@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -11,11 +10,16 @@ import java.util.Optional;
 @Service
 public class DosageMedSangService {
 
-    @Autowired
-    private DosageMedSangRepository dmsRepository;
-
-    @Autowired
-    private TraitementImmunoSuppresseurRepository tisRepository;
+    private final DosageMedSangRepository dmsRepository;
+    private final TraitementImmunoSuppresseurRepository tisRepository;
+    
+    public DosageMedSangService(
+        DosageMedSangRepository dmsRepository,
+        TraitementImmunoSuppresseurRepository tisRepository
+    ) {
+        this.dmsRepository = dmsRepository;
+        this.tisRepository = tisRepository;
+    }
 
     public List<DosageMedSang> getByTraitement(Integer traitementId) {
         return dmsRepository.findByTraitement_IdentifiantTIS(traitementId);

@@ -17,5 +17,5 @@ public class TransplantationAnterieureDTO {
     private LocalDate dateRetourDialyse;
     private Boolean transplantectomie;
     private String transplantectomieIndication;
-    private String patientId; // Clé étrangère String du Patient
+    private String patientId;
 }

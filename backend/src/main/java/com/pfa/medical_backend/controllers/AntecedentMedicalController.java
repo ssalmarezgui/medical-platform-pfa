@@ -3,20 +3,21 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.AntecedentMedicalDTO;
 import com.pfa.medical_backend.entities.AntecedentMedical;
 import com.pfa.medical_backend.services.AntecedentMedicalService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/antecedents-medicaux")
 public class AntecedentMedicalController {
 
-    @Autowired
-    private AntecedentMedicalService amService;
+    private final AntecedentMedicalService amService;
+
+    public AntecedentMedicalController(AntecedentMedicalService amService) {
+        this.amService = amService;
+    }
 
     private AntecedentMedicalDTO toDTO(AntecedentMedical am) {
         AntecedentMedicalDTO dto = new AntecedentMedicalDTO();
@@ -40,6 +41,21 @@ public class AntecedentMedicalController {
         return dto;
     }
 
+    private AntecedentMedical toEntity(AntecedentMedicalDTO dto) {
+        AntecedentMedical am = new AntecedentMedical();
+        am.setIdentifiantAMed(dto.getIdentifiantAMed());
+        am.setType(dto.getType());
+        am.setSousType(dto.getSousType());
+        am.setDateDebut(dto.getDateDebut());
+        am.setComplication(dto.getComplication());
+        am.setTraitement(dto.getTraitement());
+        am.setEvolution(dto.getEvolution());
+        am.setTypeLocalisation(dto.getTypeLocalisation());
+        am.setCauseSiege(dto.getCauseSiege());
+        am.setLieuPriseEnCharge(dto.getLieuPriseEnCharge());
+        return am;
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<AntecedentMedicalDTO> getAll(
@@ -54,7 +70,7 @@ public class AntecedentMedicalController {
         } else {
             list = amService.getAll();
         }
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     @GetMapping("/{id}")
@@ -68,22 +84,22 @@ public class AntecedentMedicalController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
-    public ResponseEntity<AntecedentMedicalDTO> create(@PathVariable String patientId, @RequestBody AntecedentMedical am) {
-        AntecedentMedical created = amService.create(am, patientId);
+    public ResponseEntity<AntecedentMedicalDTO> create(@PathVariable String patientId, @RequestBody AntecedentMedicalDTO dto) {
+        AntecedentMedical created = amService.create(toEntity(dto), patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
-    public ResponseEntity<AntecedentMedicalDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentMedical am) {
-        AntecedentMedical created = amService.createForDonor(am, donorId);
+    public ResponseEntity<AntecedentMedicalDTO> createForDonor(@PathVariable Integer donorId, @RequestBody AntecedentMedicalDTO dto) {
+        AntecedentMedical created = amService.createForDonor(toEntity(dto), donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-    public ResponseEntity<AntecedentMedicalDTO> update(@PathVariable Integer id, @RequestBody AntecedentMedical details) {
-        AntecedentMedical updated = amService.update(id, details);
+    public ResponseEntity<AntecedentMedicalDTO> update(@PathVariable Integer id, @RequestBody AntecedentMedicalDTO detailsDto) {
+        AntecedentMedical updated = amService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

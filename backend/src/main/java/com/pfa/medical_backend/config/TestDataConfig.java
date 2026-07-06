@@ -1,6 +1,8 @@
 package com.pfa.medical_backend.config;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -10,13 +12,15 @@ import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
 
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
-
 
 @Configuration
 @ConditionalOnProperty(name = "app.test-data.enabled", havingValue = "true")
 public class TestDataConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(TestDataConfig.class);
+
+    private static final String NATIONALITE_TUNISIENNE = "Tunisienne";
+    private static final String EVOLUTION_STABLE = "Stable";
 
     @Bean
     public CommandLineRunner seedTestData(
@@ -40,9 +44,8 @@ public class TestDataConfig {
         AntecedentChirurgicalRepository antecedentChirRepo
     ) {
         return args -> {
-            // Sécurité : on n'insère rien si la base n'est pas vide
             if (patientRepo.count() > 0) {
-                System.out.println("[TestData] Data already present, skipping seed.");
+                log.info("[TestData] Data already present, skipping seed.");
                 return;
             }
 
@@ -132,7 +135,7 @@ public class TestDataConfig {
             PatientIdAdmin p1 = new PatientIdAdmin();
             p1.setNomP("Khalil");
             p1.setPrenomP("Mohamed");
-            p1.setNationaliteP("Tunisienne");
+            p1.setNationaliteP(NATIONALITE_TUNISIENNE);
             p1.setSexeP("M");
             p1.setOrigineGeogP("Tunis");
             p1.setAdresseP("23 Rue Habib Thameur, Tunis");
@@ -140,16 +143,16 @@ public class TestDataConfig {
             p1.setAdressEmailP("m.khalil@email.tn");
             p1.setAdulteP(true);
             p1.setStatut("Transplanté");
-            p1.setEvolution("Stable");
+            p1.setEvolution(EVOLUTION_STABLE);
             p1.setNiveauEducation("Universitaire");
             p1.setEnEtatActivite(true);
             p1.setMedecinInvestigateur(savedM1);
-            PatientIdAdmin savedP1 = patientRepo.save(p1);
+            patientRepo.save(p1);
 
             PatientIdAdmin p2 = new PatientIdAdmin();
             p2.setNomP("Haddad");
             p2.setPrenomP("Fatma");
-            p2.setNationaliteP("Tunisienne");
+            p2.setNationaliteP(NATIONALITE_TUNISIENNE);
             p2.setSexeP("F");
             p2.setOrigineGeogP("Sfax");
             p2.setAdresseP("8 Rue de la République, Sfax");
@@ -157,7 +160,7 @@ public class TestDataConfig {
             p2.setAdressEmailP("f.haddad@email.tn");
             p2.setAdulteP(true);
             p2.setStatut("En attente");
-            p2.setEvolution("Stable");
+            p2.setEvolution(EVOLUTION_STABLE);
             p2.setNiveauEducation("Secondaire");
             p2.setEnEtatActivite(false);
             p2.setMedecinInvestigateur(savedM2);
@@ -166,7 +169,7 @@ public class TestDataConfig {
             PatientIdAdmin p3 = new PatientIdAdmin();
             p3.setNomP("Ben Salem");
             p3.setPrenomP("Ali");
-            p3.setNationaliteP("Tunisienne");
+            p3.setNationaliteP(NATIONALITE_TUNISIENNE);
             p3.setSexeP("M");
             p3.setOrigineGeogP("Sousse");
             p3.setAdresseP("15 Avenue Mohamed V, Sousse");
@@ -178,12 +181,12 @@ public class TestDataConfig {
             p3.setNiveauEducation("Primaire");
             p3.setEnEtatActivite(true);
             p3.setMedecinInvestigateur(savedM1);
-            PatientIdAdmin savedP3 = patientRepo.save(p3);
+            patientRepo.save(p3);
 
             PatientIdAdmin p4 = new PatientIdAdmin();
             p4.setNomP("Bouaziz");
             p4.setPrenomP("Sara");
-            p4.setNationaliteP("Tunisienne");
+            p4.setNationaliteP(NATIONALITE_TUNISIENNE);
             p4.setSexeP("F");
             p4.setOrigineGeogP("Bizerte");
             p4.setAdresseP("3 Rue de la Corniche, Bizerte");
@@ -191,7 +194,7 @@ public class TestDataConfig {
             p4.setAdressEmailP("s.bouaziz@email.tn");
             p4.setAdulteP(true);
             p4.setStatut("Dialysé");
-            p4.setEvolution("Stable");
+            p4.setEvolution(EVOLUTION_STABLE);
             p4.setNiveauEducation("Universitaire");
             p4.setEnEtatActivite(false);
             p4.setMedecinInvestigateur(savedM3);
@@ -201,7 +204,7 @@ public class TestDataConfig {
             Donneur d1 = new Donneur();
             d1.setNomD("Ridha");
             d1.setPrenomD("Youssef");
-            d1.setNationaliteD("Tunisienne");
+            d1.setNationaliteD(NATIONALITE_TUNISIENNE);
             d1.setSexeD("M");
             d1.setOrigineGeogD("Tunis");
             d1.setAdresseDomD("10 Rue du Lac, Tunis");
@@ -211,12 +214,12 @@ public class TestDataConfig {
             d1.setTypeDonneur("Vivant");
             d1.setStatut("Actif");
             d1.setEvolutionProf("Bon état général");
-            Donneur savedD1 =  donneurRepo.save(d1);
+            donneurRepo.save(d1);
 
             Donneur d2 = new Donneur();
             d2.setNomD("Dridi");
             d2.setPrenomD("Amina");
-            d2.setNationaliteD("Tunisienne");
+            d2.setNationaliteD(NATIONALITE_TUNISIENNE);
             d2.setSexeD("F");
             d2.setOrigineGeogD("Nabeul");
             d2.setAdresseDomD("22 Avenue de la Plage, Nabeul");
@@ -224,7 +227,7 @@ public class TestDataConfig {
             d2.setAdulteD(true);
             d2.setTypeDonneur("Décédé");
             d2.setStatut("Décédé");
-            Donneur savedD2 = donneurRepo.save(d2);
+            donneurRepo.save(d2);
 
 
 
@@ -277,13 +280,7 @@ public class TestDataConfig {
             dl2.setTypeDialyse("Dialyse péritonéale ambulatoire continue");
             dialyseRepo.save(dl2);
 
-            
-
-            
-            
-
-            System.out.println("[TestData] ✓ Données insérées : 2 hôpitaux, 3 services, 3 médecins, " +
-                "4 patients, 2 donneurs, 2 transplantations, et toutes les entités cliniques associées.");
+            log.info("[TestData] ✓ Données insérées : 2 hôpitaux, 3 services, 3 médecins, 4 patients, 2 donneurs et les entités associées.");
         };
     }
 }

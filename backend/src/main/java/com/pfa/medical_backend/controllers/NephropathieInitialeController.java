@@ -3,23 +3,22 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.NephropathieInitialeDTO;
 import com.pfa.medical_backend.entities.NephropathieInitiale;
 import com.pfa.medical_backend.services.NephropathieInitialeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/nephropathies")
-
 public class NephropathieInitialeController {
 
-    @Autowired
-    private NephropathieInitialeService niService;
+    private final NephropathieInitialeService niService;
 
-    // Convertisseur d'Entité vers DTO
+    public NephropathieInitialeController(NephropathieInitialeService niService) {
+        this.niService = niService;
+    }
+
     private NephropathieInitialeDTO toDTO(NephropathieInitiale ni) {
         NephropathieInitialeDTO dto = new NephropathieInitialeDTO();
         dto.setIdentifiantNI(ni.getIdentifiantNI());
@@ -33,6 +32,16 @@ public class NephropathieInitialeController {
         return dto;
     }
 
+    private NephropathieInitiale toEntity(NephropathieInitialeDTO dto) {
+        NephropathieInitiale ni = new NephropathieInitiale();
+        ni.setIdentifiantNI(dto.getIdentifiantNI());
+        ni.setTypeCliniqueNI(dto.getTypeCliniqueNI());
+        ni.setCauseNI(dto.getCauseNI());
+        ni.setTypeHistologiqueNI(dto.getTypeHistologiqueNI());
+        ni.setStadeMaladiNI(dto.getStadeMaladiNI());
+        return ni;
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('READ_PATIENT')")
     public List<NephropathieInitialeDTO> getAll(@RequestParam(required = false) String patientId) {
@@ -40,7 +49,7 @@ public class NephropathieInitialeController {
             ? niService.getByPatient(patientId) 
             : niService.getAll();
             
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     @GetMapping("/{id}")
@@ -54,15 +63,15 @@ public class NephropathieInitialeController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
-    public ResponseEntity<NephropathieInitialeDTO> create(@PathVariable String patientId, @RequestBody NephropathieInitiale ni) {
-        NephropathieInitiale created = niService.create(ni, patientId);
+    public ResponseEntity<NephropathieInitialeDTO> create(@PathVariable String patientId, @RequestBody NephropathieInitialeDTO dto) {
+        NephropathieInitiale created = niService.create(toEntity(dto), patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
-    public ResponseEntity<NephropathieInitialeDTO> update(@PathVariable Integer id, @RequestBody NephropathieInitiale details) {
-        NephropathieInitiale updated = niService.update(id, details);
+    public ResponseEntity<NephropathieInitialeDTO> update(@PathVariable Integer id, @RequestBody NephropathieInitialeDTO detailsDto) {
+        NephropathieInitiale updated = niService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

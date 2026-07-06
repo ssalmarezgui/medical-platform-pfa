@@ -1,9 +1,5 @@
 package com.pfa.medical_backend.services;
 
-
-
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,24 +16,30 @@ import java.util.Optional;
 @Service
 public class HopitalService {
 
-    @Autowired
-    private EntityManager entityManager;
+    private static final String ERR_HOPITAL_NOT_FOUND = "Hôpital non trouvé";
 
-    @Autowired
-    private HopitalStructureSoinRepository hopitalRepository;
+    private final EntityManager entityManager;
+    private final HopitalStructureSoinRepository hopitalRepository;
+    private final ServiceRepository serviceRepository;
+    private final UserRepository userRepository;
+    private final MedecinRepository medecinRepository;
+    private final PatientIdAdminRepository patientRepository;
 
-    @Autowired
-    private ServiceRepository serviceRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private MedecinRepository medecinRepository;
-
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
+    public HopitalService(
+        EntityManager entityManager,
+        HopitalStructureSoinRepository hopitalRepository,
+        ServiceRepository serviceRepository,
+        UserRepository userRepository,
+        MedecinRepository medecinRepository,
+        PatientIdAdminRepository patientRepository
+    ) {
+        this.entityManager = entityManager;
+        this.hopitalRepository = hopitalRepository;
+        this.serviceRepository = serviceRepository;
+        this.userRepository = userRepository;
+        this.medecinRepository = medecinRepository;
+        this.patientRepository = patientRepository;
+    }
 
     public List<HopitalStructureSoin> getAllHopitaux() {
         entityManager.clear();
@@ -84,7 +86,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public HopitalStructureSoin updateHopital(String hopitalId, HopitalStructureSoin details) {
         HopitalStructureSoin h = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException("Hôpital non trouvé"));
+            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
 
         if (details.getLibelleH() != null) h.setLibelleH(details.getLibelleH());
         if (details.getAdresseH() != null) h.setAdresseH(details.getAdresseH());
@@ -100,7 +102,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public void deleteHopital(String hopitalId) {
         HopitalStructureSoin hopital = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException("Hôpital non trouvé"));
+            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
 
         List<ServiceMedical> services = serviceRepository.findByHopital_IdentifiantH(hopitalId);
 
@@ -118,10 +120,9 @@ public class HopitalService {
         hopitalRepository.delete(hopital);
     }
 
-
     public List<ServiceMedical> getServicesOfHopital(String hopitalId) {
         if (!hopitalRepository.existsById(hopitalId)) {
-            throw new RuntimeException("Hôpital non trouvé");
+            throw new RuntimeException(ERR_HOPITAL_NOT_FOUND);
         }
         return serviceRepository.findByHopital_IdentifiantH(hopitalId);
     }
@@ -129,7 +130,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public HopitalStructureSoin ajouterServiceAHopital(String hopitalId, ServiceMedical service) {
         HopitalStructureSoin h = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException("Hôpital non trouvé"));
+            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
         
         service.setHopital(h);
         serviceRepository.save(service);
@@ -141,7 +142,6 @@ public class HopitalService {
     public List<ServiceMedical> getServicesOfHopital1(String hopitalId) {
         return serviceRepository.findByHopital_IdentifiantH(hopitalId);
     }
-
 
     @Transactional("transactionManager")
     public HopitalStructureSoin retirerServiceDeHopital(String hopitalId, Integer serviceId) {
@@ -157,4 +157,3 @@ public class HopitalService {
         throw new RuntimeException("Hôpital ou Service non trouvé");
     }
 }
-

@@ -2,10 +2,11 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import com.pfa.medical_backend.dto.PatientDTO;
-import java.util.stream.Collectors;
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -14,17 +15,24 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional("transactionManager") // Applique la transaction à l'échelle de la classe
+@Transactional("transactionManager")
 public class PatientService {
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
+    private static final Logger log = LoggerFactory.getLogger(PatientService.class);
 
-    @Autowired
-    private MedecinRepository medecinRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final MedecinRepository medecinRepository;
+    private final ServiceRepository serviceRepository;
 
-    @Autowired
-    private ServiceRepository serviceRepository;
+    public PatientService(
+        PatientIdAdminRepository patientRepository,
+        MedecinRepository medecinRepository,
+        ServiceRepository serviceRepository
+    ) {
+        this.patientRepository = patientRepository;
+        this.medecinRepository = medecinRepository;
+        this.serviceRepository = serviceRepository;
+    }
 
     public PatientIdAdmin affecterPatientAuService(String patientId, Integer serviceId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
@@ -48,7 +56,7 @@ public class PatientService {
 
     public PatientIdAdmin desaffecterPatientDuService(String patientId, Integer serviceId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
-        Optional<ServiceMedical> service = serviceRepository.findById(serviceId); // <-- RESTAURÉ D'ORIGINE
+        Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
 
         if (patient.isPresent() && service.isPresent()) {
             PatientIdAdmin p = patient.get();
@@ -107,75 +115,30 @@ public class PatientService {
         return patientRepository.findById(patientId);
     }
 
-    // --- ENREGISTREMENT ET ENQUÊTE D'IDENTITÉ UNIQUES AVEC TYPES STRICTS ---
     @Transactional("transactionManager")
     public PatientIdAdmin createPatient(PatientIdAdmin incoming) {
         if (incoming == null) {
             throw new IllegalArgumentException("Les données du patient sont manquantes.");
         }
 
-        System.out.println("=== ENQUÊTE D'IDENTITO-VIGILANCE EN BASE ===");
+        log.info("=== ENQUÊTE D'IDENTITO-VIGILANCE EN BASE ===");
         
         boolean isAdulte = incoming.getAdulteP() != null ? incoming.getAdulteP() : true;
         
-        // Conversion de Integer vers String pour le CIN et le Carnet
         String checkCin = incoming.getNumeroCin() != null ? String.valueOf(incoming.getNumeroCin()).trim() : "";
         String checkCarnet = incoming.getNumCarnetP() != null ? String.valueOf(incoming.getNumCarnetP()).trim() : "";
-        
-        LocalDate checkDate = incoming.getDateNaissP();
-        
-        String checkNom = incoming.getNomP() != null ? incoming.getNomP().trim().toLowerCase() : "";
-        String checkPrenom = incoming.getPrenomP() != null ? incoming.getPrenomP().trim().toLowerCase() : "";
 
         if (checkCin.isEmpty()) {
             throw new IllegalArgumentException("Le numéro CIN ou CIN du parent est requis.");
         }
 
-        // --- ÉTAPE 1 : RECHERCHE STRICTE DE DOUBLONS EN BASE (SANS BLOQUER LE CARNET FAMILIAL) ---
-        Optional<PatientIdAdmin> doublon = Optional.empty();
+        checkForDuplicate(incoming, isAdulte, checkCin);
 
-        if (isAdulte) {
-            // Scénario Adulte : Même CIN ET même Date de Naissance
-            doublon = patientRepository.findAll().stream()
-                .filter(p -> (p.getAdulteP() != null && p.getAdulteP()) 
-                    && (p.getNumeroCin() != null && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin) && p.getDateNaissP().equals(checkDate)))
-                .findFirst();
-        } else {
-            // Scénario Enfant : Même CIN Parent (numeroCin) AND même Date de Naissance AND même Nom AND même Prénom
-            doublon = patientRepository.findAll().stream()
-                .filter(p -> (p.getAdulteP() != null && !p.getAdulteP())
-                    && p.getNumeroCin() != null && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin)
-                    && p.getDateNaissP() != null && p.getDateNaissP().equals(checkDate)
-                    && p.getNomP() != null && p.getNomP().trim().toLowerCase().equals(checkNom)
-                    && p.getPrenomP() != null && p.getPrenomP().trim().toLowerCase().equals(checkPrenom))
-                .findFirst();
-        }
-
-        if (doublon.isPresent()) {
-            throw new IllegalArgumentException("DOUBLON_DETECTED:" + doublon.get().getIdentifiantP());
-        }
-
-        // --- ÉTAPE 2 : CALCUL CONFORME DE L'IDENTIFIANT CLINIQUE (AVEC SUFFIXES) ---
         PatientIdAdmin patient = copyBaseFields(incoming, new PatientIdAdmin());
-        
-        if (patient.getIndexHopitalP() == null || patient.getIndexHopitalP().trim().isEmpty()) {
-            throw new IllegalArgumentException("L'index de l'hôpital est requis.");
-        }
-
-        // Code hôpital tronqué à 3 lettres
-        String codeHopital = patient.getIndexHopitalP().trim().substring(0, 3).toUpperCase();
-        String partCIN = checkCin.length() >= 4 ? checkCin.substring(checkCin.length() - 4) : "0000";
-        String partCarnet = checkCarnet.length() >= 4 ? checkCarnet.substring(checkCarnet.length() - 4) : "0000";
-        String suffixe = isAdulte ? "A" : "E"; 
-
-        int sequence = patientRepository.findByIndexHopitalP(patient.getIndexHopitalP()).size() + 1;
-        String sequenceStr = String.format("%03d", sequence);
-
-        // Assemblage final de l'identifiant clinique unique (ex: "FAT_4563_7894_E_002")
-        String customId = codeHopital + "_" + partCIN + "_" + partCarnet + "_" + suffixe + "_" + sequenceStr;
+        String customId = generateCustomId(patient, isAdulte, checkCin, checkCarnet);
         patient.setIdentifiantP(customId);
 
-        System.out.println("Identifiant unique généré avec succès en base : " + patient.getIdentifiantP());
+        log.info("Identifiant unique généré avec succès en base : {}", patient.getIdentifiantP());
 
         if (incoming.getMedecinInvestigateur() != null) {
             attachInvestigateur(patient, incoming.getMedecinInvestigateur());
@@ -190,6 +153,63 @@ public class PatientService {
         resolveSuiviMedecins(saved, incoming);
 
         return patientRepository.save(saved);
+    }
+
+    private void checkForDuplicate(PatientIdAdmin incoming, boolean isAdulte, String checkCin) {
+        LocalDate checkDate = incoming.getDateNaissP();
+        String checkNom = incoming.getNomP() != null ? incoming.getNomP().trim().toLowerCase() : "";
+        String checkPrenom = incoming.getPrenomP() != null ? incoming.getPrenomP().trim().toLowerCase() : "";
+
+        Optional<PatientIdAdmin> doublon;
+
+        if (isAdulte) {
+            doublon = findAdultDuplicate(checkCin, checkDate);
+        } else {
+            doublon = findChildDuplicate(checkCin, checkDate, checkNom, checkPrenom);
+        }
+
+        if (doublon.isPresent()) {
+            throw new IllegalArgumentException("DOUBLON_DETECTED:" + doublon.get().getIdentifiantP());
+        }
+    }
+
+    private Optional<PatientIdAdmin> findAdultDuplicate(String checkCin, LocalDate checkDate) {
+        return patientRepository.findAll().stream()
+            .filter(p -> Boolean.TRUE.equals(p.getAdulteP()) 
+                && p.getNumeroCin() != null 
+                && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin) 
+                && checkDate.equals(p.getDateNaissP()))
+            .findFirst();
+    }
+
+    private Optional<PatientIdAdmin> findChildDuplicate(String checkCin, LocalDate checkDate, String checkNom, String checkPrenom) {
+        return patientRepository.findAll().stream()
+            .filter(p -> Boolean.FALSE.equals(p.getAdulteP())
+                && p.getNumeroCin() != null 
+                && String.valueOf(p.getNumeroCin()).trim().equalsIgnoreCase(checkCin)
+                && p.getDateNaissP() != null 
+                && p.getDateNaissP().equals(checkDate)
+                && p.getNomP() != null 
+                && p.getNomP().trim().toLowerCase().equals(checkNom)
+                && p.getPrenomP() != null 
+                && p.getPrenomP().trim().toLowerCase().equals(checkPrenom))
+            .findFirst();
+    }
+
+    private String generateCustomId(PatientIdAdmin patient, boolean isAdulte, String checkCin, String checkCarnet) {
+        if (patient.getIndexHopitalP() == null || patient.getIndexHopitalP().trim().isEmpty()) {
+            throw new IllegalArgumentException("L'index de l'hôpital est requis.");
+        }
+
+        String codeHopital = patient.getIndexHopitalP().trim().substring(0, 3).toUpperCase();
+        String partCIN = checkCin.length() >= 4 ? checkCin.substring(checkCin.length() - 4) : "0000";
+        String partCarnet = checkCarnet.length() >= 4 ? checkCarnet.substring(checkCarnet.length() - 4) : "0000";
+        String suffixe = isAdulte ? "A" : "E"; 
+
+        int sequence = patientRepository.findByIndexHopitalP(patient.getIndexHopitalP()).size() + 1;
+        String sequenceStr = String.format("%03d", sequence);
+
+        return codeHopital + "_" + partCIN + "_" + partCarnet + "_" + suffixe + "_" + sequenceStr;
     }
 
     @Transactional("transactionManager")
@@ -377,11 +397,7 @@ public class PatientService {
         if (hopitalId == null || hopitalId.isBlank()) {
             return null;
         }
-        try {
-            return hopitalId.trim();
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return hopitalId.trim();
     }
 
     private String resolveServiceHopitalId(ServiceMedical service) {
@@ -402,7 +418,7 @@ public class PatientService {
             if (hopitalId != null && !hopitalId.trim().isEmpty()) {
                 patients = patientsDeLInvestigateur.stream()
                         .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
-                        .collect(Collectors.toList());
+                        .toList();
             } else {
                 patients = patientsDeLInvestigateur;
             }
@@ -415,7 +431,7 @@ public class PatientService {
             if (hopitalId != null && !hopitalId.trim().isEmpty()) {
                 patients = patientsDuMedecin.stream()
                         .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
-                        .collect(Collectors.toList());
+                        .toList();
             } else {
                 patients = patientsDuMedecin;
             }
@@ -427,7 +443,7 @@ public class PatientService {
         
         return patients.stream()
             .map(this::convertToDTO)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     private PatientDTO convertToDTO(PatientIdAdmin p) {

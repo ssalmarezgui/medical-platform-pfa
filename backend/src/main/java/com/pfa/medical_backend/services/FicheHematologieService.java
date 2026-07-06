@@ -2,26 +2,29 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 public class FicheHematologieService {
 
-    @Autowired
-    private HemotologieHemostaseRepository hhRepository;
+    private final HemotologieHemostaseRepository hhRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final AnalyseRepository analyseRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired
-    private AnalyseRepository analyseRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public FicheHematologieService(
+        HemotologieHemostaseRepository hhRepository,
+        PatientIdAdminRepository patientRepository,
+        AnalyseRepository analyseRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.hhRepository = hhRepository;
+        this.patientRepository = patientRepository;
+        this.analyseRepository = analyseRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public Optional<HemotologieHemostase> getByPatient(String patientId) {
         return hhRepository.findByPatient_IdentifiantP(patientId);
@@ -50,7 +53,6 @@ public class FicheHematologieService {
             hh.setPhenotypage(incoming.getPhenotypage());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             hh.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {
@@ -83,7 +85,6 @@ public class FicheHematologieService {
             hh.setPhenotypage(incoming.getPhenotypage());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             hh.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {

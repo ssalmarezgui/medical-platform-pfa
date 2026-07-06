@@ -2,23 +2,26 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 public class BiochimieSangService {
 
-    @Autowired
-    private BiochimieSangRepository bsRepository;
+    private final BiochimieSangRepository bsRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public BiochimieSangService(
+        BiochimieSangRepository bsRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.bsRepository = bsRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public Optional<BiochimieSang> getByPatient(String patientId) {
         return bsRepository.findByPatient_IdentifiantP(patientId);
@@ -47,7 +50,6 @@ public class BiochimieSangService {
             bs.setDescriptionBCS(incoming.getDescriptionBCS());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             bs.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {
@@ -59,7 +61,6 @@ public class BiochimieSangService {
 
         return bsRepository.save(bs);
     }
-
 
     @Transactional("transactionManager")
     public BiochimieSang createOrUpdateForDonor(Integer donorId, BiochimieSang incoming) {
@@ -81,7 +82,6 @@ public class BiochimieSangService {
             bs.setDescriptionBCS(incoming.getDescriptionBCS());
         }
 
-        // On nettoie et associe les analyses génériques associées à cette fiche
         if (incoming.getAnalyses() != null) {
             bs.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {

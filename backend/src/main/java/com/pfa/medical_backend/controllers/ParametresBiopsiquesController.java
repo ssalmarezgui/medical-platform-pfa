@@ -3,7 +3,6 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.ParametresBiopsiquesDTO;
 import com.pfa.medical_backend.entities.ParametresBiopsiques;
 import com.pfa.medical_backend.services.ParametresBiopsiquesService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,13 +10,14 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/biopsies")
-
 public class ParametresBiopsiquesController {
 
-    @Autowired
-    private ParametresBiopsiquesService pbService;
+    private final ParametresBiopsiquesService pbService;
 
-    // Convertisseur d'Entité vers DTO
+    public ParametresBiopsiquesController(ParametresBiopsiquesService pbService) {
+        this.pbService = pbService;
+    }
+
     private ParametresBiopsiquesDTO toDTO(ParametresBiopsiques pb) {
         ParametresBiopsiquesDTO dto = new ParametresBiopsiquesDTO();
         dto.setIdentifiantPB(pb.getIdentifiantPB());
@@ -25,6 +25,12 @@ public class ParametresBiopsiquesController {
             dto.setNephropathieId(pb.getNephropathie().getIdentifiantNI());
         }
         return dto;
+    }
+
+    private ParametresBiopsiques toEntity(ParametresBiopsiquesDTO dto) {
+        ParametresBiopsiques pb = new ParametresBiopsiques();
+        pb.setIdentifiantPB(dto.getIdentifiantPB());
+        return pb;
     }
 
     @GetMapping("/nephropathie/{nephropathieId}")
@@ -40,15 +46,15 @@ public class ParametresBiopsiquesController {
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
     public ResponseEntity<ParametresBiopsiquesDTO> create(
             @PathVariable Integer nephropathieId, 
-            @RequestBody ParametresBiopsiques pb) {
-        ParametresBiopsiques created = pbService.create(pb, nephropathieId);
+            @RequestBody ParametresBiopsiquesDTO dto) {
+        ParametresBiopsiques created = pbService.create(toEntity(dto), nephropathieId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
-    public ResponseEntity<ParametresBiopsiquesDTO> update(@PathVariable Integer id, @RequestBody ParametresBiopsiques details) {
-        ParametresBiopsiques updated = pbService.update(id, details);
+    public ResponseEntity<ParametresBiopsiquesDTO> update(@PathVariable Integer id, @RequestBody ParametresBiopsiquesDTO detailsDto) {
+        ParametresBiopsiques updated = pbService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 
