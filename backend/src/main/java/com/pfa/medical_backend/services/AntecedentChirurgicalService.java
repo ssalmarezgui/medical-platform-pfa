@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.AntecedentChirurgicalRepository;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class AntecedentChirurgicalService {
 
-    @Autowired
-    private AntecedentChirurgicalRepository acRepository;
+    private final AntecedentChirurgicalRepository acRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public AntecedentChirurgicalService(
+        AntecedentChirurgicalRepository acRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.acRepository = acRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<AntecedentChirurgical> getByPatient(String patientId) {
         return acRepository.findByPatient_IdentifiantP(patientId);

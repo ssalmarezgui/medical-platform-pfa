@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
@@ -10,11 +9,16 @@ import java.util.Optional;
 @Service
 public class ParametresBiopsiquesService {
 
-    @Autowired
-    private ParametresBiopsiquesRepository pbRepository;
+    private final ParametresBiopsiquesRepository pbRepository;
+    private final NephropathieInitialeRepository niRepository;
 
-    @Autowired
-    private NephropathieInitialeRepository niRepository;
+    public ParametresBiopsiquesService(
+        ParametresBiopsiquesRepository pbRepository,
+        NephropathieInitialeRepository niRepository
+    ) {
+        this.pbRepository = pbRepository;
+        this.niRepository = niRepository;
+    }
 
     public Optional<ParametresBiopsiques> getByNephropathie(Integer nephropathieId) {
         return pbRepository.findByNephropathie_IdentifiantNI(nephropathieId);
@@ -26,7 +30,6 @@ public class ParametresBiopsiquesService {
 
     @Transactional("transactionManager")
     public ParametresBiopsiques create(ParametresBiopsiques pb, Integer nephropathieId) {
-        // Sécurité : On s'assure qu'une biopsie n'est pas déjà liée à cette pathologie
         Optional<ParametresBiopsiques> existing = pbRepository.findByNephropathie_IdentifiantNI(nephropathieId);
         if (existing.isPresent()) {
             throw new RuntimeException("Erreur : Un rapport de biopsie existe déjà pour cette pathologie.");

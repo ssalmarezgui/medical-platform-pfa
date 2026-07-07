@@ -1,9 +1,9 @@
 package com.pfa.medical_backend.services;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
-
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -37,7 +37,6 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
     }
     
-
     @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
         if(userRepository.existsByLoginU(dto.getLoginU())){
@@ -152,6 +151,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public void lockUser(User user) {
         user.setAccountNonLocked(false);
-        user.setLocktime(LocalDateTime.now());
+        user.setLocktime(LocalDateTime.now(ZoneId.of("Africa/Tunis")));
     }
 }

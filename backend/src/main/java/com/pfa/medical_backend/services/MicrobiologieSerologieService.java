@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
@@ -10,14 +9,19 @@ import java.util.Optional;
 @Service
 public class MicrobiologieSerologieService {
 
-    @Autowired
-    private MicrobiologieSerologieRepository msRepository;
+    private final MicrobiologieSerologieRepository msRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public MicrobiologieSerologieService(
+        MicrobiologieSerologieRepository msRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.msRepository = msRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public Optional<MicrobiologieSerologie> getByPatient(String patientId) {
         return msRepository.findByPatient_IdentifiantP(patientId);
@@ -44,7 +48,6 @@ public class MicrobiologieSerologieService {
             ms.setTypeMS(incoming.getTypeMS());
         }
 
-        // On associe les analyses d'infectiologie
         if (incoming.getAnalyses() != null) {
             ms.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {
@@ -75,7 +78,6 @@ public class MicrobiologieSerologieService {
             ms.setTypeMS(incoming.getTypeMS());
         }
 
-        // On associe les analyses d'infectiologie
         if (incoming.getAnalyses() != null) {
             ms.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {

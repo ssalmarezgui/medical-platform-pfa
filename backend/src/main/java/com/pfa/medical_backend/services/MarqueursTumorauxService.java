@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.MarqueursTumorauxRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class MarqueursTumorauxService {
 
-    @Autowired
-    private MarqueursTumorauxRepository mtRepository;
+    private final MarqueursTumorauxRepository mtRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public MarqueursTumorauxService(
+        MarqueursTumorauxRepository mtRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.mtRepository = mtRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<MarqueursTumoraux> getByPatient(String patientId) {
         return mtRepository.findByPatient_IdentifiantP(patientId);
@@ -45,24 +49,20 @@ public class MarqueursTumorauxService {
         PatientIdAdmin patient = patientRepository.findById(patientId)
             .orElseThrow(() -> new RuntimeException("Patient non trouvé"));
 
-        // 1. On récupère la liste des marqueurs existants pour ce patient
         List<MarqueursTumoraux> existingList = mtRepository.findByPatient_IdentifiantP(patientId);
         MarqueursTumoraux mtToSave;
 
-        // 2. Si un dossier existe déjà, on le met à jour de manière sécurisée
         if (!existingList.isEmpty()) {
-            mtToSave = existingList.get(0); // On récupère le premier élément de la liste
+            mtToSave = existingList.get(0);
             mtToSave.setNomM(mt.getNomM());
             mtToSave.setResultat(mt.getResultat());
         } else {
-            // Sinon, on effectue une nouvelle insertion de ligne
             mtToSave = new MarqueursTumoraux();
             mtToSave.setPatient(patient);
             mtToSave.setNomM(mt.getNomM());
             mtToSave.setResultat(mt.getResultat());
         }
 
-        // 3. Sauvegarde finale propre sous MySQL Workbench
         return mtRepository.save(mtToSave);
     }
 
@@ -71,17 +71,14 @@ public class MarqueursTumorauxService {
         Donneur donneur = donneurRepository.findById(donorId)
             .orElseThrow(() -> new RuntimeException("Donneur non trouvé"));
 
-        // 1. On récupère la liste des marqueurs existants pour ce patient
         List<MarqueursTumoraux> existingList = mtRepository.findByDonneur_IdentifiantD(donorId);
         MarqueursTumoraux mtToSave;
 
-        // 2. Si un dossier existe déjà, on le met à jour de manière sécurisée
         if (!existingList.isEmpty()) {
-            mtToSave = existingList.get(0); // On récupère le premier élément de la liste
+            mtToSave = existingList.get(0);
             mtToSave.setNomM(mt.getNomM());
             mtToSave.setResultat(mt.getResultat());
         } else {
-            // Sinon, on effectue une nouvelle insertion de ligne
             mtToSave = new MarqueursTumoraux();
             mtToSave.setDonneur(donneur);
             mtToSave.setPatient(null);
@@ -89,7 +86,6 @@ public class MarqueursTumorauxService {
             mtToSave.setResultat(mt.getResultat());
         }
 
-        // 3. Sauvegarde finale propre sous MySQL Workbench
         return mtRepository.save(mtToSave);
     }
 
@@ -112,7 +108,6 @@ public class MarqueursTumorauxService {
     }
 
     public MarqueursTumoraux createOrUpdate(String patientId, MarqueursTumoraux mt) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'createOrUpdate'");
     }
 }

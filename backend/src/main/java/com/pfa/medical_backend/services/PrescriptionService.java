@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -11,14 +10,19 @@ import java.util.Optional;
 @Service
 public class PrescriptionService {
 
-    @Autowired
-    private PrescriptionRepository prescriptionRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final TraitementImmunoSuppresseurRepository tisRepository;
+    private final MedicamentRepository medicamentRepository;
 
-    @Autowired
-    private TraitementImmunoSuppresseurRepository tisRepository;
-
-    @Autowired
-    private MedicamentRepository medicamentRepository;
+    public PrescriptionService(
+        PrescriptionRepository prescriptionRepository,
+        TraitementImmunoSuppresseurRepository tisRepository,
+        MedicamentRepository medicamentRepository
+    ) {
+        this.prescriptionRepository = prescriptionRepository;
+        this.tisRepository = tisRepository;
+        this.medicamentRepository = medicamentRepository;
+    }
 
     public List<Prescription> getByTraitement(Integer traitementId) {
         return prescriptionRepository.findByTraitement_IdentifiantTIS(traitementId);

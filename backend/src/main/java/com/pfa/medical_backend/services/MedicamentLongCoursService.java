@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.MedicamentLongCoursRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class MedicamentLongCoursService {
 
-    @Autowired
-    private MedicamentLongCoursRepository mlcRepository;
+    private final MedicamentLongCoursRepository mlcRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public MedicamentLongCoursService(
+        MedicamentLongCoursRepository mlcRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.mlcRepository = mlcRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<MedicamentLongCours> getByPatient(String patientId) {
         return mlcRepository.findByPatient_IdentifiantP(patientId);

@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.HabitudeRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class HabitudeService {
 
-    @Autowired
-    private HabitudeRepository habitudeRepository;
+    private final HabitudeRepository habitudeRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public HabitudeService(
+        HabitudeRepository habitudeRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.habitudeRepository = habitudeRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<Habitude> getByPatient(String patientId) {
         return habitudeRepository.findByPatient_IdentifiantP(patientId);
@@ -31,8 +35,6 @@ public class HabitudeService {
     public List<Habitude> getByDonneur(Integer donorId) {
         return habitudeRepository.findByDonneur_IdentifiantD(donorId);
     }
-
-
 
     public List<Habitude> getAll() {
         return habitudeRepository.findAll();

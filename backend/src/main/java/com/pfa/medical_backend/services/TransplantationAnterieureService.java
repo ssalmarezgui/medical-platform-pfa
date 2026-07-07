@@ -4,7 +4,6 @@ import com.pfa.medical_backend.entities.TransplantationAnterieure;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.TransplantationAnterieureRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -13,11 +12,16 @@ import java.util.Optional;
 @Service
 public class TransplantationAnterieureService {
 
-    @Autowired
-    private TransplantationAnterieureRepository taRepository;
+    private final TransplantationAnterieureRepository taRepository;
+    private final PatientIdAdminRepository patientRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
+    public TransplantationAnterieureService(
+        TransplantationAnterieureRepository taRepository,
+        PatientIdAdminRepository patientRepository
+    ) {
+        this.taRepository = taRepository;
+        this.patientRepository = patientRepository;
+    }
 
     public List<TransplantationAnterieure> getByPatient(String patientId) {
         return taRepository.findByPatient_IdentifiantP(patientId);

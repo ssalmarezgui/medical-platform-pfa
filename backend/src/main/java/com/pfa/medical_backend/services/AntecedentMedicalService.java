@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.AntecedentMedicalRepository;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class AntecedentMedicalService {
 
-    @Autowired
-    private AntecedentMedicalRepository amRepository;
+    private final AntecedentMedicalRepository amRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public AntecedentMedicalService(
+        AntecedentMedicalRepository amRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.amRepository = amRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<AntecedentMedical> getByPatient(String patientId) {
         return amRepository.findByPatient_IdentifiantP(patientId);
@@ -47,7 +51,6 @@ public class AntecedentMedicalService {
         am.setPatient(patient);
         return amRepository.save(am);
     }
-
 
     @Transactional("transactionManager")
     public AntecedentMedical createForDonor(AntecedentMedical am, Integer donorId) {

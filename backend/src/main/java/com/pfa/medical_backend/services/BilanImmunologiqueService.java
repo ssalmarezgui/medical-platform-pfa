@@ -2,23 +2,26 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 public class BilanImmunologiqueService {
 
-    @Autowired
-    private BilanImmunologiqueRepository biRepository;
+    private final BilanImmunologiqueRepository biRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public BilanImmunologiqueService(
+        BilanImmunologiqueRepository biRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.biRepository = biRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public Optional<BilanImmunologique> getByPatient(String patientId) {
         return biRepository.findByPatient_IdentifiantP(patientId);
@@ -48,7 +51,6 @@ public class BilanImmunologiqueService {
             bi.setBilanImmuno(incoming.getBilanImmuno());
         }
 
-        // On associe les analyses d'immunologie
         if (incoming.getAnalyses() != null) {
             bi.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {
@@ -60,7 +62,6 @@ public class BilanImmunologiqueService {
 
         return biRepository.save(bi);
     }
-
 
     @Transactional("transactionManager")
     public BilanImmunologique createOrUpdate(String patientId, BilanImmunologique incoming) {
@@ -81,7 +82,6 @@ public class BilanImmunologiqueService {
             bi.setBilanImmuno(incoming.getBilanImmuno());
         }
 
-        // On associe les analyses d'immunologie
         if (incoming.getAnalyses() != null) {
             bi.getAnalyses().clear();
             for (Analyse ana : incoming.getAnalyses()) {

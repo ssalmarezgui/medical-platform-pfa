@@ -6,7 +6,6 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.ImagerieRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,14 +14,19 @@ import java.util.Optional;
 @Service
 public class ImagerieService {
 
-    @Autowired
-    private ImagerieRepository imagerieRepository;
+    private final ImagerieRepository imagerieRepository;
+    private final PatientIdAdminRepository patientRepository;
+    private final DonneurRepository donneurRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
-    @Autowired 
-    private DonneurRepository donneurRepository;
+    public ImagerieService(
+        ImagerieRepository imagerieRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ) {
+        this.imagerieRepository = imagerieRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<Imagerie> getByPatient(String patientId) {
         return imagerieRepository.findByPatient_IdentifiantP(patientId);
@@ -31,8 +35,6 @@ public class ImagerieService {
     public List<Imagerie> getByDonneur(Integer donorId) {
         return imagerieRepository.findByDonneur_IdentifiantD(donorId);
     }
-
-
 
     public List<Imagerie> getAll() {
         return imagerieRepository.findAll();

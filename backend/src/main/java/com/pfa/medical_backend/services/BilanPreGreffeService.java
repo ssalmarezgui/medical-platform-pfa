@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -11,11 +10,16 @@ import java.util.Optional;
 @Service
 public class BilanPreGreffeService {
 
-    @Autowired
-    private BilanPreGreffeRepository bpgRepository;
+    private final BilanPreGreffeRepository bpgRepository;
+    private final NephropathieInitialeRepository niRepository;
 
-    @Autowired
-    private NephropathieInitialeRepository niRepository;
+    public BilanPreGreffeService(
+        BilanPreGreffeRepository bpgRepository,
+        NephropathieInitialeRepository niRepository
+    ) {
+        this.bpgRepository = bpgRepository;
+        this.niRepository = niRepository;
+    }
 
     public List<BilanPreGreffe> getByNephropathie(Integer nephropathieId) {
         return bpgRepository.findByNephropathie_IdentifiantNI(nephropathieId);

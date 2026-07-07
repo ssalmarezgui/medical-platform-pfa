@@ -1,12 +1,8 @@
 package com.pfa.medical_backend.services;
 
-
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-
 import jakarta.persistence.EntityManager;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
@@ -16,24 +12,28 @@ import java.util.Optional;
 @Service
 public class ServiceHospitalierService {
 
-    @Autowired
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
+    private final ServiceRepository serviceRepository;
+    private final HopitalStructureSoinRepository hopitalRepository;
+    private final UserRepository userRepository;
+    private final MedecinRepository medecinRepository;
+    private final PatientIdAdminRepository patientRepository;
 
-    @Autowired
-    private ServiceRepository serviceRepository;
-
-    @Autowired
-    private HopitalStructureSoinRepository hopitalRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private MedecinRepository medecinRepository;
-
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
-
+    public ServiceHospitalierService(
+        EntityManager entityManager,
+        ServiceRepository serviceRepository,
+        HopitalStructureSoinRepository hopitalRepository,
+        UserRepository userRepository,
+        MedecinRepository medecinRepository,
+        PatientIdAdminRepository patientRepository
+    ) {
+        this.entityManager = entityManager;
+        this.serviceRepository = serviceRepository;
+        this.hopitalRepository = hopitalRepository;
+        this.userRepository = userRepository;
+        this.medecinRepository = medecinRepository;
+        this.patientRepository = patientRepository;
+    }
 
     @Transactional("transactionManager")
     public ServiceMedical assignerUtilisateurAuService(Integer serviceId, Integer userId) {
@@ -49,7 +49,6 @@ public class ServiceHospitalierService {
         throw new RuntimeException("Service ou Utilisateur non trouvé");
     }
 
-
     @Transactional("transactionManager")
     public ServiceMedical retirerUtilisateurDuService(Integer serviceId, Integer userId) {
         Optional<ServiceMedical> service = serviceRepository.findById(serviceId);
@@ -64,7 +63,6 @@ public class ServiceHospitalierService {
         throw new RuntimeException("Service ou Utilisateur non trouvé");
     }
 
-
     public List<ServiceMedical> getAllServices() {
         entityManager.clear();
         
@@ -78,7 +76,6 @@ public class ServiceHospitalierService {
         }
         return services;
     }
-
 
     public List<ServiceMedical> getServicesParHopital(String hopitalId) {
         entityManager.clear();
@@ -187,4 +184,3 @@ public class ServiceHospitalierService {
         throw new RuntimeException("Service non trouvé");
     }
 }
-

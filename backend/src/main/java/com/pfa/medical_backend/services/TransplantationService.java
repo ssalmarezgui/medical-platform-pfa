@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -11,14 +10,21 @@ import java.util.Optional;
 @Service
 public class TransplantationService {
 
-    @Autowired
-    private TransplantationRepository tRepository;
+    private final TransplantationRepository tRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
+    private final PatientIdAdminRepository patientRepository;
 
-    @Autowired
-    private DonneurRepository donneurRepository;
+    private final DonneurRepository donneurRepository;
+
+    public TransplantationService(
+        TransplantationRepository tRepository,
+        PatientIdAdminRepository patientRepository,
+        DonneurRepository donneurRepository
+    ){
+        this.tRepository = tRepository;
+        this.patientRepository = patientRepository;
+        this.donneurRepository = donneurRepository;
+    }
 
     public List<Transplantation> getByPatient(String patientId) {
         return tRepository.findByPatient_IdentifiantP(patientId);

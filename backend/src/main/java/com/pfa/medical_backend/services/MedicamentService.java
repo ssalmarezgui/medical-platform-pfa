@@ -2,7 +2,6 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.Medicament;
 import com.pfa.medical_backend.repositories.MedicamentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -11,10 +10,11 @@ import java.util.Optional;
 @Service
 public class MedicamentService {
 
-    @Autowired
-    private MedicamentRepository medicamentRepository;
+    private final MedicamentRepository medicamentRepository;
 
-    
+    public MedicamentService(MedicamentRepository medicamentRepository) {
+        this.medicamentRepository = medicamentRepository;
+    }
 
     public List<Medicament> getAll() {
         return medicamentRepository.findAll();

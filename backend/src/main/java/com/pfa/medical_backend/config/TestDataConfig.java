@@ -12,6 +12,7 @@ import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Configuration
 @ConditionalOnProperty(name = "app.test-data.enabled", havingValue = "true")
@@ -58,7 +59,7 @@ public class TestDataConfig {
             h1.setNbServiceH(12);
             h1.setNbLitsH(450);
             h1.setDescriptionH("Centre Hospitalo-Universitaire principal");
-            h1.setDateCreationH(LocalDate.now());
+            h1.setDateCreationH(LocalDate.now(ZoneId.of("Africa/Tunis")));
             HopitalStructureSoin savedH1 = hopitalRepo.save(h1);
 
             HopitalStructureSoin h2 = new HopitalStructureSoin();
@@ -69,7 +70,7 @@ public class TestDataConfig {
             h2.setNbServiceH(8);
             h2.setNbLitsH(300);
             h2.setDescriptionH("Hôpital universitaire spécialisé");
-            h2.setDateCreationH(LocalDate.now());
+            h1.setDateCreationH(LocalDate.now(ZoneId.of("Africa/Tunis")));
             HopitalStructureSoin savedH2 = hopitalRepo.save(h2);
 
             // Services 

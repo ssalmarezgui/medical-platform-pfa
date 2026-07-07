@@ -1,6 +1,7 @@
 package com.pfa.medical_backend.entities;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,6 +33,6 @@ public class AffectationPatientService {
     public AffectationPatientService(PatientIdAdmin patient, ServiceMedical service) {
         this.patient = patient;
         this.service = service;
-        this.dateAffectation = LocalDate.now();
+        this.dateAffectation = LocalDate.now(ZoneId.of("Africa/Tunis"));
     }
 }

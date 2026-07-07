@@ -4,7 +4,6 @@ import com.pfa.medical_backend.entities.NephropathieInitiale;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.NephropathieInitialeRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -14,11 +13,17 @@ import java.util.Optional;
 @Transactional("transactionManager")
 public class NephropathieInitialeService {
 
-    @Autowired
-    private NephropathieInitialeRepository niRepository;
+    private final NephropathieInitialeRepository niRepository;
+    private final PatientIdAdminRepository patientRepository;
 
-    @Autowired
-    private PatientIdAdminRepository patientRepository;
+    // Injection par constructeur (recommandé par Spring et SonarQube)
+    public NephropathieInitialeService(
+        NephropathieInitialeRepository niRepository,
+        PatientIdAdminRepository patientRepository
+    ) {
+        this.niRepository = niRepository;
+        this.patientRepository = patientRepository;
+    }
 
     public List<NephropathieInitiale> getByPatient(String patientId) {
         return niRepository.findByPatient_IdentifiantP(patientId);
@@ -56,9 +61,7 @@ public class NephropathieInitialeService {
             .orElseThrow(() -> new RuntimeException("Néphropathie non trouvée"));
 
         niRepository.deleteBilansByNiId(id);
-
         niRepository.deleteDialysesByNiId(id);
-
         niRepository.deleteBiopsiesByNiId(id);
 
         niRepository.delete(ni);
