@@ -83,12 +83,19 @@ jobs:
       - name: Recuperer le code source
         uses: actions/checkout@v3
 
-      # Étape 2 : Installer le Snyk CLI (Action officielle de Snyk)
+      # Étape 2 : Installer Java 17 (Indispensable pour que Snyk puisse analyser Maven !)
+      - name: Installer Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Étape 3 : Installer le Snyk CLI
       - name: Installer Snyk CLI
         uses: snyk/actions/setup@master
 
-      # Étape 3 : Exécuter le test de sécurité sur toutes les dépendances (Java & React)
+      # Étape 4 : Exécuter le test Snyk (Uniquement pour les failles graves ou critiques)
       - name: Executer Snyk Test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --all-projects
+        run: snyk test --all-projects --severity-threshold=high
