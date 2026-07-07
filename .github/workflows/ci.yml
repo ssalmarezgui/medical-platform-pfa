@@ -72,3 +72,23 @@ jobs:
           cd frontend
           npm install
           npm run build
+  
+
+  # Scanner les dépendances avec Snyk
+  snyk-ci:
+    name: Snyk Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      # Étape 1 : Récupérer le code
+      - name: Recuperer le code source
+        uses: actions/checkout@v3
+
+      # Étape 2 : Installer le Snyk CLI (Action officielle de Snyk)
+      - name: Installer Snyk CLI
+        uses: snyk/actions/setup@master
+
+      # Étape 3 : Exécuter le test de sécurité sur toutes les dépendances (Java & React)
+      - name: Executer Snyk Test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects
