@@ -3,23 +3,22 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.BilanPreGreffeDTO;
 import com.pfa.medical_backend.entities.BilanPreGreffe;
 import com.pfa.medical_backend.services.BilanPreGreffeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/bilans-pregreffe")
-
 public class BilanPreGreffeController {
 
-    @Autowired
-    private BilanPreGreffeService bpgService;
+    private final BilanPreGreffeService bpgService;
 
-    // Convertisseur d'Entité vers DTO
+    public BilanPreGreffeController(BilanPreGreffeService bpgService) {
+        this.bpgService = bpgService;
+    }
+
     private BilanPreGreffeDTO toDTO(BilanPreGreffe bpg) {
         BilanPreGreffeDTO dto = new BilanPreGreffeDTO();
         dto.setIdentifiantB(bpg.getIdentifiantB());
@@ -33,6 +32,16 @@ public class BilanPreGreffeController {
             dto.setNephropathieTypeClinique(bpg.getNephropathie().getTypeCliniqueNI());
         }
         return dto;
+    }
+
+    private BilanPreGreffe toEntity(BilanPreGreffeDTO dto) {
+        BilanPreGreffe bpg = new BilanPreGreffe();
+        bpg.setIdentifiantB(dto.getIdentifiantB());
+        bpg.setDateBilanB(dto.getDateBilanB());
+        bpg.setDescriptionBilanB(dto.getDescriptionBilanB());
+        bpg.setResultatBilanB(dto.getResultatBilanB());
+        bpg.setRapportBilanB(dto.getRapportBilanB());
+        return bpg;
     }
 
     @GetMapping
@@ -55,16 +64,15 @@ public class BilanPreGreffeController {
     @PostMapping("/nephropathie/{nephropathieId}")
     public ResponseEntity<BilanPreGreffeDTO> create(
             @PathVariable Integer nephropathieId, 
-            @RequestBody BilanPreGreffe bpg) {
-        BilanPreGreffe created = bpgService.create(bpg, nephropathieId);
+            @RequestBody BilanPreGreffeDTO dto) {
+        BilanPreGreffe created = bpgService.create(toEntity(dto), nephropathieId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
-    public ResponseEntity<BilanPreGreffeDTO> update(@PathVariable Integer id, @RequestBody BilanPreGreffe details) {
-        BilanPreGreffe updated = bpgService.update(id, details);
+    public ResponseEntity<BilanPreGreffeDTO> update(@PathVariable Integer id, @RequestBody BilanPreGreffeDTO detailsDto) {
+        BilanPreGreffe updated = bpgService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

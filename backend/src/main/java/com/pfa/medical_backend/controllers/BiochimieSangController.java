@@ -4,23 +4,27 @@ import com.pfa.medical_backend.repositories.BiochimieSangRepository;
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.BiochimieSangService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/biochimie-sanguine")
 public class BiochimieSangController {
 
-    @Autowired
-    private BiochimieSangService bsService;
+    private final BiochimieSangService bsService;
+    private final BiochimieSangRepository bsRepository;
 
-    @Autowired
-    private BiochimieSangRepository bsRepository;
+    public BiochimieSangController(
+        BiochimieSangService bsService,
+        BiochimieSangRepository bsRepository
+    ) {
+        this.bsService = bsService;
+        this.bsRepository = bsRepository;
+    }
+
     private BiochimieSangDTO toDTO(BiochimieSang bs) {
         BiochimieSangDTO dto = new BiochimieSangDTO();
         dto.setIdentifiantBCS(bs.getIdentifiantBCS());
@@ -49,6 +53,27 @@ public class BiochimieSangController {
         return dto;
     }
 
+    private BiochimieSang toEntity(BiochimieSangDTO dto) {
+        BiochimieSang bs = new BiochimieSang();
+        bs.setIdentifiantBCS(dto.getIdentifiantBCS());
+        bs.setLibelleBCS(dto.getLibelleBCS());
+        bs.setDescriptionBCS(dto.getDescriptionBCS());
+        
+        if (dto.getAnalyses() != null) {
+            List<Analyse> list = dto.getAnalyses().stream().map(a -> {
+                Analyse ana = new Analyse();
+                ana.setIdentifiantAna(a.getIdentifiantAna());
+                ana.setDateAna(a.getDateAna());
+                ana.setResultatAna(a.getResultatAna());
+                ana.setValeurAna(a.getValeurAna());
+                ana.setTypeAnalyse(a.getTypeAnalyse());
+                return ana;
+            }).toList();
+            bs.setAnalyses(list);
+        }
+        return bs;
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<BiochimieSangDTO> getAll() {
@@ -68,8 +93,8 @@ public class BiochimieSangController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<BiochimieSangDTO> save(@PathVariable String patientId, @RequestBody BiochimieSang bs) {
-        BiochimieSang saved = bsService.createOrUpdate(patientId, bs);
+    public ResponseEntity<BiochimieSangDTO> save(@PathVariable String patientId, @RequestBody BiochimieSangDTO dto) {
+        BiochimieSang saved = bsService.createOrUpdate(patientId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
@@ -84,8 +109,8 @@ public class BiochimieSangController {
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<BiochimieSangDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody BiochimieSang bs) {
-        BiochimieSang saved = bsService.createOrUpdateForDonor(donorId, bs);
+    public ResponseEntity<BiochimieSangDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody BiochimieSangDTO dto) {
+        BiochimieSang saved = bsService.createOrUpdateForDonor(donorId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 

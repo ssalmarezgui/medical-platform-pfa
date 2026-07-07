@@ -4,23 +4,26 @@ import com.pfa.medical_backend.repositories.MicrobiologieSerologieRepository;
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.MicrobiologieSerologieService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/microbiologie")
 public class MicrobiologieSerologieController {
 
-    @Autowired
-    private MicrobiologieSerologieService msService;
+    private final MicrobiologieSerologieService msService;
+    private final MicrobiologieSerologieRepository msRepository;
 
-    @Autowired
-    private MicrobiologieSerologieRepository msRepository;
+    public MicrobiologieSerologieController(
+        MicrobiologieSerologieService msService,
+        MicrobiologieSerologieRepository msRepository
+    ) {
+        this.msService = msService;
+        this.msRepository = msRepository;
+    }
 
     private MicrobiologieSerologieDTO toDTO(MicrobiologieSerologie ms) {
         MicrobiologieSerologieDTO dto = new MicrobiologieSerologieDTO();
@@ -45,6 +48,26 @@ public class MicrobiologieSerologieController {
             dto.setAnalyses(list);
         }
         return dto;
+    }
+
+    private MicrobiologieSerologie toEntity(MicrobiologieSerologieDTO dto) {
+        MicrobiologieSerologie ms = new MicrobiologieSerologie();
+        ms.setIdentifiantMS(dto.getIdentifiantMS());
+        ms.setTypeMS(dto.getTypeMS());
+        
+        if (dto.getAnalyses() != null) {
+            List<Analyse> list = dto.getAnalyses().stream().map(a -> {
+                Analyse ana = new Analyse();
+                ana.setIdentifiantAna(a.getIdentifiantAna());
+                ana.setDateAna(a.getDateAna());
+                ana.setResultatAna(a.getResultatAna());
+                ana.setValeurAna(a.getValeurAna());
+                ana.setTypeAnalyse(a.getTypeAnalyse());
+                return ana;
+            }).toList();
+            ms.setAnalyses(list);
+        }
+        return ms;
     }
 
     @GetMapping
@@ -75,15 +98,17 @@ public class MicrobiologieSerologieController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<MicrobiologieSerologieDTO> save(@PathVariable String patientId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
-        MicrobiologieSerologie saved = msService.createOrUpdate(patientId, ms);
+    public ResponseEntity<MicrobiologieSerologieDTO> save(@PathVariable String patientId, @RequestBody @jakarta.validation.Valid java.util.Optional<MicrobiologieSerologieDTO> dtoOptional) {
+        MicrobiologieSerologieDTO dto = dtoOptional.orElseThrow(() -> new IllegalArgumentException("Les données d'analyse sont manquantes"));
+        MicrobiologieSerologie saved = msService.createOrUpdate(patientId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<MicrobiologieSerologieDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody @jakarta.validation.Valid MicrobiologieSerologie ms) {
-        MicrobiologieSerologie saved = msService.createOrUpdateForDonor(donorId, ms);
+    public ResponseEntity<MicrobiologieSerologieDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody @jakarta.validation.Valid java.util.Optional<MicrobiologieSerologieDTO> dtoOptional) {
+        MicrobiologieSerologieDTO dto = dtoOptional.orElseThrow(() -> new IllegalArgumentException("Les données d'analyse sont manquantes"));
+        MicrobiologieSerologie saved = msService.createOrUpdateForDonor(donorId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 

@@ -4,7 +4,6 @@ import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.HormonesVitaminesService;
 import com.pfa.medical_backend.repositories.HormonesVitaminesRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,19 +11,21 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/hormones-vitamines")
-
 public class HormonesVitaminesController {
 
-    @Autowired
-    private HormonesVitaminesService hvService;
+    private final HormonesVitaminesService hvService;
+    private final HormonesVitaminesRepository hvRepository;
 
-    @Autowired
-    private HormonesVitaminesRepository hvRepository;
+    public HormonesVitaminesController(
+        HormonesVitaminesService hvService,
+        HormonesVitaminesRepository hvRepository
+    ) {
+        this.hvService = hvService;
+        this.hvRepository = hvRepository;
+    }
 
-    // Convertisseur d'Entité vers DTO
     private HormonesVitaminesDTO toDTO(HormonesVitamines hv) {
         HormonesVitaminesDTO dto = new HormonesVitaminesDTO();
         dto.setIdentifiantHV(hv.getIdentifiantHV());
@@ -51,6 +52,26 @@ public class HormonesVitaminesController {
             dto.setAnalyses(list);
         }
         return dto;
+    }
+
+    private HormonesVitamines toEntity(HormonesVitaminesDTO dto) {
+        HormonesVitamines hv = new HormonesVitamines();
+        hv.setIdentifiantHV(dto.getIdentifiantHV());
+        hv.setTypeHV(dto.getTypeHV());
+        
+        if (dto.getAnalyses() != null) {
+            List<Analyse> list = dto.getAnalyses().stream().map(a -> {
+                Analyse ana = new Analyse();
+                ana.setIdentifiantAna(a.getIdentifiantAna());
+                ana.setDateAna(a.getDateAna());
+                ana.setResultatAna(a.getResultatAna());
+                ana.setValeurAna(a.getValeurAna());
+                ana.setTypeAnalyse(a.getTypeAnalyse());
+                return ana;
+            }).toList();
+            hv.setAnalyses(list);
+        }
+        return hv;
     }
 
     @GetMapping
@@ -83,8 +104,8 @@ public class HormonesVitaminesController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<HormonesVitaminesDTO> saveForPatient(@PathVariable String patientId, @RequestBody HormonesVitamines hv) {
-        HormonesVitamines saved = hvService.createOrUpdate(patientId, hv);
+    public ResponseEntity<HormonesVitaminesDTO> saveForPatient(@PathVariable String patientId, @RequestBody HormonesVitaminesDTO dto) {
+        HormonesVitamines saved = hvService.createOrUpdate(patientId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
@@ -98,8 +119,8 @@ public class HormonesVitaminesController {
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<HormonesVitaminesDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HormonesVitamines hv) {
-        HormonesVitamines saved = hvService.createOrUpdateForDonor(donorId, hv);
+    public ResponseEntity<HormonesVitaminesDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HormonesVitaminesDTO dto) {
+        HormonesVitamines saved = hvService.createOrUpdateForDonor(donorId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 

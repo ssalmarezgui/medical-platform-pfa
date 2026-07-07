@@ -3,23 +3,22 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.DialyseDTO;
 import com.pfa.medical_backend.entities.Dialyse;
 import com.pfa.medical_backend.services.DialyseService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/dialyses")
-
 public class DialyseController {
 
-    @Autowired
-    private DialyseService dialyseService;
+    private final DialyseService dialyseService;
 
-    // Convertisseur d'Entité vers DTO
+    public DialyseController(DialyseService dialyseService) {
+        this.dialyseService = dialyseService;
+    }
+
     private DialyseDTO toDTO(Dialyse d) {
         DialyseDTO dto = new DialyseDTO();
         dto.setIdentifiantDia(d.getIdentifiantDia());
@@ -28,6 +27,13 @@ public class DialyseController {
             dto.setNephropathieId(d.getNephropathie().getIdentifiantNI());
         }
         return dto;
+    }
+
+    private Dialyse toEntity(DialyseDTO dto) {
+        Dialyse d = new Dialyse();
+        d.setIdentifiantDia(dto.getIdentifiantDia());
+        d.setTypeDialyse(dto.getTypeDialyse());
+        return d;
     }
 
     @GetMapping
@@ -50,16 +56,15 @@ public class DialyseController {
     @PostMapping("/nephropathie/{nephropathieId}")
     public ResponseEntity<DialyseDTO> create(
             @PathVariable Integer nephropathieId, 
-            @RequestBody Dialyse d) {
-        Dialyse created = dialyseService.create(d, nephropathieId);
+            @RequestBody DialyseDTO dto) {
+        Dialyse created = dialyseService.create(toEntity(dto), nephropathieId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
-    public ResponseEntity<DialyseDTO> update(@PathVariable Integer id, @RequestBody Dialyse details) {
-        Dialyse updated = dialyseService.update(id, details);
+    public ResponseEntity<DialyseDTO> update(@PathVariable Integer id, @RequestBody DialyseDTO detailsDto) {
+        Dialyse updated = dialyseService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

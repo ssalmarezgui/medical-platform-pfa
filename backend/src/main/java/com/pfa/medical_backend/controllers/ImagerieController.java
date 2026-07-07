@@ -3,20 +3,21 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.ImagerieDTO;
 import com.pfa.medical_backend.entities.Imagerie;
 import com.pfa.medical_backend.services.ImagerieService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/imageries")
 public class ImagerieController {
 
-    @Autowired
-    private ImagerieService imagerieService;
+    private final ImagerieService imagerieService;
+
+    public ImagerieController(ImagerieService imagerieService) {
+        this.imagerieService = imagerieService;
+    }
 
     private ImagerieDTO toDTO(Imagerie im) {
         ImagerieDTO dto = new ImagerieDTO();
@@ -31,6 +32,15 @@ public class ImagerieController {
             dto.setDonorId(im.getDonneur().getIdentifiantD());
         }
         return dto;
+    }
+
+    private Imagerie toEntity(ImagerieDTO dto) {
+        Imagerie im = new Imagerie();
+        im.setIdentifiantIm(dto.getIdentifiantIm());
+        im.setExamenIm(dto.getExamenIm());
+        im.setDateIm(dto.getDateIm());
+        im.setResultatIm(dto.getResultatIm());
+        return im;
     }
 
     @GetMapping
@@ -61,22 +71,22 @@ public class ImagerieController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<ImagerieDTO> create(@PathVariable String patientId, @RequestBody Imagerie imagerie) {
-        Imagerie created = imagerieService.create(imagerie, patientId);
+    public ResponseEntity<ImagerieDTO> create(@PathVariable String patientId, @RequestBody ImagerieDTO dto) {
+        Imagerie created = imagerieService.create(toEntity(dto), patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<ImagerieDTO> createForDonor(@PathVariable Integer donorId, @RequestBody Imagerie imagerie) {
-        Imagerie created = imagerieService.createForDonor(imagerie, donorId);
+    public ResponseEntity<ImagerieDTO> createForDonor(@PathVariable Integer donorId, @RequestBody ImagerieDTO dto) {
+        Imagerie created = imagerieService.createForDonor(toEntity(dto), donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<ImagerieDTO> update(@PathVariable Integer id, @RequestBody Imagerie details) {
-        Imagerie updated = imagerieService.update(id, details);
+    public ResponseEntity<ImagerieDTO> update(@PathVariable Integer id, @RequestBody ImagerieDTO detailsDto) {
+        Imagerie updated = imagerieService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

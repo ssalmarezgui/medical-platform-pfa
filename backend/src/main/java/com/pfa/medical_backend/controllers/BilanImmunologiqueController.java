@@ -4,23 +4,26 @@ import com.pfa.medical_backend.repositories.BilanImmunologiqueRepository;
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.BilanImmunologiqueService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/immunologie")
 public class BilanImmunologiqueController {
 
-    @Autowired
-    private BilanImmunologiqueService biService;
+    private final BilanImmunologiqueService biService;
+    private final BilanImmunologiqueRepository biRepository;
 
-    @Autowired
-    private BilanImmunologiqueRepository biRepository;
+    public BilanImmunologiqueController(
+        BilanImmunologiqueService biService,
+        BilanImmunologiqueRepository biRepository
+    ) {
+        this.biService = biService;
+        this.biRepository = biRepository;
+    }
 
     private BilanImmunologiqueDTO toDTO(BilanImmunologique bi) {
         BilanImmunologiqueDTO dto = new BilanImmunologiqueDTO();
@@ -48,6 +51,27 @@ public class BilanImmunologiqueController {
         return dto;
     }
 
+    private BilanImmunologique toEntity(BilanImmunologiqueDTO dto) {
+        BilanImmunologique bi = new BilanImmunologique();
+        bi.setIdentifiantBI(dto.getIdentifiantBI());
+        bi.setTypageHLA(dto.getTypageHLA());
+        bi.setBilanImmuno(dto.getBilanImmuno());
+        
+        if (dto.getAnalyses() != null) {
+            List<Analyse> list = dto.getAnalyses().stream().map(a -> {
+                Analyse ana = new Analyse();
+                ana.setIdentifiantAna(a.getIdentifiantAna());
+                ana.setDateAna(a.getDateAna());
+                ana.setResultatAna(a.getResultatAna());
+                ana.setValeurAna(a.getValeurAna());
+                ana.setTypeAnalyse(a.getTypeAnalyse());
+                return ana;
+            }).toList();
+            bi.setAnalyses(list);
+        }
+        return bi;
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<BilanImmunologiqueDTO> getAll() {
@@ -67,8 +91,8 @@ public class BilanImmunologiqueController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<BilanImmunologiqueDTO> save(@PathVariable String patientId, @RequestBody BilanImmunologique bi) {
-        BilanImmunologique saved = biService.createOrUpdate(patientId, bi);
+    public ResponseEntity<BilanImmunologiqueDTO> save(@PathVariable String patientId, @RequestBody BilanImmunologiqueDTO dto) {
+        BilanImmunologique saved = biService.createOrUpdate(patientId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
@@ -83,8 +107,8 @@ public class BilanImmunologiqueController {
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<BilanImmunologiqueDTO> saveForDonneur(@PathVariable Integer donorId, @RequestBody BilanImmunologique bi) {
-        BilanImmunologique saved = biService.createOrUpdateForDonor(donorId, bi);
+    public ResponseEntity<BilanImmunologiqueDTO> saveForDonneur(@PathVariable Integer donorId, @RequestBody BilanImmunologiqueDTO dto) {
+        BilanImmunologique saved = biService.createOrUpdateForDonor(donorId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 

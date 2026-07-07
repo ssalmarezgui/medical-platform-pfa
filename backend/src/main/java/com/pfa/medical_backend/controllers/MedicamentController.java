@@ -3,23 +3,22 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.MedicamentDTO;
 import com.pfa.medical_backend.entities.Medicament;
 import com.pfa.medical_backend.services.MedicamentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/medicaments")
-
 public class MedicamentController {
 
-    @Autowired
-    private MedicamentService medicamentService;
+    private final MedicamentService medicamentService;
 
-    // Convertisseur d'Entité vers DTO
+    public MedicamentController(MedicamentService medicamentService) {
+        this.medicamentService = medicamentService;
+    }
+
     private MedicamentDTO toDTO(Medicament m) {
         MedicamentDTO dto = new MedicamentDTO();
         dto.setIdentifiantMed(m.getIdentifiantMed());
@@ -28,6 +27,16 @@ public class MedicamentController {
         dto.setTypeMed(m.getTypeMed());
         dto.setPosologieMed(m.getPosologieMed());
         return dto;
+    }
+
+    private Medicament toEntity(MedicamentDTO dto) {
+        Medicament m = new Medicament();
+        m.setIdentifiantMed(dto.getIdentifiantMed());
+        m.setNomCommercialMed(dto.getNomCommercialMed());
+        m.setDescriptionMed(dto.getDescriptionMed());
+        m.setTypeMed(dto.getTypeMed());
+        m.setPosologieMed(dto.getPosologieMed());
+        return m;
     }
 
     @GetMapping
@@ -51,15 +60,15 @@ public class MedicamentController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
-    public ResponseEntity<MedicamentDTO> create(@RequestBody Medicament m) {
-        Medicament created = medicamentService.create(m);
+    public ResponseEntity<MedicamentDTO> create(@RequestBody MedicamentDTO dto) {
+        Medicament created = medicamentService.create(toEntity(dto));
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_HOPITAL')")
-    public ResponseEntity<MedicamentDTO> update(@PathVariable Integer id, @RequestBody Medicament details) {
-        Medicament updated = medicamentService.update(id, details);
+    public ResponseEntity<MedicamentDTO> update(@PathVariable Integer id, @RequestBody MedicamentDTO detailsDto) {
+        Medicament updated = medicamentService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

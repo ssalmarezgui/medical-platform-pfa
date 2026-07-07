@@ -3,23 +3,22 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.TransplantationDTO;
 import com.pfa.medical_backend.entities.Transplantation;
 import com.pfa.medical_backend.services.TransplantationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/transplantations")
-
 public class TransplantationController {
 
-    @Autowired
-    private TransplantationService tService;
+    private final TransplantationService tService;
 
-    // Convertisseur d'Entité vers DTO
+    public TransplantationController(TransplantationService tService) {
+        this.tService = tService;
+    }
+
     private TransplantationDTO toDTO(Transplantation t) {
         TransplantationDTO dto = new TransplantationDTO();
         dto.setNumeroTR(t.getNumeroTR());
@@ -53,10 +52,33 @@ public class TransplantationController {
         return dto;
     }
 
+    private Transplantation toEntity(TransplantationDTO dto) {
+        Transplantation t = new Transplantation();
+        t.setNumeroTR(dto.getNumeroTR());
+        t.setDateTR(dto.getDateTR());
+        t.setLieuDeLaGreffe(dto.getLieuDeLaGreffe());
+        t.setLieuDeSuivi(dto.getLieuDeSuivi());
+        t.setNbTransplantation(dto.getNbTransplantation());
+        t.setNbUretere(dto.getNbUretere());
+        t.setRein(dto.getRein());
+        t.setNbArtereVeine(dto.getNbArtereVeine());
+        t.setKystes(dto.getKystes());
+        t.setTypeAnomalie(dto.getTypeAnomalie());
+        t.setDureeIschemieFroide(dto.getDureeIschemieFroide());
+        t.setDureeIschemieChaude(dto.getDureeIschemieChaude());
+        t.setLiquideConservation(dto.getLiquideConservation());
+        t.setLiquideRincage(dto.getLiquideRincage());
+        t.setMachineAPerfusion(dto.getMachineAPerfusion());
+        t.setTypeAnastomoseArterielle(dto.getTypeAnastomoseArterielle());
+        t.setTypeAnastomoseVeineuse(dto.getTypeAnastomoseVeineuse());
+        t.setTypeAnastomoseUreteroVesicale(dto.getTypeAnastomoseUreteroVesicale());
+        t.setSondeEnDoubleJJ(dto.getSondeEnDoubleJJ());
+        return t;
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR')")
     public List<TransplantationDTO> getAll(@RequestParam(required = false) String patientId) {
-        // Sécurisation contre les chaînes de caractères vides
         List<Transplantation> list = (patientId != null && !patientId.trim().isEmpty()) 
             ? tService.getByPatient(patientId) 
             : tService.getAll();
@@ -78,15 +100,15 @@ public class TransplantationController {
     public ResponseEntity<TransplantationDTO> create(
             @PathVariable String patientId, 
             @PathVariable Integer donneurId, 
-            @RequestBody Transplantation t) {
-        Transplantation created = tService.create(t, patientId, donneurId);
+            @RequestBody TransplantationDTO dto) {
+        Transplantation created = tService.create(toEntity(dto), patientId, donneurId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')") 
-    public ResponseEntity<TransplantationDTO> update(@PathVariable Integer id, @RequestBody Transplantation details) {
-        Transplantation updated = tService.update(id, details);
+    public ResponseEntity<TransplantationDTO> update(@PathVariable Integer id, @RequestBody TransplantationDTO detailsDto) {
+        Transplantation updated = tService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

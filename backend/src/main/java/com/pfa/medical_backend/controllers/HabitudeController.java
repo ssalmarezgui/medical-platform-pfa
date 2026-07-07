@@ -3,21 +3,21 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.HabitudeDTO;
 import com.pfa.medical_backend.entities.Habitude;
 import com.pfa.medical_backend.services.HabitudeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/habitudes")
-
 public class HabitudeController {
 
-    @Autowired
-    private HabitudeService habitudeService;
+    private final HabitudeService habitudeService;
+
+    public HabitudeController(HabitudeService habitudeService) {
+        this.habitudeService = habitudeService;
+    }
 
     private HabitudeDTO toDTO(Habitude h) {
         HabitudeDTO dto = new HabitudeDTO();
@@ -37,6 +37,18 @@ public class HabitudeController {
             dto.setDonorId(h.getDonneur().getIdentifiantD());
         }
         return dto;
+    }
+
+    private Habitude toEntity(HabitudeDTO dto) {
+        Habitude h = new Habitude();
+        h.setIdentifiantHA(dto.getIdentifiantHA());
+        h.setLibelleHA(dto.getLibelleHA());
+        h.setTypeSubstance(dto.getTypeSubstance());
+        h.setDetails(dto.getDetails());
+        h.setQuantiteConsomme(dto.getQuantiteConsomme());
+        h.setPeriodeExposition(dto.getPeriodeExposition());
+        h.setSevrage(dto.getSevrage());
+        return h;
     }
 
     @GetMapping
@@ -67,23 +79,22 @@ public class HabitudeController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_PATIENT')")
-    public ResponseEntity<HabitudeDTO> create(@PathVariable String patientId, @RequestBody Habitude habitude) {
-        Habitude created = habitudeService.create(habitude, patientId);
+    public ResponseEntity<HabitudeDTO> create(@PathVariable String patientId, @RequestBody HabitudeDTO dto) {
+        Habitude created = habitudeService.create(toEntity(dto), patientId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_DONNEUR')")
-    public ResponseEntity<HabitudeDTO> createForDonor(@PathVariable Integer donorId, @RequestBody Habitude habitude) {
-        Habitude created = habitudeService.createForDonor(habitude, donorId);
+    public ResponseEntity<HabitudeDTO> createForDonor(@PathVariable Integer donorId, @RequestBody HabitudeDTO dto) {
+        Habitude created = habitudeService.createForDonor(toEntity(dto), donorId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
-
-    public ResponseEntity<HabitudeDTO> update(@PathVariable Integer id, @RequestBody Habitude details) {
-        Habitude updated = habitudeService.update(id, details);
+    public ResponseEntity<HabitudeDTO> update(@PathVariable Integer id, @RequestBody HabitudeDTO detailsDto) {
+        Habitude updated = habitudeService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 

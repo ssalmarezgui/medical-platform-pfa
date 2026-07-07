@@ -4,23 +4,26 @@ import com.pfa.medical_backend.repositories.HemotologieHemostaseRepository;
 import com.pfa.medical_backend.dto.*;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.services.FicheHematologieService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/hematologie")
 public class FicheHematologieController {
 
-    @Autowired
-    private FicheHematologieService fhService;
+    private final FicheHematologieService fhService;
+    private final HemotologieHemostaseRepository hhRepository;
 
-    @Autowired
-    private HemotologieHemostaseRepository hhRepository;
+    public FicheHematologieController(
+        FicheHematologieService fhService,
+        HemotologieHemostaseRepository hhRepository
+    ) {
+        this.fhService = fhService;
+        this.hhRepository = hhRepository;
+    }
 
     private HemotologieHemostaseDTO toDTO(HemotologieHemostase hh) {
         HemotologieHemostaseDTO dto = new HemotologieHemostaseDTO();
@@ -50,6 +53,27 @@ public class FicheHematologieController {
         return dto;
     }
 
+    private HemotologieHemostase toEntity(HemotologieHemostaseDTO dto) {
+        HemotologieHemostase hh = new HemotologieHemostase();
+        hh.setIdentifiantHH(dto.getIdentifiantHH());
+        hh.setGroupeSanguin(dto.getGroupeSanguin());
+        hh.setPhenotypage(dto.getPhenotypage());
+        
+        if (dto.getAnalyses() != null) {
+            List<Analyse> list = dto.getAnalyses().stream().map(a -> {
+                Analyse ana = new Analyse();
+                ana.setIdentifiantAna(a.getIdentifiantAna());
+                ana.setDateAna(a.getDateAna());
+                ana.setResultatAna(a.getResultatAna());
+                ana.setValeurAna(a.getValeurAna());
+                ana.setTypeAnalyse(a.getTypeAnalyse());
+                return ana;
+            }).toList();
+            hh.setAnalyses(list);
+        }
+        return hh;
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('READ_PATIENT', 'READ_DONNEUR', 'WRITE_LABO')")
     public List<HemotologieHemostaseDTO> getAll() {
@@ -69,8 +93,8 @@ public class FicheHematologieController {
 
     @PostMapping("/patient/{patientId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<HemotologieHemostaseDTO> save(@PathVariable String patientId, @RequestBody HemotologieHemostase hh) {
-        HemotologieHemostase saved = fhService.createOrUpdate(patientId, hh);
+    public ResponseEntity<HemotologieHemostaseDTO> save(@PathVariable String patientId, @RequestBody HemotologieHemostaseDTO dto) {
+        HemotologieHemostase saved = fhService.createOrUpdate(patientId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 
@@ -85,8 +109,8 @@ public class FicheHematologieController {
 
     @PostMapping("/donneur/{donorId}")
     @PreAuthorize("hasAuthority('WRITE_LABO')")
-    public ResponseEntity<HemotologieHemostaseDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HemotologieHemostase hh) {
-        HemotologieHemostase saved = fhService.createOrUpdateForDonor(donorId, hh);
+    public ResponseEntity<HemotologieHemostaseDTO> saveForDonor(@PathVariable Integer donorId, @RequestBody HemotologieHemostaseDTO dto) {
+        HemotologieHemostase saved = fhService.createOrUpdateForDonor(donorId, toEntity(dto));
         return new ResponseEntity<>(toDTO(saved), HttpStatus.CREATED);
     }
 

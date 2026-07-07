@@ -3,20 +3,21 @@ package com.pfa.medical_backend.controllers;
 import com.pfa.medical_backend.dto.DosageMedSangDTO;
 import com.pfa.medical_backend.entities.DosageMedSang;
 import com.pfa.medical_backend.services.DosageMedSangService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/dosages-sanguins")
 public class DosageMedSangController {
 
-    @Autowired
-    private DosageMedSangService dmsService;
+    private final DosageMedSangService dmsService;
+
+    public DosageMedSangController(DosageMedSangService dmsService) {
+        this.dmsService = dmsService;
+    }
 
     private DosageMedSangDTO toDTO(DosageMedSang dms) {
         DosageMedSangDTO dto = new DosageMedSangDTO();
@@ -31,6 +32,16 @@ public class DosageMedSangController {
         return dto;
     }
 
+    private DosageMedSang toEntity(DosageMedSangDTO dto) {
+        DosageMedSang dms = new DosageMedSang();
+        dms.setIdentifiantDMS(dto.getIdentifiantDMS());
+        dms.setDateDMS(dto.getDateDMS());
+        dms.setLabelDMS(dto.getLabelDMS());
+        dms.setValeurDMS(dto.getValeurDMS());
+        dms.setObservationDMS(dto.getObservationDMS());
+        return dms;
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('READ_IMMUNO')")
     public List<DosageMedSangDTO> getAll(@RequestParam(required = false) Integer traitementId) {
@@ -42,7 +53,7 @@ public class DosageMedSangController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('READ_IMMUNO')")
+    @PreAuthorize("hasAuthority('READ_IMMUNO')") 
     public ResponseEntity<DosageMedSangDTO> getById(@PathVariable Integer id) {
         return dmsService.getById(id)
             .map(this::toDTO)
@@ -51,18 +62,18 @@ public class DosageMedSangController {
     }
 
     @PostMapping("/traitement/{traitementId}")
-    @PreAuthorize("hasAnyAuthority('WRITE_IMMUNO', 'WRITE_IMMUNO_COMPLICATION')")
+    @PreAuthorize("hasAuthority('WRITE_IMMUNO')")
     public ResponseEntity<DosageMedSangDTO> create(
             @PathVariable Integer traitementId, 
-            @RequestBody DosageMedSang dms) {
-        DosageMedSang created = dmsService.create(dms, traitementId);
+            @RequestBody DosageMedSangDTO dto) {
+        DosageMedSang created = dmsService.create(toEntity(dto), traitementId);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('WRITE_IMMUNO', 'WRITE_IMMUNO_COMPLICATION')")
-    public ResponseEntity<DosageMedSangDTO> update(@PathVariable Integer id, @RequestBody DosageMedSang details) {
-        DosageMedSang updated = dmsService.update(id, details);
+    public ResponseEntity<DosageMedSangDTO> update(@PathVariable Integer id, @RequestBody DosageMedSangDTO detailsDto) {
+        DosageMedSang updated = dmsService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 
