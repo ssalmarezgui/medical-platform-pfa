@@ -283,10 +283,24 @@ public class PatientService {
     }
 
     private boolean updateBaseFields(PatientIdAdmin target, PatientIdAdmin source) {
-        boolean hopitalUpdated = false;
+        updateIdentityFields(target, source);
+        return updateContactAndClinicalFields(target, source);
+    }
 
+    private void updateIdentityFields(PatientIdAdmin target, PatientIdAdmin source) {
         if (source.getNomP() != null) target.setNomP(source.getNomP());
         if (source.getPrenomP() != null) target.setPrenomP(source.getPrenomP());
+        if (source.getDateNaissP() != null) target.setDateNaissP(source.getDateNaissP());
+        if (source.getNumeroCin() != null) target.setNumeroCin(source.getNumeroCin());
+        if (source.getAdulteP() != null) target.setAdulteP(source.getAdulteP());
+        if (source.getNiveauEducation() != null) target.setNiveauEducation(source.getNiveauEducation());
+        if (source.getEnEtatActivite() != null) target.setEnEtatActivite(source.getEnEtatActivite());
+        if (source.getPersonneAcontacterP() != null) target.setPersonneAcontacterP(source.getPersonneAcontacterP());
+    }
+
+    private boolean updateContactAndClinicalFields(PatientIdAdmin target, PatientIdAdmin source) {
+        boolean hopitalUpdated = false;
+
         if (source.getNationaliteP() != null) target.setNationaliteP(source.getNationaliteP());
         if (source.getSexeP() != null) target.setSexeP(source.getSexeP());
         if (source.getOrigineGeogP() != null) target.setOrigineGeogP(source.getOrigineGeogP());
@@ -294,20 +308,15 @@ public class PatientService {
         if (source.getTelephoneP() != null) target.setTelephoneP(source.getTelephoneP());
         if (source.getAdressEmailP() != null) target.setAdressEmailP(source.getAdressEmailP());
         if (source.getTelephoneWhatsAppP() != null) target.setTelephoneWhatsAppP(source.getTelephoneWhatsAppP());
-        if (source.getDateNaissP() != null) target.setDateNaissP(source.getDateNaissP());
-        if (source.getPersonneAcontacterP() != null) target.setPersonneAcontacterP(source.getPersonneAcontacterP());
         if (source.getTypeCarnetP() != null) target.setTypeCarnetP(source.getTypeCarnetP());
         if (source.getNumCarnetP() != null) target.setNumCarnetP(source.getNumCarnetP());
+        if (source.getStatut() != null) target.setStatut(source.getStatut());
+        if (source.getEvolution() != null) target.setEvolution(source.getEvolution());
+        
         if (source.getIndexHopitalP() != null) {
             target.setIndexHopitalP(source.getIndexHopitalP());
             hopitalUpdated = true;
         }
-        if (source.getAdulteP() != null) target.setAdulteP(source.getAdulteP());
-        if (source.getStatut() != null) target.setStatut(source.getStatut());
-        if (source.getEvolution() != null) target.setEvolution(source.getEvolution());
-        if (source.getNiveauEducation() != null) target.setNiveauEducation(source.getNiveauEducation());
-        if (source.getEnEtatActivite() != null) target.setEnEtatActivite(source.getEnEtatActivite());
-        if (source.getNumeroCin() != null) target.setNumeroCin(source.getNumeroCin());
 
         return hopitalUpdated;
     }
@@ -412,30 +421,9 @@ public class PatientService {
         List<PatientIdAdmin> patients;
         
         if (medecinInvestigateurId != null) {
-            List<PatientIdAdmin> patientsDeLInvestigateur = medecinRepository.findById(medecinInvestigateurId)
-                    .map(patientRepository::findByMedecinInvestigateur)
-                    .orElse(List.of());
-            
-            if (hopitalId != null && !hopitalId.trim().isEmpty()) {
-                patients = patientsDeLInvestigateur.stream()
-                        .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
-                        .toList();
-            } else {
-                patients = patientsDeLInvestigateur;
-            }
-            
+            patients = getPatientsByInvestigateur(medecinInvestigateurId, hopitalId);
         } else if (medecinSuiviId != null) {
-            List<PatientIdAdmin> patientsDuMedecin = medecinRepository.findById(medecinSuiviId)
-                    .map(patientRepository::findByMedecinSuiveur)
-                    .orElse(List.of());
-            
-            if (hopitalId != null && !hopitalId.trim().isEmpty()) {
-                patients = patientsDuMedecin.stream()
-                        .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
-                        .toList();
-            } else {
-                patients = patientsDuMedecin;
-            }
+            patients = getPatientsBySuivi(medecinSuiviId, hopitalId);
         } else if (hopitalId != null && !hopitalId.trim().isEmpty()) {
             patients = patientRepository.findByIndexHopitalP(hopitalId);
         } else {
@@ -445,6 +433,29 @@ public class PatientService {
         return patients.stream()
             .map(this::convertToDTO)
             .toList();
+    }
+
+    private List<PatientIdAdmin> getPatientsByInvestigateur(Long investigateurId, String hopitalId) {
+        List<PatientIdAdmin> list = medecinRepository.findById(investigateurId)
+                .map(patientRepository::findByMedecinInvestigateur)
+                .orElse(List.of());
+        return filterByHopitalIfNeeded(list, hopitalId);
+    }
+
+    private List<PatientIdAdmin> getPatientsBySuivi(Long suiviId, String hopitalId) {
+        List<PatientIdAdmin> list = medecinRepository.findById(suiviId)
+                .map(patientRepository::findByMedecinSuiveur)
+                .orElse(List.of());
+        return filterByHopitalIfNeeded(list, hopitalId);
+    }
+
+    private List<PatientIdAdmin> filterByHopitalIfNeeded(List<PatientIdAdmin> patients, String hopitalId) {
+        if (hopitalId != null && !hopitalId.trim().isEmpty()) {
+            return patients.stream()
+                    .filter(p -> hopitalId.equals(p.getIndexHopitalP()))
+                    .toList();
+        }
+        return patients;
     }
 
     private PatientDTO convertToDTO(PatientIdAdmin p) {

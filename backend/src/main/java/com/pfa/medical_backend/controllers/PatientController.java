@@ -2,6 +2,7 @@ package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.dto.PatientDTO;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
+import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.services.PatientService;
 
@@ -21,6 +22,8 @@ import java.util.Optional;
 @RequestMapping("/api/patients")
 @Slf4j
 public class PatientController {
+
+    private static final String ROLE_MED_SUIVI = "ROLE_MEDECIN_SUIVI";
 
     private final PatientService patientService;
     private final UserRepository userRepository;
@@ -106,7 +109,7 @@ public class PatientController {
         if (auth == null) return false;
         
         return auth.getAuthorities().stream().anyMatch(a -> 
-            a.getAuthority().equals("ROLE_MEDECIN_SUIVI") || 
+            a.getAuthority().equals(ROLE_MED_SUIVI) || 
             a.getAuthority().equals("MEDECIN_SUIVI")                    
         )
         && auth.getAuthorities().stream().noneMatch(a -> 
@@ -121,30 +124,40 @@ public class PatientController {
         @RequestParam(name = "hopitalId", required = false) String hopitalId,
         Authentication auth
     ) {
-        Long medecinInvestigateurId = null;
-        Long medecinSuiviId = null;
+        SearchContext context = resolveSearchContext(hopitalId, auth);
+        
+        List<PatientDTO> patients = patientService.getPatientsAsDTO(
+            context.resolvedHopitalId, 
+            context.medecinInvestigateurId, 
+            context.medecinSuiviId
+        );
+        return ResponseEntity.ok(patients);
+    }
 
-        if (auth != null) {
-            Optional<com.pfa.medical_backend.entities.User> loggedInUser = userRepository.findByLoginU(auth.getName());
-            if (loggedInUser.isPresent()) {
-                com.pfa.medical_backend.entities.User user = loggedInUser.get();
-                
-                if (user.getRole() != null && "ROLE_MEDECIN_SUIVI".equals(user.getRole().getNomRole()) && user.getMedecin() != null) {
+    private SearchContext resolveSearchContext(String hopitalId, Authentication auth) {
+        if (auth == null) {
+            return new SearchContext(hopitalId, null, null);
+        }
+
+        return userRepository.findByLoginU(auth.getName()).map(user -> {
+            Long medecinInvestigateurId = null;
+            Long medecinSuiviId = null;
+            String resolvedHopitalId = hopitalId;
+
+            if (user.getRole() != null && user.getMedecin() != null) {
+                String roleName = user.getRole().getNomRole();
+                if (ROLE_MED_SUIVI.equals(roleName)) {
                     medecinSuiviId = user.getMedecin().getIdentifiantM();
-                    
-                    if ((hopitalId == null || hopitalId.trim().isEmpty()) && user.getService() != null && user.getService().getHopital() != null) {
-                        hopitalId = user.getService().getHopital().getIdentifiantH();
+                    if ((resolvedHopitalId == null || resolvedHopitalId.trim().isEmpty()) 
+                        && user.getService() != null && user.getService().getHopital() != null) {
+                        resolvedHopitalId = user.getService().getHopital().getIdentifiantH();
                     }
-                }
-
-                if (user.getRole() != null && "ROLE_MEDECIN_INVESTIGATEUR".equals(user.getRole().getNomRole()) && user.getMedecin() != null) {
+                } else if ("ROLE_MEDECIN_INVESTIGATEUR".equals(roleName)) {
                     medecinInvestigateurId = user.getMedecin().getIdentifiantM();
                 }
             }
-        }
-
-        List<PatientDTO> patients = patientService.getPatientsAsDTO(hopitalId, medecinInvestigateurId, medecinSuiviId);
-        return ResponseEntity.ok(patients);
+            return new SearchContext(resolvedHopitalId, medecinInvestigateurId, medecinSuiviId);
+        }).orElse(new SearchContext(hopitalId, null, null));
     }
 
     @GetMapping("/{id}")
@@ -167,37 +180,45 @@ public class PatientController {
         log.info("Création d'un nouveau dossier patient");
         PatientIdAdmin patient = toEntity(dto);
 
-        if (auth != null) {
-            userRepository.findByLoginU(auth.getName()).ifPresent(user -> {
-                String hopitalMedecin = null;
-                if (user.getService() != null && user.getService().getHopital() != null) {
-                    hopitalMedecin = user.getService().getHopital().getIdentifiantH();
-                }
-
-                if (hopitalMedecin != null) {
-                    patient.setIndexHopitalP(hopitalMedecin);
-                } else {
-                    throw new IllegalArgumentException("Le médecin connecté n'est rattaché à aucun hôpital.");
-                }
-
-                if (user.getRole() != null) {
-                    String nomRole = user.getRole().getNomRole();
-                    if ("ROLE_MEDECIN_INVESTIGATEUR".equals(nomRole) && user.getMedecin() != null) {
-                        patient.setMedecinInvestigateur(user.getMedecin());
-                    }
-                    
-                    if ("ROLE_MEDECIN_SUIVI".equals(nomRole) && user.getMedecin() != null) {
-                        if (patient.getMedecinsSuivi() == null) {
-                            patient.setMedecinsSuivi(new java.util.HashSet<>());
-                        }
-                        patient.getMedecinsSuivi().add(user.getMedecin());
-                    }
-                }
-            });
-        }
+        enrichPatientWithAuthContext(patient, auth);
 
         PatientIdAdmin created = patientService.createPatient(patient);
         return new ResponseEntity<>(toDTO(created), HttpStatus.CREATED);
+    }
+
+    private void enrichPatientWithAuthContext(PatientIdAdmin patient, Authentication auth) {
+        if (auth == null) {
+            return;
+        }
+
+        userRepository.findByLoginU(auth.getName()).ifPresent(user -> {
+            String hopitalMedecin = null;
+            if (user.getService() != null && user.getService().getHopital() != null) {
+                hopitalMedecin = user.getService().getHopital().getIdentifiantH();
+            }
+
+            if (hopitalMedecin != null) {
+                patient.setIndexHopitalP(hopitalMedecin);
+            } else {
+                throw new IllegalArgumentException("Le médecin connecté n'est rattaché à aucun hôpital.");
+            }
+
+            if (user.getRole() != null && user.getMedecin() != null) {
+                associateMedecinRole(patient, user);
+            }
+        });
+    }
+
+    private void associateMedecinRole(PatientIdAdmin patient, User user) {
+        String nomRole = user.getRole().getNomRole();
+        if ("ROLE_MEDECIN_INVESTIGATEUR".equals(nomRole)) {
+            patient.setMedecinInvestigateur(user.getMedecin());
+        } else if (ROLE_MED_SUIVI.equals(nomRole)) {
+            if (patient.getMedecinsSuivi() == null) {
+                patient.setMedecinsSuivi(new java.util.HashSet<>());
+            }
+            patient.getMedecinsSuivi().add(user.getMedecin());
+        }
     }
 
     @PutMapping("/{id}")
@@ -260,8 +281,19 @@ public class PatientController {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception e) {
         log.error("Une erreur interne est survenue lors du traitement de la requête :", e);
-        
         return ResponseEntity.badRequest().body(Map.of("message",
                 e.getMessage() != null ? e.getMessage() : "Erreur inattendue"));
+    }
+
+    private static class SearchContext {
+        final String resolvedHopitalId;
+        final Long medecinInvestigateurId;
+        final Long medecinSuiviId;
+
+        SearchContext(String resolvedHopitalId, Long medecinInvestigateurId, Long medecinSuiviId) {
+            this.resolvedHopitalId = resolvedHopitalId;
+            this.medecinInvestigateurId = medecinInvestigateurId;
+            this.medecinSuiviId = medecinSuiviId;
+        }
     }
 }

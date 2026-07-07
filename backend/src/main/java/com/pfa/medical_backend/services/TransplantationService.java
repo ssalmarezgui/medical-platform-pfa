@@ -11,9 +11,7 @@ import java.util.Optional;
 public class TransplantationService {
 
     private final TransplantationRepository tRepository;
-
     private final PatientIdAdminRepository patientRepository;
-
     private final DonneurRepository donneurRepository;
 
     public TransplantationService(
@@ -56,6 +54,13 @@ public class TransplantationService {
         Transplantation t = tRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
 
+        updateGeneralDetails(t, details);
+        updateMedicalDetails(t, details);
+
+        return tRepository.save(t);
+    }
+
+    private void updateGeneralDetails(Transplantation t, Transplantation details) {
         if (details.getDateTR() != null) t.setDateTR(details.getDateTR());
         if (details.getLieuDeLaGreffe() != null) t.setLieuDeLaGreffe(details.getLieuDeLaGreffe());
         if (details.getLieuDeSuivi() != null) t.setLieuDeSuivi(details.getLieuDeSuivi());
@@ -65,6 +70,9 @@ public class TransplantationService {
         if (details.getNbArtereVeine() != null) t.setNbArtereVeine(details.getNbArtereVeine());
         if (details.getKystes() != null) t.setKystes(details.getKystes());
         if (details.getTypeAnomalie() != null) t.setTypeAnomalie(details.getTypeAnomalie());
+    }
+
+    private void updateMedicalDetails(Transplantation t, Transplantation details) {
         if (details.getDureeIschemieFroide() != null) t.setDureeIschemieFroide(details.getDureeIschemieFroide());
         if (details.getDureeIschemieChaude() != null) t.setDureeIschemieChaude(details.getDureeIschemieChaude());
         if (details.getLiquideConservation() != null) t.setLiquideConservation(details.getLiquideConservation());
@@ -74,8 +82,6 @@ public class TransplantationService {
         if (details.getTypeAnastomoseVeineuse() != null) t.setTypeAnastomoseVeineuse(details.getTypeAnastomoseVeineuse());
         if (details.getTypeAnastomoseUreteroVesicale() != null) t.setTypeAnastomoseUreteroVesicale(details.getTypeAnastomoseUreteroVesicale());
         if (details.getSondeEnDoubleJJ() != null) t.setSondeEnDoubleJJ(details.getSondeEnDoubleJJ());
-
-        return tRepository.save(t);
     }
 
     @Transactional("transactionManager")

@@ -156,15 +156,17 @@ public class TraitementImmunoSuppresseurController {
     }
 
     private void updateEntretienDetails(TraitementImmunoSuppresseur existing, TraitementImmunoSuppresseur details) {
-        if (existing instanceof TISEntretien extEnt && details instanceof TISEntretien detEnt) {
-            if (detEnt.getMmfTISE() != null) extEnt.setMmfTISE(detEnt.getMmfTISE());
-            if (detEnt.getAzathioprineTISE() != null) extEnt.setAzathioprineTISE(detEnt.getAzathioprineTISE());
-            if (detEnt.getCyclusporineTISE() != null) extEnt.setCyclusporineTISE(detEnt.getCyclusporineTISE());
-            if (detEnt.getTacrolimusTISE() != null) extEnt.setTacrolimusTISE(detEnt.getTacrolimusTISE());
-            if (detEnt.getPrednisoleTISE() != null) extEnt.setPrednisoleTISE(detEnt.getPrednisoleTISE());
-            if (detEnt.getPrednisoluneTISE() != null) extEnt.setPrednisoluneTISE(detEnt.getPrednisoluneTISE());
-            if (detEnt.getSirolimus() != null) extEnt.setSirolimus(detEnt.getSirolimus());
+        if (!(existing instanceof TISEntretien extEnt && details instanceof TISEntretien detEnt)) {
+            return;
         }
+
+        if (detEnt.getMmfTISE() != null) extEnt.setMmfTISE(detEnt.getMmfTISE());
+        if (detEnt.getAzathioprineTISE() != null) extEnt.setAzathioprineTISE(detEnt.getAzathioprineTISE());
+        if (detEnt.getCyclusporineTISE() != null) extEnt.setCyclusporineTISE(detEnt.getCyclusporineTISE());
+        if (detEnt.getTacrolimusTISE() != null) extEnt.setTacrolimusTISE(detEnt.getTacrolimusTISE());
+        if (detEnt.getPrednisoleTISE() != null) extEnt.setPrednisoleTISE(detEnt.getPrednisoleTISE());
+        if (detEnt.getPrednisoluneTISE() != null) extEnt.setPrednisoluneTISE(detEnt.getPrednisoluneTISE());
+        if (detEnt.getSirolimus() != null) extEnt.setSirolimus(detEnt.getSirolimus());
     }
 
     @DeleteMapping("/{id}")
