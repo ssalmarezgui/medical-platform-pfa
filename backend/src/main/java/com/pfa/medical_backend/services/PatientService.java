@@ -138,7 +138,8 @@ public class PatientService {
         String customId = generateCustomId(patient, isAdulte, checkCin, checkCarnet);
         patient.setIdentifiantP(customId);
 
-        log.info("Identifiant unique généré avec succès en base : {}", patient.getIdentifiantP());
+        String sanitizedId = patient.getIdentifiantP() != null ? patient.getIdentifiantP().replaceAll("[\r\n]", "") : "";
+        log.info("Identifiant unique généré avec succès en base : {}", sanitizedId);
 
         if (incoming.getMedecinInvestigateur() != null) {
             attachInvestigateur(patient, incoming.getMedecinInvestigateur());
