@@ -9,6 +9,9 @@ Thumbs.db
 .env
 gitleaks-report.json
 
+
+snyk.exe
+
 # Backend Spring Boot
 
 backend/target/
