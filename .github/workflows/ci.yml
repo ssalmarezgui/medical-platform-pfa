@@ -1,16 +1,13 @@
-name: Integration Continue (CI)
+name: Integration & Deploiement Continus (CI/CD)
 
-# 1- EVENT (déclencheur) : on lance ce pipeline sur toutes les branches
 on:
   push:
     branches: ["*"]
   pull_request:
     branches: ["*"]
 
-# 2- JOBS : on définit les tâches principales à exécuter
 jobs:
 
-  # Scanner les secrets avec Gitleaks
   gitleaks-ci:
     name: Gitleaks Security Scan
     runs-on: ubuntu-latest
@@ -26,35 +23,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-  # Compiler et Analyser le Backend avec SonarCloud
   backend-ci:
     name: Build & Test Backend 
     runs-on: ubuntu-latest
     steps: 
-      # Étape 1 : Récupérer le code source avec l'historique complet
       - name: Recuperer le code source (historique complet)
         uses: actions/checkout@v3 
         with:
-          fetch-depth: 0 # Permet à Sonar de lier les bugs aux bons commits/auteurs
+          fetch-depth: 0 
 
-      # Étape 2 : Installer Java 17
       - name: Installer Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # Étape 3 : Compiler et analyser le code avec le scanner SonarCloud 
       - name: Compiler et Analyser avec SonarCloud
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   
         run: |
           cd backend
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ssalmarezgui_medical-platform-pfa -DskipTests
 
 
-  # Compiler et Tester le Frontend React
   frontend-ci:
     name: Build & Test Frontend
     runs-on: ubuntu-latest
@@ -72,76 +64,100 @@ jobs:
           cd frontend
           npm install
           npm run build
-  
 
-  # Scanner les dépendances avec Snyk
+
   snyk-ci:
     name: Snyk Dependency Security Scan
     runs-on: ubuntu-latest
     steps:
-      # Étape 1 : Récupérer le code
       - name: Recuperer le code source
         uses: actions/checkout@v3
 
-      # Étape 2 : Installer Java 17
       - name: Installer Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # Étape 3 : Résoudre et télécharger les dépendances Maven localement sur le serveur
       - name: Telecharger les dependances Maven
         run: |
           cd backend
           mvn dependency:resolve
 
-      # Étape 4 : Installer le Snyk CLI
-      - name: Installer Snyk CLI
+      - name: Installer le Snyk CLI
         uses: snyk/actions/setup@master
 
-      # Étape 5 : Exécuter le test de sécurité Snyk
       - name: Executer Snyk Test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test --all-projects --severity-threshold=high
-  
 
-  # Déploiement Continu (Docker Build & Push)
+
   docker-cd:
-    name: Build Docker Images & Push to Docker Hub
+    name: Build, Scan & Push Docker Images
     runs-on: ubuntu-latest
-    # Barrière de sécurité : ce job ne démarre QUE si les 4 précédents ont réussi !
     needs: [gitleaks-ci, backend-ci, frontend-ci, snyk-ci]
     
     steps:
-      # Étape 1 : Récupérer le code
       - name: Recuperer le code source
         uses: actions/checkout@v3
 
-      # Étape 2 : Configurer l'environnement de build Docker (Buildx)
       - name: Configurer Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Étape 3 : Connexion sécurisée à votre compte Docker Hub
       - name: Connexion a Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Étape 4 : Construire et envoyer l'image du Backend Java
-      - name: Construire et Envoyer l'image Backend
+
+      - name: [Backend] Construire l'image locale
         uses: docker/build-push-action@v4
         with:
-          context: ./backend # Dossier où se situe le Dockerfile du Backend
+          context: ./backend
+          load: true
+          tags: medical-backend:test
+
+      - name: [Backend] Scan de securite Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'medical-backend:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL'
+
+      - name: [Backend] Envoyer l'image validee sur Docker Hub
+        if: success()
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/medical-backend:latest
 
-      # Étape 5 : Construire et envoyer l'image du Frontend React
-      - name: Construire et Envoyer l'image Frontend
+
+
+      - name: [Frontend] Construire l'image locale
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend # Dossier où se situe le Dockerfile du Frontend
+          context: ./frontend
+          load: true
+          tags: medical-frontend:test
+
+      - name: [Frontend] Scan de securite Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'medical-frontend:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL'
+
+      - name: [Frontend] Envoyer l'image validee sur Docker Hub
+        if: success()
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/medical-frontend:latest
