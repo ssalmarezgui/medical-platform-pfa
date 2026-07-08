@@ -112,14 +112,14 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
 
-      - name: [Backend] Construire l'image locale
+      - name: Backend - Construire l'image locale
         uses: docker/build-push-action@v4
         with:
           context: ./backend
           load: true
           tags: medical-backend:test
 
-      - name: [Backend] Scan de securite Trivy
+      - name: Backend - Scan de securite Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'medical-backend:test'
@@ -128,7 +128,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL'
 
-      - name: [Backend] Envoyer l'image validee sur Docker Hub
+      - name: Backend - Envoyer l'image validee sur Docker Hub
         if: success()
         uses: docker/build-push-action@v4
         with:
@@ -138,14 +138,14 @@ jobs:
 
 
 
-      - name: [Frontend] Construire l'image locale
+      - name: Frontend - Construire l'image locale
         uses: docker/build-push-action@v4
         with:
           context: ./frontend
           load: true
           tags: medical-frontend:test
 
-      - name: [Frontend] Scan de securite Trivy
+      - name: Frontend - Scan de securite Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'medical-frontend:test'
@@ -154,7 +154,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL'
 
-      - name: [Frontend] Envoyer l'image validee sur Docker Hub
+      - name: Frontend - Envoyer l'image validee sur Docker Hub
         if: success()
         uses: docker/build-push-action@v4
         with:
