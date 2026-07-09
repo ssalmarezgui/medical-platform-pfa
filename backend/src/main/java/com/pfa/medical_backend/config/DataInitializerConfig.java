@@ -92,7 +92,7 @@ public class DataInitializerConfig {
             ));
 
             Role roleInvestigateur = bootstrapRole(roleRepository, permissionRepository, "ROLE_MEDECIN_INVESTIGATEUR", Set.of(
-                READ_PATIENT, "WRITE_PATIENT", READ_DONNEUR, "WRITE_DONNEUR", READ_MEDECIN, READ_SERVICE, READ_HOPITAL, READ_LABO
+                READ_PATIENT, "WRITE_PATIENT", READ_DONNEUR, "WRITE_DONNEUR", "DELETE_DONNEUR", READ_MEDECIN, READ_SERVICE, READ_HOPITAL, READ_LABO
             ));
 
             Role roleLabo = bootstrapRole(roleRepository, permissionRepository, "ROLE_AGENT_LABORATOIRE", Set.of(READ_PATIENT, READ_DONNEUR, READ_LABO, "WRITE_LABO"));

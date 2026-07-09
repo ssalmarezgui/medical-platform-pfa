@@ -28,10 +28,14 @@ public class ServiceController {
         dto.setIdentifiantS(s.getIdentifiantS());
         dto.setLibelleS(s.getLibelleS());
         dto.setNbLitsS(s.getNbLitsS());
+        dto.setNbChambresS(s.getNbChambresS());
         dto.setNbMedecinsS(s.getNbMedecinsS());
+        
         if (s.getHopital() != null) {
-            dto.setHopitalId(s.getHopital().getIdentifiantH());
+            dto.setIdHopital(s.getHopital().getIdentifiantH());
             dto.setHopitalLibelle(s.getHopital().getLibelleH());
+        } else if (s.getIdHopital() != null) {
+            dto.setIdHopital(s.getIdHopital());
         }
         return dto;
     }
@@ -41,6 +45,7 @@ public class ServiceController {
         s.setIdentifiantS(dto.getIdentifiantS());
         s.setLibelleS(dto.getLibelleS());
         s.setNbLitsS(dto.getNbLitsS());
+        s.setNbChambresS(dto.getNbChambresS());
         s.setNbMedecinsS(dto.getNbMedecinsS());
         return s;
     }

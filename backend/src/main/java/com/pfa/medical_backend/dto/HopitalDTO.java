@@ -1,5 +1,9 @@
 package com.pfa.medical_backend.dto;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -13,4 +17,10 @@ public class HopitalDTO {
     private Integer nbLitsH;
     
     private Integer nbServiceH; 
+    
+    private Integer nbBlocH;
+    private String descriptionH;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate dateCreationH;
 }

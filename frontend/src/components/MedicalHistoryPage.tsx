@@ -5,7 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { medicalService } from '../features/medical-history/api/medicalService';
 import { 
   IconMedicalCross, IconSearch, IconPlus, IconTrash, IconUserCheck, IconAlertCircle, IconCalendar, IconEdit, IconNotes,
-  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen
+  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
@@ -15,7 +16,6 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorMedicalHistory } from '../features/medical-history/hooks/useMedical';
-import { usePermission } from '../hooks/usePermission';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const MedicalHistoryPage = () => {
@@ -28,16 +28,26 @@ export const MedicalHistoryPage = () => {
 
   const subjects = isDonorMode ? donors : patients;
 
-  const { hasPermission } = usePermission();
-  const userRole = useAuthStore((state) => state.role);
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
-  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+  const estInvestigateur = roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
+  const estAdmin = roleU === 'ADMIN';
 
-  if (!canAccess) {
+  const aAccesPage = estInvestigateur || estSuivi || estAdmin;
+  const isReadOnly = estSuivi || estAdmin;
+
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique médical.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          L'évaluation de l'autonomie et le recueil des antécédents médicaux d'admission sont réservés exclusivement aux praticiens cliniques autorisés.
+        </p>
       </div>
     );
   }
@@ -149,7 +159,7 @@ export const MedicalHistoryPage = () => {
   }) || [];
 
   const handleAutonomieChange = async (niveauSelected: string) => {
-    if (!selectedPatientId || !selectedPatient) return;
+    if (!selectedPatientId || !selectedPatient || isReadOnly) return;
 
     setLocalAutonomie(niveauSelected);
 
@@ -196,7 +206,7 @@ export const MedicalHistoryPage = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPatientId) return;
+    if (!selectedPatientId || isReadOnly) return;
 
     let payload: any = {
       type,
@@ -253,6 +263,7 @@ export const MedicalHistoryPage = () => {
   };
 
   const triggerEdit = (am: any) => {
+    if (isReadOnly) return;
     setSelectedAM(am);
     setType(am.type);
     setSousType(am.sousType);
@@ -266,12 +277,13 @@ export const MedicalHistoryPage = () => {
   };
 
   const triggerDelete = (id: number) => {
+    if (isReadOnly) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
   const handleDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || isReadOnly) return;
     try {
       if (isDonorMode) {
         await axios.delete(`http://localhost:8081/api/antecedents-medicaux/${idToDelete}`);
@@ -384,7 +396,7 @@ export const MedicalHistoryPage = () => {
   };
 
   const handleImportSubmit = async () => {
-    if (previewData.length === 0) return;
+    if (previewData.length === 0 || isReadOnly) return; 
     setIsProcessing(true);
     let successCount = 0;
 
@@ -571,7 +583,7 @@ export const MedicalHistoryPage = () => {
           
           {!isReadOnly && (
             <div className="lg:col-span-1">
-              {(!selectedAM || modeEdition) ? (
+              {(!selectedAM || selectedAM) ? (
                 <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
                   <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
                     <IconPlus size={20} /> {selectedAM ? "Modifier l'Antécédent" : "Saisir un Antécédent"}

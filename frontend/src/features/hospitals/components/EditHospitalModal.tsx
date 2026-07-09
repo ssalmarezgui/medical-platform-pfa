@@ -37,6 +37,12 @@ export const EditHospitalModal = ({ isOpen, onClose, hospital }: EditHospitalMod
     }
   }, [hospital, reset]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setToastOpen(false);
+    }
+  }, [isOpen]);
+
   const onSubmit = async (data: HospitalFormValues) => {
     if (!hospital) return;
 

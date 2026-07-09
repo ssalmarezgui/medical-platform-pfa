@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useDoctors, useDeleteDoctor } from '../features/doctors/hooks/useDoctors';
 import { useHospitals } from '../features/hospitals/hooks/useHospitals';
+
+import { useAuthStore } from '../store/useAuthStore';
+
 import { 
   IconStethoscope, 
   IconSearch, 
@@ -13,8 +16,6 @@ import {
   IconTrash,
   IconEdit,
   IconBuildingHospital,
-  IconGenderMale,
-  IconGenderFemale
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
@@ -23,10 +24,17 @@ import { EditDoctorModal } from '../features/doctors/components/EditDoctorModal'
 import { ImportDoctorsModal } from '../features/doctors/components/ImportDoctorsModal';
 
 export const DoctorPage = () => {
+  const { user } = useAuthStore();
+  const estAdmin = user?.roleU === 'ADMIN';
+
   const { data: hospitals } = useHospitals();
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
   
-  const { data: doctors, isLoading, error } = useDoctors(undefined, selectedHospitalFilter || undefined);
+  const activeHospitalId = estAdmin
+    ? (selectedHospitalFilter || undefined)
+    : (user?.hopitalId || undefined);
+
+  const { data: doctors, isLoading, error } = useDoctors(undefined, activeHospitalId);
   const deleteDoctorMutation = useDeleteDoctor();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,17 +52,19 @@ export const DoctorPage = () => {
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   const triggerDelete = (id: number) => {
+    if (!estAdmin) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
   const triggerEdit = (doc: any) => {
+    if (!estAdmin) return;
     setSelectedDoctor(doc);
     setIsEditOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || !estAdmin) return;
     try {
       await deleteDoctorMutation.mutateAsync(idToDelete);
       setConfirmOpen(false);
@@ -93,7 +103,7 @@ export const DoctorPage = () => {
 
     const lignesCSV = doctors.map(doc => {
       const hospitalName = hospitals?.find(h => h.identifiantH === doc.indexHopitalM)?.libelleH || "Non lié";
-      const serviceName = doc.service?.libelleS || "Aucun pôle";
+      const serviceName = doc.serviceLibelle || "Aucun pôle";
 
       return enTetes.map(champ => {
         let valeur = "";
@@ -137,7 +147,12 @@ export const DoctorPage = () => {
   const filteredDoctors = doctors?.filter(doc => {
     const nomComplet = sansAccents(`${doc.prenomM} ${doc.nomM}`.toLowerCase());
     const recherchePropre = sansAccents(searchTerm.toLowerCase());
-    return nomComplet.includes(recherchePropre) || sansAccents(doc.specialiteM.toLowerCase()).includes(recherchePropre);
+    const matricule = doc.identifiantM ? String(doc.identifiantM) : "";
+    return (
+      nomComplet.includes(recherchePropre) || 
+      sansAccents(doc.specialiteM.toLowerCase()).includes(recherchePropre) ||
+      matricule.includes(recherchePropre)
+    );
   });
 
   const estVide = !doctors || doctors.length === 0;
@@ -166,10 +181,10 @@ export const DoctorPage = () => {
           <p className="text-[#6588BB] text-sm mt-1">Gérer les médecins praticiens et leurs affectations cliniques.</p>
         </div>
 
-        {!estVide && (
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {estAdmin && (
             <select 
-              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
               value={selectedHospitalFilter}
               onChange={(e) => setSelectedHospitalFilter(e.target.value)}
             >
@@ -178,17 +193,19 @@ export const DoctorPage = () => {
                 <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
               ))}
             </select>
+          )}
 
-            <div className="relative w-full sm:w-64">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none text-sm text-slate-800 transition-all" 
-                placeholder="Rechercher par nom ou spécialité..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+          <div className="relative w-full sm:w-64">
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none text-sm text-slate-800 transition-all" 
+              placeholder="Rechercher par nom, spécialité ou matricule..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
+          {estAdmin && (
             <button 
               onClick={() => setIsImportOpen(true)} 
               title="Importer des données"
@@ -196,20 +213,22 @@ export const DoctorPage = () => {
             >
               <IconDatabaseImport size={18} />
             </button>
+          )}
 
-            <button 
-              onClick={handleExportCSV}
-              title="Exporter en Excel/CSV"
-              className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center cursor-pointer"
-            >
-              <IconFileSpreadsheet size={18} />
-            </button>
+          <button 
+            onClick={handleExportCSV}
+            title="Exporter en Excel/CSV"
+            className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center cursor-pointer"
+          >
+            <IconFileSpreadsheet size={18} />
+          </button>
 
+          {estAdmin && (
             <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 flex items-center gap-2 border-none cursor-pointer">
               <IconPlus size={16} /> Ajouter un médecin
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {estVide ? (
@@ -218,10 +237,15 @@ export const DoctorPage = () => {
             <IconStethoscope size={32} />
           </div>
           <h3 className="text-lg font-bold text-slate-900 mb-2">Aucun médecin</h3>
-          <p className="text-[#6588BB] text-xs max-w-xs mb-6">Ajoutez les médecins praticiens de votre établissement.</p>
-          <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-            Enregistrer le premier médecin
-          </button>
+          <p className="text-[#6588BB] text-xs max-w-xs mb-6">Aucun médecin n'est affilié à cet établissement pour le moment.</p>
+          
+          {estAdmin ? (
+            <button onClick={() => setIsAddOpen(true)} className="bg-[#2B5296] text-white px-5 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
+              Enregistrer le premier médecin
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Seul un administrateur peut enregistrer un premier praticien.</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,9 +288,9 @@ export const DoctorPage = () => {
                       <IconBuildingHospital size={16} className="text-slate-400 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-slate-800">{hospitalName}</span>
-                        {doc.service && doc.service.libelleS ? (
+                        {doc.serviceLibelle ? (
                           <p className="text-[10px] text-[#006591] font-bold mt-0.5">
-                            Service : {doc.service.libelleS}
+                            Service : {doc.serviceLibelle}
                           </p>
                         ) : (
                           <p className="text-[10px] text-slate-400 italic mt-0.5">
@@ -304,14 +328,17 @@ export const DoctorPage = () => {
                     <IconCalendar size={14} />
                     Diplômé le : {doc.dateDernierDiplomeM}
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => triggerEdit(doc)} className="p-2 bg-slate-50 hover:bg-slate-100 text-[#006591] rounded-lg border-none cursor-pointer">
-                      <IconEdit size={16} />
-                    </button>
-                    <button onClick={() => triggerDelete(doc.identifiantM!)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg border-none cursor-pointer">
-                      <IconTrash size={16} />
-                    </button>
-                  </div>
+                  
+                  {estAdmin && (
+                    <div className="flex gap-1">
+                      <button onClick={() => triggerEdit(doc)} className="p-2 bg-slate-50 hover:bg-slate-100 text-[#006591] rounded-lg border-none cursor-pointer">
+                        <IconEdit size={16} />
+                      </button>
+                      <button onClick={() => triggerDelete(doc.identifiantM!)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg border-none cursor-pointer">
+                        <IconTrash size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -319,20 +346,24 @@ export const DoctorPage = () => {
         </div>
       )}
 
-      <AddDoctorModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
-      {selectedDoctor && (
-        <EditDoctorModal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedDoctor(null); }} doctor={selectedDoctor} />
-      )}
-      
-      <DeleteConfirmModal 
-        isOpen={confirmOpen} 
-        onClose={() => setConfirmOpen(false)} 
-        onConfirm={handleConfirmDelete} 
-        title="Retirer ce médecin ?" 
-        message="Cette action est irréversible. Le médecin sera désinscrit du service ainsi que de tous ses patients suivis." 
-      />
+      {estAdmin && (
+        <>
+          <AddDoctorModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+          {selectedDoctor && (
+            <EditDoctorModal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedDoctor(null); }} doctor={selectedDoctor} />
+          )}
+          
+          <DeleteConfirmModal 
+            isOpen={confirmOpen} 
+            onClose={() => setConfirmOpen(false)} 
+            onConfirm={handleConfirmDelete} 
+            title="Retirer ce médecin ?" 
+            message="Cette action est irréversible. Le médecin sera désinscrit du service ainsi que de tous ses patients suivis." 
+          />
 
-      <ImportDoctorsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+          <ImportDoctorsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+        </>
+      )}
 
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />
     </div>

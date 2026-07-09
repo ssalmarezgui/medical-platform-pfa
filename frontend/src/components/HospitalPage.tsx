@@ -6,6 +6,8 @@ import { DeleteConfirmModal } from '../components/ui/DeleteConfirmModal';
 import { EditHospitalModal } from '../features/hospitals/components/EditHospitalModal';
 import { ImportHospitalsModal } from '../features/hospitals/components/ImportHospitalsModal';
 
+import { useAuthStore } from '../store/useAuthStore';
+
 import { 
   IconHospital, 
   IconMapPin, 
@@ -54,6 +56,10 @@ const DescriptionExtensible = ({ texte }: { texte: string }) => {
 
 export const HospitalPage = () => {
   const { data: hospitals, isLoading, error } = useHospitals();
+  
+  const { user } = useAuthStore();
+  const estAdmin = user?.roleU === 'ADMIN';
+
   const deleteHospitalMutation = useDeleteHospital();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -72,17 +78,19 @@ export const HospitalPage = () => {
 
 
   const triggerDeleteConfirmation = (id: string) => {
+    if (!estAdmin) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
-    const triggerEditModal = (hospital: HopitalStructureSoin) => {
+  const triggerEditModal = (hospital: HopitalStructureSoin) => {
+    if (!estAdmin) return;
     setSelectedHospital(hospital);
     setIsEditModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!idToDelete) return;
+    if (!idToDelete || !estAdmin) return;
 
     try {
       await deleteHospitalMutation.mutateAsync(idToDelete);
@@ -149,9 +157,14 @@ export const HospitalPage = () => {
     document.body.removeChild(lienTelechargement);
   };
 
-  const filteredHospitals = hospitals?.filter(hospital => 
-    hospital.libelleH.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredHospitals = hospitals?.filter(hospital => {
+    const term = searchTerm.toLowerCase().trim();
+    return (
+      hospital.libelleH.toLowerCase().includes(term) ||
+      hospital.identifiantH.toLowerCase().includes(term) ||
+      (hospital.adresseH && hospital.adresseH.toLowerCase().includes(term))
+    );
+  });
 
   if (isLoading) {
     return (
@@ -185,7 +198,7 @@ export const HospitalPage = () => {
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none text-sm text-slate-800 transition-all" 
-                placeholder="Rechercher par nom Hôpital" 
+                placeholder="Rechercher par nom, code, adresse..." 
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -193,13 +206,15 @@ export const HospitalPage = () => {
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
-              <button 
-                onClick={() => setIsImportOpen(true)}
-                title="Importer des données"
-                className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <IconDatabaseImport size={18} />
-              </button>
+              {estAdmin && (
+                <button 
+                  onClick={() => setIsImportOpen(true)}
+                  title="Importer des données"
+                  className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center cursor-pointer"
+                >
+                  <IconDatabaseImport size={18} />
+                </button>
+              )}
               <button 
                 onClick={handleExportCSV}
                 title="Exporter en Excel/CSV"
@@ -209,12 +224,14 @@ export const HospitalPage = () => {
               </button>
             </div>
 
-            <button 
-              className="w-full sm:w-auto bg-[#006591] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-[#004c6e] transition-colors flex items-center justify-center gap-2 shadow-sm border-none cursor-pointer whitespace-nowrap"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              <IconPlus size={16} /> Ajouter un hôpital
-            </button>
+            {estAdmin && (
+              <button 
+                className="w-full sm:w-auto bg-[#006591] text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-[#004c6e] transition-colors flex items-center justify-center gap-2 shadow-sm border-none cursor-pointer whitespace-nowrap"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                <IconPlus size={16} /> Ajouter un hôpital
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -226,13 +243,18 @@ export const HospitalPage = () => {
           </div>
           <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun hôpital disponible</h3>
           <p className="text-[#6588BB] text-sm max-w-sm mb-8 leading-relaxed">
-            Il semble qu'aucune structure de soins ne soit enregistrée pour le moment. Commencez par en ajouter une.
+            Il semble qu'aucune structure de soins ne soit enregistrée pour le moment.
           </p>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-[#006591] text-white px-6 py-3.5 rounded-xl text-xs font-bold hover:bg-[#004c6e] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#006591]/20 border-none cursor-pointer">
-            <IconPlus size={16} /> Enregistrer le premier hôpital
-          </button>
+          
+          {estAdmin ? (
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-[#006591] text-white px-6 py-3.5 rounded-xl text-xs font-bold hover:bg-[#004c6e] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#006591]/20 border-none cursor-pointer">
+              <IconPlus size={16} /> Enregistrer le premier hôpital
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Veuillez contacter un administrateur pour enregistrer un établissement.</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -303,22 +325,24 @@ export const HospitalPage = () => {
                       {hospital.nbServiceH || 0} Services
                     </div>
                     
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => triggerEditModal(hospital)}
-                        title="Modifier cet établissement"
-                        className="p-2 bg-slate-50 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg transition-colors border-none cursor-pointer"
-                      >
-                        <IconEdit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => triggerDeleteConfirmation(hospital.identifiantH)}
-                        title="Supprimer cet établissement"
-                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors border-none cursor-pointer"
-                      >
-                        <IconTrash size={16} />
-                      </button>
-                    </div>
+                    {estAdmin && (
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => triggerEditModal(hospital)}
+                          title="Modifier cet établissement"
+                          className="p-2 bg-slate-50 hover:bg-[#DCE6F5]/50 text-[#006591] rounded-lg transition-colors border-none cursor-pointer"
+                        >
+                          <IconEdit size={16} />
+                        </button>
+                        <button 
+                          onClick={() => triggerDeleteConfirmation(hospital.identifiantH)}
+                          title="Supprimer cet établissement"
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors border-none cursor-pointer"
+                        >
+                          <IconTrash size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -330,32 +354,37 @@ export const HospitalPage = () => {
           )}
         </div>
       )}
-      <AddHospitalModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
-      />
 
-      <DeleteConfirmModal
-        isOpen={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Supprimer cet établissement ?"
-        message="Cette action est irréversible. L'établissement sera retiré du système ainsi que toutes ses affectations."
-      />
+      {estAdmin && (
+        <>
+          <AddHospitalModal 
+            isOpen={isAddModalOpen} 
+            onClose={() => setIsAddModalOpen(false)} 
+          />
 
-      <EditHospitalModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedHospital(null);
-        }}
-        hospital={selectedHospital}
-      />
+          <DeleteConfirmModal
+            isOpen={confirmOpen}
+            onClose={() => setConfirmOpen(false)}
+            onConfirm={handleConfirmDelete}
+            title="Supprimer cet établissement ?"
+            message="Cette action est irréversible. L'établissement sera retiré du système ainsi que toutes ses affectations."
+          />
 
-      <ImportHospitalsModal
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
-      />
+          <EditHospitalModal
+            isOpen={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedHospital(null);
+            }}
+            hospital={selectedHospital}
+          />
+
+          <ImportHospitalsModal
+            isOpen={isImportOpen}
+            onClose={() => setIsImportOpen(false)}
+          />
+        </>
+      )}
 
       <Toast 
         isOpen={toastOpen} 

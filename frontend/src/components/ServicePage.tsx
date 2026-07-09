@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useServices, useDeleteService } from '../features/services/hooks/useServices';
 import { useHospitals } from '../features/hospitals/hooks/useHospitals';
+
+import { useAuthStore } from '../store/useAuthStore'; 
+
 import { 
   IconBuildingHospital, 
   IconSearch, 
@@ -12,8 +15,8 @@ import {
   IconDatabaseImport,
   IconTrash,
   IconEdit,
-  IconArrowRight,
-  IconHospital
+  IconHospital,
+  IconLock 
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from '../components/ui/DeleteConfirmModal';
@@ -22,6 +25,9 @@ import { EditServiceModal } from '../features/services/components/EditServiceMod
 import { ImportServicesModal } from '../features/services/components/ImportServicesModal';
 
 export const ServicePage = () => {
+  const { user } = useAuthStore();
+  const estAdmin = user?.roleU === 'ADMIN';
+
   const { data: hospitals } = useHospitals();
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
   
@@ -40,6 +46,20 @@ export const ServicePage = () => {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+  if (!estAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès restreint</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          Seul l'administrateur système est habilité à définir l'organisation des services médicaux et l'affectation des utilisateurs.
+        </p>
+      </div>
+    );
+  }
 
   const triggerDelete = (id: number) => {
     setIdToDelete(id);
@@ -82,8 +102,6 @@ export const ServicePage = () => {
     link.download = `export_services_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
-
-
 
   const sansAccents = (str: string) => {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -134,16 +152,15 @@ export const ServicePage = () => {
               ))}
             </select>
 
-
             <div className="relative w-full sm:w-64">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none text-sm text-slate-800 transition-all" 
-                placeholder="Rechercher par nom Service" 
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#006591] focus:ring-1 focus:ring-[#006591] outline-none text-sm text-slate-800 transition-all" 
+                  placeholder="Rechercher par nom Service" 
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
 
             <button 

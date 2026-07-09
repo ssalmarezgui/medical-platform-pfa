@@ -7,9 +7,10 @@ public class ServiceDTO {
     private Integer identifiantS;
     private String libelleS;
     private Integer nbLitsS;
+    private Integer nbChambresS;
     
     private Integer nbMedecinsS; 
 
-    private String hopitalId; 
+    private String idHopital; 
     private String hopitalLibelle;
 }

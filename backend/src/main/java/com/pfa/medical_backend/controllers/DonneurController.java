@@ -20,18 +20,16 @@ public class DonneurController {
         this.donneurService = donneurService;
     }
 
+
     private DonneurDTO toDTO(Donneur d) {
         DonneurDTO dto = new DonneurDTO();
         dto.setIdentifiantD(d.getIdentifiantD());
         dto.setIndexHopitalD(d.getIndexHopitalD());
         
-        if (d.getCinD() != null && !d.getCinD().trim().isEmpty()) {
-            try {
-                dto.setNumeroCin(Integer.parseInt(d.getCinD().trim()));
-            } catch (NumberFormatException e) {
-                dto.setNumeroCin(null);
-            }
-        }
+        dto.setCinD(d.getCinD());
+        dto.setAdresseDomD(d.getAdresseDomD());
+        dto.setAdresseEmailD(d.getAdresseEmailD());
+        dto.setEvolutionProf(d.getEvolutionProf());
 
         dto.setNomD(d.getNomD());
         dto.setPrenomD(d.getPrenomD());
@@ -39,22 +37,13 @@ public class DonneurController {
         dto.setSexeD(d.getSexeD());
         dto.setNationaliteD(d.getNationaliteD());
         dto.setOrigineGeogD(d.getOrigineGeogD());
-        
-        dto.setAdresseD(d.getAdresseDomD());
-        
         dto.setTelephoneD(d.getTelephoneD());
-        
-        dto.setAdressEmailD(d.getAdresseEmailD());
-        
         dto.setTelephoneWhatsAppD(d.getTelephoneWhatsAppD());
         dto.setPersonneAcontacterD(d.getPersonneAcontacterD());
         dto.setTypeCarnetD(d.getTypeCarnetD());
         dto.setNumCarnetD(d.getNumCarnetD());
         dto.setAdulteD(d.getAdulteD());
         dto.setStatut(d.getStatut());
-        
-        dto.setEvolution(d.getEvolutionProf());
-        
         dto.setNiveauEducation(d.getNiveauEducation());
         dto.setEnEtatActivite(d.getEnEtatActivite());
         dto.setTypeDonneur(d.getTypeDonneur());
@@ -66,9 +55,10 @@ public class DonneurController {
         d.setIdentifiantD(dto.getIdentifiantD());
         d.setIndexHopitalD(dto.getIndexHopitalD());
         
-        if (dto.getNumeroCin() != null) {
-            d.setCinD(String.valueOf(dto.getNumeroCin()));
-        }
+        d.setCinD(dto.getCinD());
+        d.setAdresseDomD(dto.getAdresseDomD());
+        d.setAdresseEmailD(dto.getAdresseEmailD());
+        d.setEvolutionProf(dto.getEvolutionProf());
 
         d.setNomD(dto.getNomD());
         d.setPrenomD(dto.getPrenomD());
@@ -76,22 +66,13 @@ public class DonneurController {
         d.setSexeD(dto.getSexeD());
         d.setNationaliteD(dto.getNationaliteD());
         d.setOrigineGeogD(dto.getOrigineGeogD());
-        
-        d.setAdresseDomD(dto.getAdresseD());
-        
         d.setTelephoneD(dto.getTelephoneD());
-        
-        d.setAdresseEmailD(dto.getAdressEmailD());
-        
         d.setTelephoneWhatsAppD(dto.getTelephoneWhatsAppD());
         d.setPersonneAcontacterD(dto.getPersonneAcontacterD());
         d.setTypeCarnetD(dto.getTypeCarnetD());
         d.setNumCarnetD(dto.getNumCarnetD());
         d.setAdulteD(dto.getAdulteD());
         d.setStatut(dto.getStatut());
-        
-        d.setEvolutionProf(dto.getEvolution());
-        
         d.setNiveauEducation(dto.getNiveauEducation());
         d.setEnEtatActivite(dto.getEnEtatActivite());
         d.setTypeDonneur(dto.getTypeDonneur());

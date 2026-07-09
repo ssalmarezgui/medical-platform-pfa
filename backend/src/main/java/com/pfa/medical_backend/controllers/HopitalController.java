@@ -36,6 +36,9 @@ public class HopitalController {
         dto.setAdresseH(h.getAdresseH());
         dto.setNbLitsH(h.getNbLitsH());
         dto.setNbServiceH(h.getNbServiceH());
+        dto.setNbBlocH(h.getNbBlocH());
+        dto.setDescriptionH(h.getDescriptionH());
+        dto.setDateCreationH(h.getDateCreationH());
         return dto;
     }
 
@@ -46,6 +49,9 @@ public class HopitalController {
         h.setAdresseH(dto.getAdresseH());
         h.setNbLitsH(dto.getNbLitsH());
         h.setNbServiceH(dto.getNbServiceH());
+        h.setNbBlocH(dto.getNbBlocH());
+        h.setDescriptionH(dto.getDescriptionH());
+        h.setDateCreationH(dto.getDateCreationH());
         return h;
     }
 

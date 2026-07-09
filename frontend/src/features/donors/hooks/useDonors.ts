@@ -19,3 +19,14 @@ export const useCreateDonor = () => {
     },
   });
 };
+
+export const useUpdateDonor = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Donneur, Error, { id: number; data: Partial<Donneur> }>({
+    mutationFn: ({ id, data }) => donorService.update(id, data), 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donors'] });
+    },
+  });
+};

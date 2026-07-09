@@ -5,27 +5,38 @@ import { useQueryClient } from '@tanstack/react-query';
 import { nephropathyService } from '../features/nephropathy/api/nephropathyService';
 import { 
   IconMedicalCross, IconSearch, IconPlus, IconTrash, IconUserCheck, IconReportMedical, IconFlask, IconInfoCircle, IconEdit,
-  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen, IconAlertCircle
+  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen, IconAlertCircle,
+  IconLock 
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import axios from 'axios';
 
-import { usePermission } from '../hooks/usePermission';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const NephropathyPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
 
-  const { hasPermission } = usePermission();
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('WRITE_PATIENT');
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const isReadOnly = !hasPermission('WRITE_PATIENT');
+  const estInvestigateur = roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
+  const aAccesPage = estInvestigateur || estSuivi;
 
-  if (!canAccess) {
+  const isReadOnly = estSuivi; 
+
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique de néphropathie.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès restreint</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          L'analyse de la néphropathie initiale et le bilan d'opérabilité d'admission sont réservés exclusivement aux équipes de soins habilitées (Médecin Investigateur et Médecin de Suivi).
+        </p>
       </div>
     );
   }
@@ -76,8 +87,20 @@ export const NephropathyPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const filteredPatients = patients?.filter(p => {
+    const query = patientSearch.toLowerCase().trim();
+    if (!query) return false;
+
     const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
-    return nomComplet.includes(patientSearch.toLowerCase()) || String(p.identifiantP) === patientSearch;
+    const nomCompletInverse = `${p.nomP} ${p.prenomP}`.toLowerCase();
+    const idPatient = p.identifiantP ? String(p.identifiantP).toLowerCase() : '';
+    const cinPatient = p.numeroCin ? String(p.numeroCin).toLowerCase() : '';
+
+    return (
+      nomComplet.includes(query) ||
+      nomCompletInverse.includes(query) ||
+      idPatient.includes(query) ||
+      cinPatient.includes(query)
+    );
   });
 
   const filteredLocalNephropathies = history?.filter(ni => {
@@ -132,7 +155,7 @@ export const NephropathyPage = () => {
 
   const handleSaveNI = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPatientId || !typeCliniqueNI) return;
+    if (!selectedPatientId || !typeCliniqueNI || isReadOnly) return;
 
     const payload = { typeCliniqueNI, causeNI, typeHistologiqueNI, stadeMaladiNI, patientId: patientIdString };
     try {
@@ -157,7 +180,7 @@ export const NephropathyPage = () => {
 
   const handleAddDialyse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedNIId || !typeDialyse) return;
+    if (!selectedNIId || !typeDialyse || isReadOnly) return;
 
     try {
       if (selectedDialyse) {
@@ -183,7 +206,7 @@ export const NephropathyPage = () => {
 
   const handleSaveBiopsie = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedNIId) return;
+    if (!selectedNIId || isReadOnly) return;
 
     const payload = {
       noteBiopsie,
@@ -208,7 +231,7 @@ export const NephropathyPage = () => {
 
   const handleSaveBilan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedNIId || !dateBilanB) return;
+    if (!selectedNIId || !dateBilanB || isReadOnly) return;
 
     try {
       const payload = {
@@ -238,13 +261,14 @@ export const NephropathyPage = () => {
   };
 
   const triggerDelete = (id: number, type: 'NI' | 'DIALYSE' | 'BILAN') => {
+    if (isReadOnly) return; 
     setIdToDelete(id);
     setDeleteType(type);
     setConfirmOpen(true);
   };
 
   const handleDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || isReadOnly) return;
     try {
       if (deleteType === 'NI') {
         await nephropathyService.deleteNI(idToDelete);
@@ -400,7 +424,7 @@ export const NephropathyPage = () => {
   };
 
   const handleImportSubmit = async () => {
-    if (previewData.length === 0) return;
+    if (previewData.length === 0 || isReadOnly) return;
     setIsProcessing(true);
     let successCount = 0;
 
@@ -502,16 +526,28 @@ export const NephropathyPage = () => {
             <input 
               type="text"
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none text-sm bg-white"
-              placeholder="Rechercher un patient par nom ou par identifiant unique (ID)..."
+              placeholder="Rechercher un patient par nom, prénom, CIN ou ID unique..."
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  const found = patients?.find(p => 
-                    String(p.identifiantP) === patientSearch || 
-                    `${p.prenomP} ${p.nomP}`.toLowerCase() === patientSearch.toLowerCase()
-                  );
+                  const query = patientSearch.toLowerCase().trim();
+                  
+                  const found = patients?.find(p => {
+                    const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
+                    const nomCompletInverse = `${p.nomP} ${p.prenomP}`.toLowerCase();
+                    const idPatient = p.identifiantP ? String(p.identifiantP).toLowerCase() : '';
+                    const cinPatient = p.numeroCin ? String(p.numeroCin).toLowerCase() : '';
+
+                    return (
+                      nomComplet === query ||
+                      nomCompletInverse === query ||
+                      idPatient === query ||
+                      cinPatient === query
+                    );
+                  });
+
                   if (found) {
                     setSelectedPatientId(found.identifiantP!);
                     setPatientSearch('');

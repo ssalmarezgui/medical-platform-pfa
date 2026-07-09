@@ -1,24 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDonors } from '../features/donors/hooks/useDonors';
 import { useHospitals } from '../features/hospitals/hooks/useHospitals';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   IconUsers, IconSearch, IconPlus, IconPhone, IconMapPin, IconCalendar, IconHeartbeat, IconEdit, IconTrash,
-  IconGenderMale, IconGenderFemale, IconFileSpreadsheet, IconDatabaseImport
+  IconGenderMale, IconGenderFemale, IconFileSpreadsheet, IconDatabaseImport,
+  IconLock
 } from '@tabler/icons-react';
 import { AddDonorModal } from '../features/donors/components/AddDonorModal';
 import { ImportDonorsModal } from '../features/donors/components/ImportDonorsModal'; 
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import { Toast } from './ui/Toast';
 import { useAuthStore } from '../store/useAuthStore';
-import { usePermission } from '../hooks/usePermission';
 import { donorService } from '../features/donors/api/donorService';
 
 export const DonorPage = () => {
   const { user } = useAuthStore();
   const userHopitalId = user?.hopitalId;
-
-  const { hasPermission } = usePermission();
 
   const queryClient = useQueryClient();
   const { data: hospitals } = useHospitals();
@@ -26,13 +24,22 @@ export const DonorPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
-  const isReadOnly = !hasPermission('WRITE_DONNEUR'); 
-  const canCreateOrUpdate = hasPermission('WRITE_DONNEUR'); 
-  const canDelete = hasPermission('DELETE_DONNEUR');
+  const estInvestigateur = user?.roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = user?.roleU === 'MEDECIN_SUIVI';
+  const estAdmin = user?.roleU === 'ADMIN';
 
-  const { data: donors, isLoading, error } = useDonors(
-    userHopitalId || selectedHospitalFilter || undefined
-  );
+  const rolesAutorises = ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'ADMIN'];
+  const aAccesAuRegistre = user && rolesAutorises.includes(user.roleU);
+
+  const canCreateOrUpdate = estInvestigateur;
+  const canDelete = estInvestigateur;
+  const isReadOnly = estSuivi || estAdmin;
+
+  const activeHospitalId = estAdmin
+    ? (selectedHospitalFilter || undefined)
+    : (userHopitalId || undefined);
+
+  const { data: donors, isLoading, error } = useDonors(activeHospitalId);
   
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -85,6 +92,7 @@ export const DonorPage = () => {
   const estVide = !donors || donors.length === 0;
 
   const triggerEdit = (donor: any) => {
+    if (!canCreateOrUpdate) return;
     setSelectedDonor(donor);
     setIsAddOpen(true);
   };
@@ -95,12 +103,13 @@ export const DonorPage = () => {
   };
 
   const triggerDelete = (id: number) => {
+    if (!canDelete) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
   const handleDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || !canDelete) return;
     try {
       await donorService.delete(idToDelete);
       queryClient.invalidateQueries({ queryKey: ['donors'] });
@@ -116,6 +125,20 @@ export const DonorPage = () => {
       setToastOpen(true);
     }
   };
+
+  if (!aAccesAuRegistre) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          La gestion des donneurs d'organes est soumise à un cadre éthique et juridique national strict. L'accès à ce registre est interdit à votre profil pour garantir l'anonymat donneur-receveur.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -143,7 +166,7 @@ export const DonorPage = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          {hasPermission('WRITE_HOPITAL') && (
+          {estAdmin && (
             <select 
               className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-[#2B5296] outline-none w-full sm:w-auto"
               value={selectedHospitalFilter}
@@ -260,11 +283,23 @@ export const DonorPage = () => {
         </div>
       )}
 
-      <AddDonorModal isOpen={isAddOpen} onClose={handleCloseModal} donor={selectedDonor} />
+      {canCreateOrUpdate && (
+        <>
+          <AddDonorModal isOpen={isAddOpen} onClose={handleCloseModal} donor={selectedDonor} />
+          
+          <ImportDonorsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+        </>
+      )}
       
-      <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la fiche du donneur ?" message="Cette action effacera définitivement ce donneur du registre clinique." />
-
-      <ImportDonorsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      {canDelete && (
+        <DeleteConfirmModal 
+          isOpen={confirmOpen} 
+          onClose={() => setConfirmOpen(false)} 
+          onConfirm={handleDelete} 
+          title="Supprimer la fiche du donneur ?" 
+          message="Cette action effacera définitivement ce donneur du registre clinique." 
+        />
+      )}
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />
     </div>

@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateDonor } from '../hooks/useDonors';
+import { useCreateDonor, useUpdateDonor } from '../hooks/useDonors';
 import { useHospitals } from '../../hospitals/hooks/useHospitals';
 import { useDoctors } from '../../doctors/hooks/useDoctors';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { IconX, IconLoader, IconUsers } from '@tabler/icons-react';
 import { Toast } from '../../../components/ui/Toast';
 
-// --- SCHÉMA DE VALIDATION DE SÉCURITÉ CLINIQUE (ZOD) ---
 const donorSchema = z.object({
   nomD: z.string().min(2, "Le nom doit comporter au moins 2 caractères."),
   prenomD: z.string().min(2, "Le prénom doit comporter au moins 2 caractères."),
@@ -31,7 +30,7 @@ const donorSchema = z.object({
   enEtatActivite: z.boolean(),
   cinD: z.string().max(8, "Le CIN ne peut pas dépasser 8 caractères.").min(1, "Le CIN est requis."),
   indexHopitalD: z.string().min(1, "L'hôpital est requis."),
-  typeDonneur: z.string().min(1, "Veuillez préciser le type de donneur (champ libre).") // Champ textuel libre !
+  typeDonneur: z.string().min(1, "Veuillez préciser le type de donneur (champ libre).") 
 });
 
 type DonorFormValues = z.infer<typeof donorSchema>;
@@ -44,6 +43,8 @@ interface AddDonorProps {
 
 export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
   const createDonorMutation = useCreateDonor();
+  const updateDonorMutation = useUpdateDonor(); 
+  
   const { data: hospitals } = useHospitals();
   const { data: doctors } = useDoctors();
   const { user } = useAuthStore();
@@ -83,9 +84,15 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
   });
 
   const watchedHospital = watch('indexHopitalD');
+
+  useEffect(() => {
+    if (!isOpen) {
+      setToastOpen(false);
+    }
+  }, [isOpen]);
+  
   useEffect(() => { setSelectedHospital(watchedHospital || ''); }, [watchedHospital]);
 
-  // --- AUTO-AFFECTATION DE L'HÔPITAL DE SESSION ---
   useEffect(() => {
     if (isOpen && isInvestigateur && doctors && user) {
       const matchedDoctor = doctors.find(doc => doc.typeMedecin === 'INVESTIGATEUR');
@@ -96,7 +103,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
     }
   }, [isOpen, isInvestigateur, doctors, user, setValue]);
 
-  // Calcul d'âge dynamique
   const watchedDateNaiss = watch('dateNaissD');
   useEffect(() => {
     if (watchedDateNaiss) {
@@ -111,7 +117,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
     }
   }, [watchedDateNaiss, setValue]);
 
-  // Remplissage si mode édition
   useEffect(() => {
     if (donor) {
       reset(donor);
@@ -154,6 +159,8 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
   const watchedAdulte = watch('adulteD');
   const isAdulteSelected = watchedAdulte === true || String(watchedAdulte) === 'true';
 
+  const isPending = createDonorMutation.isPending || updateDonorMutation.isPending;
+
   const onSubmit = async (data: DonorFormValues) => {
     const isDonorAdulte = typeof data.adulteD === 'string' ? data.adulteD === 'true' : !!data.adulteD;
     
@@ -165,9 +172,18 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
         cinD: data.cinD ? String(data.cinD).trim() : null
       };
 
-      await createDonorMutation.mutateAsync(formattedData);
+      if (donor) {
+        await updateDonorMutation.mutateAsync({
+          id: donor.identifiantD,
+          data: formattedData
+        });
+        setToastMessage("Le donneur a été mis à jour avec succès !");
+      } else {
+        await createDonorMutation.mutateAsync(formattedData);
+        setToastMessage("Le donneur a été enregistré avec succès !");
+      }
+
       setToastType('success');
-      setToastMessage("Le donneur a été enregistré avec succès !");
       setToastOpen(true);
       resetForm();
       setTimeout(onClose, 1000);
@@ -207,7 +223,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             )}
 
-            {/* Nom & Prénom */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Nom *</label>
@@ -219,7 +234,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Sexe, Date de naissance et CIN */}
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Sexe *</label>
@@ -246,7 +260,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Nationalité & Origine Géo */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Nationalité *</label>
@@ -258,7 +271,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Type Patient & En activité */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Type Donneur  *</label>
@@ -282,7 +294,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Adresse & Téléphones */}
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Adresse *</label>
@@ -298,7 +309,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Adresse Email & Niveau d'éducation */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Adresse Email</label>
@@ -310,7 +320,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Contact Urgence, Type Carnet & Numéro Carnet */}
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Contact Urgence *</label>
@@ -331,7 +340,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Statut & Évolution Prof */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Statut Dossier *</label>
@@ -343,7 +351,6 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
             </div>
 
-            {/* Hôpital et Type Donneur Saisie Libre */}
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">Type de Donneur *</label>
@@ -380,8 +387,15 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
 
             <div className="flex gap-3 pt-6 border-t justify-end">
               <button type="button" onClick={handleCloseWithReset} className="px-5 py-3 rounded-xl text-slate-500 hover:bg-slate-100 text-xs font-bold border-none bg-transparent cursor-pointer">Annuler</button>
-              <button type="submit" disabled={createDonorMutation.isPending} className="bg-[#2B5296] text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer flex items-center gap-1.5">
-                {createDonorMutation.isPending ? <IconLoader className="animate-spin" size={16} /> : "Enregistrer le Donneur"}
+              
+              <button type="submit" disabled={isPending} className="bg-[#2B5296] text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-blue-900 border-none cursor-pointer flex items-center gap-1.5">
+                {isPending ? (
+                  <IconLoader className="animate-spin" size={16} />
+                ) : donor ? (
+                  "Mettre à jour"
+                ) : (
+                  "Enregistrer le Donneur"
+                )}
               </button>
             </div>
           </form>

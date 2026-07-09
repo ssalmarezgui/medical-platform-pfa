@@ -8,7 +8,11 @@ public class DonneurDTO {
 
     private Integer identifiantD;
     private String indexHopitalD;
-    private Integer numeroCin;
+
+    private String cinD; 
+    private String adresseDomD;
+    private String adresseEmailD;
+    private String evolutionProf;
 
 
     private String nomD;
@@ -19,9 +23,9 @@ public class DonneurDTO {
     private String origineGeogD;
 
 
-    private String adresseD;
+    
     private String telephoneD;
-    private String adressEmailD;
+    
     private String telephoneWhatsAppD;
     private String personneAcontacterD;
     private String typeCarnetD;
@@ -30,7 +34,7 @@ public class DonneurDTO {
 
     private Boolean adulteD;
     private String statut; 
-    private String evolution;
+    
     private String niveauEducation;
     private Boolean enEtatActivite;
     

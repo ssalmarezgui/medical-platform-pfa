@@ -52,6 +52,21 @@ public class DonneurService {
         if (details.getTypeDonneur() != null) existing.setTypeDonneur(details.getTypeDonneur());
         if (details.getStatut() != null) existing.setStatut(details.getStatut());
         if (details.getAdresseDomD() != null) existing.setAdresseDomD(details.getAdresseDomD());
+        
+        if (details.getAdresseEmailD() != null) existing.setAdresseEmailD(details.getAdresseEmailD());
+        if (details.getTelephoneD() != null) existing.setTelephoneD(details.getTelephoneD());
+        if (details.getTelephoneWhatsAppD() != null) existing.setTelephoneWhatsAppD(details.getTelephoneWhatsAppD());
+        if (details.getDateNaissD() != null) existing.setDateNaissD(details.getDateNaissD());
+        if (details.getEvolutionProf() != null) existing.setEvolutionProf(details.getEvolutionProf());
+        
+        if (details.getNationaliteD() != null) existing.setNationaliteD(details.getNationaliteD());
+        if (details.getOrigineGeogD() != null) existing.setOrigineGeogD(details.getOrigineGeogD());
+        if (details.getPersonneAcontacterD() != null) existing.setPersonneAcontacterD(details.getPersonneAcontacterD());
+        if (details.getTypeCarnetD() != null) existing.setTypeCarnetD(details.getTypeCarnetD());
+        if (details.getNumCarnetD() != null) existing.setNumCarnetD(details.getNumCarnetD());
+        if (details.getNiveauEducation() != null) existing.setNiveauEducation(details.getNiveauEducation());
+        if (details.getAdulteD() != null) existing.setAdulteD(details.getAdulteD());
+        if (details.getEnEtatActivite() != null) existing.setEnEtatActivite(details.getEnEtatActivite());
 
         return donneurRepo.save(existing);
     }

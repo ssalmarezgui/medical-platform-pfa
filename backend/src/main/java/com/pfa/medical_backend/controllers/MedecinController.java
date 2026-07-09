@@ -2,6 +2,7 @@ package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.dto.MedecinDTO;
 import com.pfa.medical_backend.entities.Medecin;
+import com.pfa.medical_backend.entities.ServiceMedical;
 import com.pfa.medical_backend.services.MedecinService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +57,12 @@ public class MedecinController {
         m.setIndexHopitalM(dto.getIndexHopitalM());
         m.setAutreInfo(dto.getAutreInfo());
         m.setTypeMedecin(dto.getTypeMedecin());
+        if (dto.getServiceId() != null) {
+            ServiceMedical s = new ServiceMedical();
+            s.setIdentifiantS(dto.getServiceId());
+            m.setService(s);
+        }
+        
         return m;
     }
 

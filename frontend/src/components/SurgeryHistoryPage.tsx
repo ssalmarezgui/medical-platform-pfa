@@ -5,7 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { surgeryService } from '../features/surgery-history/api/surgeryService';
 import { 
   IconScissors, IconSearch, IconPlus, IconTrash, IconUserCheck, IconAlertCircle, IconCalendar, IconBuildingHospital, IconStethoscope, IconEdit,
-  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen
+  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen,
+  IconLock 
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
@@ -15,7 +16,6 @@ import { useDonors } from '../features/donors/hooks/useDonors';
 import axios from 'axios';
 
 import { useDonorSurgeryHistory } from '../features/surgery-history/hooks/useSurgery';
-import { usePermission } from '../hooks/usePermission';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const SurgeryHistoryPage = () => {
@@ -28,16 +28,26 @@ export const SurgeryHistoryPage = () => {
 
   const subjects = isDonorMode ? donors : patients;
 
-  const { hasPermission } = usePermission();
-  const userRole = useAuthStore((state) => state.role);
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
-  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+  const estInvestigateur = roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
 
-  if (!canAccess) {
+  const aAccesPage = estInvestigateur || estSuivi;
+  
+  const isReadOnly = estSuivi; 
+
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique chirurgical.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          Le registre de l'historique chirurgical et des abords vasculaires est restreint exclusivement aux équipes médicales cliniques d'investigation et de suivi.
+        </p>
       </div>
     );
   }
@@ -118,7 +128,7 @@ export const SurgeryHistoryPage = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPatientId || !intervention || !date) return;
+    if (!selectedPatientId || !intervention || !date || isReadOnly) return; 
 
     const payload: any = {
       intervention,
@@ -161,6 +171,7 @@ export const SurgeryHistoryPage = () => {
   };
 
   const triggerEdit = (surgery: any) => {
+    if (isReadOnly) return;
     setSelectedSurgery(surgery);
     setIntervention(surgery.intervention);
     setDate(surgery.date);
@@ -170,12 +181,13 @@ export const SurgeryHistoryPage = () => {
   };
 
   const triggerDelete = (id: number) => {
+    if (isReadOnly) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
   const handleDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || isReadOnly) return;
     try {
       if (isDonorMode) {
         await axios.delete(`http://localhost:8081/api/antecedents-chirurgicaux/${idToDelete}`);
@@ -284,7 +296,7 @@ export const SurgeryHistoryPage = () => {
   };
 
   const handleImportSubmit = async () => {
-    if (previewData.length === 0) return;
+    if (previewData.length === 0 || isReadOnly) return; 
     setIsProcessing(true);
     let successCount = 0;
 

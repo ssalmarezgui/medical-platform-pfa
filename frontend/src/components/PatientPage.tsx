@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { usePatients, useDeletePatient } from '../features/patients/hooks/usePatients';
-import { IconSearch, IconPlus, IconFileSpreadsheet, IconTrash, IconEdit, IconPhone, IconMapPin, IconCalendar, IconGenderMale, IconGenderFemale, IconDatabaseImport } from '@tabler/icons-react';
+import { 
+  IconSearch, 
+  IconPlus, 
+  IconFileSpreadsheet, 
+  IconTrash, 
+  IconEdit, 
+  IconPhone, 
+  IconMapPin, 
+  IconCalendar, 
+  IconGenderMale, 
+  IconGenderFemale, 
+  IconDatabaseImport,
+  IconLock
+} from '@tabler/icons-react';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import { AddPatientModal } from '../features/patients/components/AddPatientModal';
 import { EditPatientModal } from '../features/patients/components/EditPatientModal';
@@ -29,6 +42,9 @@ export const PatientPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
+
+  const rolesAutorises = ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'];
+  const aAccesAuRegistre = user && rolesAutorises.includes(user.roleU);
 
   const canCreateOrUpdate = hasPermission('WRITE_PATIENT');
   const canDelete = hasPermission('DELETE_PATIENT');
@@ -64,10 +80,14 @@ export const PatientPage = () => {
 
   const [selectedHospitalFilter, setSelectedHospitalFilter] = useState<string>('');
 
+  const activeHospitalId = hasPermission('WRITE_HOPITAL')
+    ? (selectedHospitalFilter || undefined)
+    : (userHopitalId || undefined);
+
   const { data: patients, isLoading } = usePatients(
     undefined, 
     undefined, 
-    userHopitalId || selectedHospitalFilter || undefined
+    activeHospitalId
   );
 
   const sansAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -79,15 +99,30 @@ export const PatientPage = () => {
   });
 
   const triggerDelete = (id: string) => { 
+    if (!canDelete) return;
     setIdToDelete(id); 
     setConfirmOpen(true); 
   };
   
   const handleConfirmDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || !canDelete) return;
     await deletePatientMutation.mutateAsync(idToDelete);
     setConfirmOpen(false);
   };
+
+  if (!aAccesAuRegistre) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          Pour protéger le secret médical et la vie privée des usagers, l'accès au registre d'identité des patients est strictement restreint aux profils cliniques habilités.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) return <div className="flex justify-center p-20"><div className="animate-spin h-10 w-10 border-b-2 border-[#2B5296] rounded-full"></div></div>;
 
@@ -189,19 +224,31 @@ export const PatientPage = () => {
         ))}
       </div>
 
-      <AddPatientModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      {canCreateOrUpdate && (
+        <>
+          <AddPatientModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
 
-      {selectedPatient && (
-        <EditPatientModal 
-          isOpen={isEditOpen} 
-          onClose={() => { setIsEditOpen(false); setSelectedPatient(null); }} 
-          patient={selectedPatient} 
+          {selectedPatient && (
+            <EditPatientModal 
+              isOpen={isEditOpen} 
+              onClose={() => { setIsEditOpen(false); setSelectedPatient(null); }} 
+              patient={selectedPatient} 
+            />
+          )}
+          
+          <ImportPatientsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+        </>
+      )}
+
+      {canDelete && (
+        <DeleteConfirmModal 
+          isOpen={confirmOpen} 
+          onClose={() => setConfirmOpen(false)} 
+          onConfirm={handleConfirmDelete} 
+          title="Supprimer le dossier ?" 
+          message="Cette action est irréversible. Le dossier de ce patient sera définitivement retiré du registre." 
         />
       )}
-      
-      <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleConfirmDelete} title="Supprimer ?" message="Supprimer le dossier ?" />
-
-      <ImportPatientsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
     </div>
   );
 };

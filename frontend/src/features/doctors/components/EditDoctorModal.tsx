@@ -49,7 +49,7 @@ export const EditDoctorModal = ({ isOpen, onClose, doctor }: EditDoctorProps) =>
         indexHopitalM: doctor.indexHopitalM,
         autreInfo: doctor.autreInfo || '',
         typeMedecin: doctor.typeMedecin,
-        serviceId: doctor.service?.identifiantS || null,
+        serviceId: doctor.serviceId,
       });
     }
   }, [doctor, reset]);
@@ -111,7 +111,7 @@ export const EditDoctorModal = ({ isOpen, onClose, doctor }: EditDoctorProps) =>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Matricule Médecin (Identifiant unique - non modifiable)</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Matricule Médecin</label>
               <input 
                 type="text" 
                 disabled 
