@@ -62,7 +62,7 @@ public class HopitalController {
         dto.setNbLitsS(s.getNbLitsS());
         dto.setNbMedecinsS(s.getNbMedecinsS());
         if (s.getHopital() != null) {
-            dto.setHopitalId(s.getHopital().getIdentifiantH());
+            dto.setIdHopital(s.getHopital().getIdentifiantH()); 
             dto.setHopitalLibelle(s.getHopital().getLibelleH());
         }
         return dto;
