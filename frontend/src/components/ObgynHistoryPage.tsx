@@ -11,7 +11,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { obgynService } from '../features/obgyn/api/obgynService';
 import { 
   IconDna, IconSearch, IconUserCheck, IconAlertTriangle, IconCalendar, IconLoader, IconReportMedical, IconEdit, IconTrash,
-  IconFileSpreadsheet, IconDatabaseImport, IconX, IconDownload, IconFolderOpen, IconAlertCircle
+  IconFileSpreadsheet, IconDatabaseImport, IconX, IconDownload, IconFolderOpen, IconAlertCircle,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
@@ -25,16 +26,25 @@ export const ObgynHistoryPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
 
-  const { hasPermission } = usePermission();
-  const userRole = useAuthStore((state) => state.role);
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
-  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+  const estInvestigateur = roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
 
-  if (!canAccess) {
+  const aAccesPage = estInvestigateur || estSuivi;
+  const isReadOnly = estSuivi; 
+
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter l'historique gynéco-obstétrique.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          L'évaluation et la saisie des antécédents gynéco-obstétriques (AGO) sont réservées exclusivement aux profils médicaux d'investigation et de suivi.
+        </p>
       </div>
     );
   }
@@ -383,7 +393,7 @@ export const ObgynHistoryPage = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
             <IconUserCheck size={24} />
-            Antécédents Gynéco-Obstétriques (AGO)
+            Antécédents Gynéco-Obstétriques
           </h2>
           
           {!selectedPatientId && (

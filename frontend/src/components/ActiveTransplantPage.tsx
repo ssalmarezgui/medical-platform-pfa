@@ -5,16 +5,27 @@ import { useQueryClient } from '@tanstack/react-query';
 import { transplantActiveService } from '../features/transplant-active/api/transplantActiveService';
 import { 
   IconHeartbeat, IconSearch, IconPlus, IconTrash, IconUserCheck, IconAlertCircle, IconCalendar, IconBuildingHospital, IconEdit,
-  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen, IconInfoCircle
+  IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen, IconInfoCircle,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 
+import { useAuthStore } from '../store/useAuthStore';
+
 export const ActiveTransplantPage = () => {
   const queryClient = useQueryClient();
   const { data: patients } = usePatients();
+
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
+
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
+  const estAdmin = roleU === 'ADMIN';
+
+  const aAccesPage = estSuivi || estAdmin;
+  const isReadOnly = estAdmin; 
   
-  // --- ÉTATS DE SÉLECTION DU PATIENT ---
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const patientIdString = selectedPatientId ? String(selectedPatientId) : '';
@@ -23,10 +34,8 @@ export const ActiveTransplantPage = () => {
   const createMutation = useCreateTransplantActive();
   const deleteMutation = useDeleteTransplantActive(patientIdString);
 
-  // --- RECHERCHE LOCALE (Vue Personnelle) ---
   const [localSearchTerm, setLocalSearchTerm] = useState('');
 
-  // États du formulaire chirurgical
   const [dateTR, setDateTR] = useState('');
   const [lieuDeLaGreffe, setLieuDeLaGreffe] = useState('');
   const [lieuDeSuivi, setLieuDeSuivi] = useState('');
@@ -46,20 +55,16 @@ export const ActiveTransplantPage = () => {
   const [typeAnastomoseUreteroVesicale, setTypeAnastomoseUreteroVesicale] = useState('');
   const [sondeEnDoubleJJ, setSondeEnDoubleJJ] = useState(false);
 
-  // Liaison Donneur (ID numérique)
   const [donneurId, setDonneurId] = useState('');
 
-  // Édition
   const [selectedTransplant, setSelectedTransplant] = useState<any | null>(null);
 
-  // Toasts
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
-  // ÉTATS IMPORTATION
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'global' | 'personal'>('global');
@@ -67,13 +72,25 @@ export const ActiveTransplantPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filtrage cohorte (Vue Globale)
+  if (!aAccesPage) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          Le registre opératoire de transplantation active est strictement réservé au médecin et chirurgien de suivi responsable de l'acte chirurgical.
+        </p>
+      </div>
+    );
+  }
+
   const filteredPatients = patients?.filter(p => {
     const nomComplet = `${p.prenomP} ${p.nomP}`.toLowerCase();
     return nomComplet.includes(patientSearch.toLowerCase()) || String(p.identifiantP) === patientSearch;
   });
 
-  // Filtrage local des greffes actives (Vue Personnelle)
   const filteredLocalTransplants = transplants?.filter(tr => {
     const placeStr = tr.lieuDeLaGreffe?.toLowerCase() || '';
     const anastomosisStr = tr.typeAnastomoseArterielle?.toLowerCase() || '';
@@ -84,7 +101,6 @@ export const ActiveTransplantPage = () => {
 
   const selectedPatient = patients?.find(p => p.identifiantP === selectedPatientId);
 
-  // Remplissage automatique
   useEffect(() => {
     if (selectedTransplant) {
       setDateTR(selectedTransplant.dateTR);
@@ -131,10 +147,9 @@ export const ActiveTransplantPage = () => {
     setDonneurId('');
   };
 
-  // Enregistrer / Modifier
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPatientId || !donneurId || !dateTR) return;
+    if (!selectedPatientId || !donneurId || !dateTR || isReadOnly) return;
 
     const payload = {
       dateTR,
@@ -180,16 +195,18 @@ export const ActiveTransplantPage = () => {
   };
 
   const triggerEdit = (tr: any) => {
+    if (isReadOnly) return;
     setSelectedTransplant(tr);
   };
 
   const triggerDelete = (id: number) => {
+    if (isReadOnly) return;
     setIdToDelete(id);
     setConfirmOpen(true);
   };
 
   const handleDelete = async () => {
-    if (idToDelete === null) return;
+    if (idToDelete === null || isReadOnly) return;
     try {
       await deleteMutation.mutateAsync(idToDelete);
       setConfirmOpen(false);
@@ -204,7 +221,6 @@ export const ActiveTransplantPage = () => {
     }
   };
 
-  // --- EXPORT CSV (DOUBLES FLUX) ---
   const handleExportCSV = async (mode: 'global' | 'personal') => {
     let datasetToExport: any[] = [];
     let filename = '';
@@ -264,7 +280,6 @@ export const ActiveTransplantPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // --- IMPORT CSV (DOUBLES FLUX) ---
   const handleDownloadTemplate = (mode: 'global' | 'personal') => {
     const headers = mode === 'global' 
       ? ["patientId", "donneurId", "dateTR", "lieuDeLaGreffe", "lieuDeSuivi", "nbTransplantation", "nbUretere", "rein", "nbArtereVeine", "kystes", "typeAnomalie", "dureeIschemieFroide", "dureeIschemieChaude", "liquideConservation", "liquideRincage", "machineAPerfusion", "typeAnastomoseArterielle", "typeAnastomoseVeineuse", "typeAnastomoseUreteroVesicale", "sondeEnDoubleJJ"]
@@ -306,7 +321,7 @@ export const ActiveTransplantPage = () => {
   };
 
   const handleImportSubmit = async () => {
-    if (previewData.length === 0) return;
+    if (previewData.length === 0 || isReadOnly) return;
     setIsProcessing(true);
     let successCount = 0;
 
@@ -360,23 +375,23 @@ export const ActiveTransplantPage = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-8 text-xs">
       
-      {/* 1. SELECTION DU PATIENT AVEC BARRE DE RECHERCHE */}
       <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#2B5296] flex items-center gap-2">
             <IconUserCheck size={24} />
-            Dossier Clinique de Transplantation
+            Dossier Clinique de Transplantation Active
           </h2>
           
-          {/* ACTIONS GLOBALES DE L'ETAT A */}
           {!selectedPatientId && (
             <div className="flex gap-2">
-              <button 
-                onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
-                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <IconDatabaseImport size={16} /> Import de Cohorte
-              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => { setImportMode('global'); setIsImportOpen(true); }}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <IconDatabaseImport size={16} /> Import de Cohorte
+                </button>
+              )}
               <button 
                 onClick={() => handleExportCSV('global')}
                 className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -393,7 +408,7 @@ export const ActiveTransplantPage = () => {
             <input 
               type="text"
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none text-sm bg-white"
-              placeholder="Rechercher par nom"
+              placeholder="Rechercher par nom..."
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -433,7 +448,6 @@ export const ActiveTransplantPage = () => {
         </div>
       </div>
 
-      {/* --- ÉTAT A : VUE COHORTE (AUCUN PATIENT SÉLECTIONNÉ) --- */}
       {!selectedPatientId ? (
         <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
           <div className="mb-6">
@@ -467,113 +481,107 @@ export const ActiveTransplantPage = () => {
         </div>
       ) : (
         
-        // --- ÉTAT B : VUE CLINIQUE PERSONNELLE (PATIENT SÉLECTIONNÉ) ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {/* Formulaire à gauche */}
-          <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
-              <IconPlus size={20} /> {selectedTransplant ? "Modifier la Fiche" : "Saisir une Greffe Active"}
-            </h3>
-            
-            <form onSubmit={handleSave} className="space-y-4">
-              {/* Liaison Donneur */}
-              <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Identifiant Unique du Donneur (ID numérique) *</label>
-                <input type="number" value={donneurId} onChange={(e) => setDonneurId(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-[#2B5296]" placeholder="Saisir ID du donneur" />
-              </div>
+          {!isReadOnly && (
+            <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit">
+              <h3 className="text-base font-bold text-[#2B5296] mb-6 flex items-center gap-2">
+                <IconPlus size={20} /> {selectedTransplant ? "Modifier la Fiche" : "Saisir une Greffe Active"}
+              </h3>
+              
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Identifiant Unique du Donneur (ID numérique) *</label>
+                  <input type="number" value={donneurId} onChange={(e) => setDonneurId(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-[#2B5296]" placeholder="Saisir ID du donneur" />
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date Opération *</label>
-                  <input type="date" value={dateTR} onChange={(e) => setDateTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Date Opération *</label>
+                    <input type="date" value={dateTR} onChange={(e) => setDateTR(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de greffe *</label>
+                    <input type="text" value={lieuDeLaGreffe} onChange={(e) => setLieuDeLaGreffe(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200" placeholder="Ex: CHN" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de greffe *</label>
-                  <input type="text" value={lieuDeLaGreffe} onChange={(e) => setLieuDeLaGreffe(e.target.value)} required className="w-full px-3 py-2 rounded-xl border border-slate-200" placeholder="Ex: CHN" />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de suivi</label>
-                  <input type="text" value={lieuDeSuivi} onChange={(e) => setLieuDeSuivi(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200" placeholder="CHN" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Lieu de suivi</label>
+                    <input type="text" value={lieuDeSuivi} onChange={(e) => setLieuDeSuivi(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200" placeholder="CHN" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Côté du rein greffé *</label>
+                    <select value={rein} onChange={(e: any) => setRein(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold">
+                      <option value="Gauche">Gauche</option>
+                      <option value="Droit">Droit</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Côté du rein greffé *</label>
-                  <select value={rein} onChange={(e: any) => setRein(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold">
-                    <option value="Gauche">Gauche</option>
-                    <option value="Droit">Droit</option>
-                  </select>
-                </div>
-              </div>
 
-              {/* Paramètres d'ischémie */}
-              <div className="grid grid-cols-2 gap-2 border-t pt-3">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Ischémie froide (h)</label>
-                  <input type="number" min={0} value={dureeIschemieFroide} onChange={(e) => setDureeIschemieFroide(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white" />
+                <div className="grid grid-cols-2 gap-2 border-t pt-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Ischémie froide (h)</label>
+                    <input type="number" min={0} value={dureeIschemieFroide} onChange={(e) => setDureeIschemieFroide(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Ischémie chaude (min)</label>
+                    <input type="number" min={0} value={dureeIschemieChaude} onChange={(e) => setDureeIschemieChaude(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Ischémie chaude (min)</label>
-                  <input type="number" min={0} value={dureeIschemieChaude} onChange={(e) => setDureeIschemieChaude(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white" />
-                </div>
-              </div>
 
-              {/* Solutés de conservation */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Liquide conservation</label>
-                  <input type="text" value={liquideConservation} onChange={(e) => setLiquideConservation(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Liquide conservation</label>
+                    <input type="text" value={liquideConservation} onChange={(e) => setLiquideConservation(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Liquide rinçage</label>
+                    <input type="text" value={liquideRincage} onChange={(e) => setLiquideRincage(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Liquide rinçage</label>
-                  <input type="text" value={liquideRincage} onChange={(e) => setLiquideRincage(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
-                </div>
-              </div>
 
-              {/* Anastomoses */}
-              <div className="border-t pt-3 space-y-3">
-                <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">Techniques d'Anastomoses</h4>
-                <div>
-                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Artérielle</label>
-                  <input type="text" value={typeAnastomoseArterielle} onChange={(e) => setTypeAnastomoseArterielle(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+                <div className="border-t pt-3 space-y-3">
+                  <h4 className="text-[10px] font-black text-[#2B5296] uppercase mb-2">Techniques d'Anastomoses</h4>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Artérielle</label>
+                    <input type="text" value={typeAnastomoseArterielle} onChange={(e) => setTypeAnastomoseArterielle(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Veineuse</label>
+                    <input type="text" value={typeAnastomoseVeineuse} onChange={(e) => setTypeAnastomoseVeineuse(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Uretéro-Vésicale</label>
+                    <input type="text" value={typeAnastomoseUreteroVesicale} onChange={(e) => setTypeAnastomoseUreteroVesicale(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Veineuse</label>
-                  <input type="text" value={typeAnastomoseVeineuse} onChange={(e) => setTypeAnastomoseVeineuse(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
+
+                <div className="grid grid-cols-2 gap-4 border-t pt-3">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={machineAPerfusion} onChange={(e) => setMachineAPerfusion(e.target.checked)} className="rounded" />
+                    <span>Machine à perfusion</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={sondeEnDoubleJJ} onChange={(e) => setSondeEnDoubleJJ(e.target.checked)} className="rounded" />
+                    <span>Sonde en Double JJ</span>
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Anastomose Uretéro-Vésicale</label>
-                  <input type="text" value={typeAnastomoseUreteroVesicale} onChange={(e) => setTypeAnastomoseUreteroVesicale(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" placeholder="" />
+
+                <div className="flex gap-2 pt-4">
+                  {selectedTransplant && (
+                    <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
+                  )}
+                  <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
+                    {selectedTransplant ? "Sauvegarder" : "Enregistrer"}
+                  </button>
                 </div>
-              </div>
+              </form>
+            </div>
+          )}
 
-              {/* Paramètres Binaires */}
-              <div className="grid grid-cols-2 gap-4 border-t pt-3">
-                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input type="checkbox" checked={machineAPerfusion} onChange={(e) => setMachineAPerfusion(e.target.checked)} className="rounded" />
-                  <span>Machine à perfusion</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input type="checkbox" checked={sondeEnDoubleJJ} onChange={(e) => setSondeEnDoubleJJ(e.target.checked)} className="rounded" />
-                  <span>Sonde en Double JJ</span>
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                {selectedTransplant && (
-                  <button type="button" onClick={resetForm} className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold border-none cursor-pointer">Annuler</button>
-                )}
-                <button type="submit" className="flex-1 bg-[#2B5296] text-white py-3 rounded-xl text-xs font-bold border-none cursor-pointer">
-                  {selectedTransplant ? "Sauvegarder" : "Enregistrer"}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Registre à droite */}
-          <div className="lg:col-span-2 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm min-h-[500px] flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
                 <div>
@@ -583,7 +591,6 @@ export const ActiveTransplantPage = () => {
                   </h3>
                 </div>
 
-                {/* ACTIONS LOCALES DE L'ETAT B */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
                     <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -595,13 +602,16 @@ export const ActiveTransplantPage = () => {
                       onChange={(e) => setLocalSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button 
-                    onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
-                    className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
-                    title="Importer pour ce patient"
-                  >
-                    <IconDatabaseImport size={16} />
-                  </button>
+                  
+                  {!isReadOnly && (
+                    <button 
+                      onClick={() => { setImportMode('personal'); setIsImportOpen(true); }}
+                      className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
+                      title="Importer pour ce patient"
+                    >
+                      <IconDatabaseImport size={16} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleExportCSV('personal')}
                     className="p-2 bg-white border border-slate-200 text-[#006591] hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -631,17 +641,19 @@ export const ActiveTransplantPage = () => {
                         <div className="space-y-1.5 text-xs text-slate-600 mt-4 border-t pt-3">
                           <p><IconBuildingHospital size={14} className="inline mr-1" /> Lieu : <strong>{tr.lieuDeLaGreffe}</strong> (Suivi: {tr.lieuDeSuivi})</p>
                           <p className="text-blue-600"><strong>Donneur ID :</strong> #{tr.donneurId}</p>
-                          <p>Ischémie Froide/Chaude : <strong>{tr.dureeIschemieFroide} min / {tr.dureeIschemieChaude} min</strong></p>
+                          <p>Ischémie Froide/Chaude : <strong>{tr.dureeIschemieFroide} h / {tr.dureeIschemieChaude} min</strong></p>
                           <p>Machine perfusion : <strong>{tr.machineAPerfusion ? "Oui" : "Non"}</strong></p>
                           <p>Sonde Double JJ : <strong>{tr.sondeEnDoubleJJ ? "Oui" : "Non"}</strong></p>
                           <p className="text-slate-500 italic mt-2 border-t pt-2"><IconInfoCircle size={14} className="inline mr-1" /> Anastomose Artérielle : {tr.typeAnastomoseArterielle}</p>
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
-                        <button onClick={() => triggerEdit(tr)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
-                        <button onClick={() => triggerDelete(tr.numeroTR!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end gap-1.5">
+                          <button onClick={() => triggerEdit(tr)} className="p-1.5 bg-slate-100 text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border-none cursor-pointer transition-colors"><IconEdit size={16} /></button>
+                          <button onClick={() => triggerDelete(tr.numeroTR!)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer transition-colors"><IconTrash size={16} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -652,18 +664,23 @@ export const ActiveTransplantPage = () => {
                 </div>
               )}
             </div>
+
+            {isReadOnly && (
+              <div className="text-[10px] text-slate-400 mt-6 border-t pt-4 italic">
+                * Mode consultation : Vous disposez d'un accès en lecture seule sur cette fiche d'historique de transplantations actives.
+              </div>
+            )}
           </div>
 
         </div>
       )}
 
-      {/* --- MODAL UNIQUE D'IMPORTATION CLINIQUE (GLOBAL OU PERSONNEL) --- */}
       {isImportOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm text-xs">
           <div className="bg-white rounded-[24px] p-8 w-full max-w-lg shadow-2xl space-y-6">
             <div className="flex justify-between items-center border-b pb-4">
               <h2 className="text-lg font-bold text-[#2B5296]">
-                {importMode === 'global' ? "Importation de Cohorte Active (CSV)" : `Importer le dossier de ${selectedPatient?.prenomP}`}
+                {importMode === 'global' ? "Importation de Cohorte Active (CSV)" : `Importer les greffes de ${selectedPatient?.prenomP}`}
               </h2>
               <button onClick={() => { setIsImportOpen(false); setFile(null); setPreviewData([]); }} className="border-none bg-transparent cursor-pointer p-1 rounded-lg hover:bg-slate-100 text-slate-400"><IconX size={20} /></button>
             </div>
@@ -709,7 +726,6 @@ export const ActiveTransplantPage = () => {
         </div>
       )}
 
-      {/* --- MODAL CONFIRMATION SUPPRESSION --- */}
       <DeleteConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleDelete} title="Supprimer la greffe active ?" message="Cette action effacera définitivement ce dossier chirurgical de greffe active du patient." />
       
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

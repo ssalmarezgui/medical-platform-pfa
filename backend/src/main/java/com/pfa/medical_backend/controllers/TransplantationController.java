@@ -96,7 +96,7 @@ public class TransplantationController {
     }
 
     @PostMapping("/patient/{patientId}/donneur/{donneurId}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')")
+    @PreAuthorize("hasAnyAuthority('WRITE_TRANSPLANT')")
     public ResponseEntity<TransplantationDTO> create(
             @PathVariable String patientId, 
             @PathVariable Integer donneurId, 
@@ -106,14 +106,14 @@ public class TransplantationController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')") 
+    @PreAuthorize("hasAnyAuthority('WRITE_TRANSPLANT')") 
     public ResponseEntity<TransplantationDTO> update(@PathVariable Integer id, @RequestBody TransplantationDTO detailsDto) {
         Transplantation updated = tService.update(id, toEntity(detailsDto));
         return ResponseEntity.ok(toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('WRITE_PATIENT', 'WRITE_DONNEUR')") 
+    @PreAuthorize("hasAnyAuthority('WRITE_TRANSPLANT')") 
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         tService.delete(id);
         return ResponseEntity.noContent().build();

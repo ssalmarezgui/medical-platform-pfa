@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useHabits, useDeleteHabit, useCreateHabit } from '../features/habits/hooks/useHabits';
 import { usePatients } from '../features/patients/hooks/usePatients';
 import { useQueryClient } from '@tanstack/react-query';
 import { habitService } from '../features/habits/api/habitService';
 import { 
   IconActivity, IconSearch, IconTrash, IconUserCheck, IconAlertCircle, IconFlame, IconPill, IconClock, IconEdit,
-  IconNotes, IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen
+  IconNotes, IconFileSpreadsheet, IconDatabaseImport, IconX, IconLoader, IconDownload, IconFolderOpen,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
@@ -13,8 +14,7 @@ import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import { useLocation } from 'react-router-dom';
 import { useDonors } from '../features/donors/hooks/useDonors';
 import { useDonorHabits } from '../features/habits/hooks/useHabits';
-import axios from 'axios';
-import { usePermission } from '../hooks/usePermission'; 
+import axios from 'axios'; 
 import { useAuthStore } from '../store/useAuthStore';
 
 export const HabitsPage = () => {
@@ -27,16 +27,25 @@ export const HabitsPage = () => {
 
   const subjects = isDonorMode ? donors : patients;
 
-  const { hasPermission } = usePermission();
-  const userRole = useAuthStore((state) => state.role);
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('READ_DONNEUR') || hasPermission('WRITE_PATIENT') || hasPermission('WRITE_DONNEUR');
-  const isReadOnly = (!hasPermission('WRITE_PATIENT') && !hasPermission('WRITE_DONNEUR')) || userRole === 'ADMIN';
+  const estInvestigateur = roleU === 'MEDECIN_INVESTIGATEUR';
+  const estSuivi = roleU === 'MEDECIN_SUIVI';
 
-  if (!canAccess) {
+  const aAccesPage = estInvestigateur || estSuivi;
+  const isReadOnly = estSuivi;
+
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter les habitudes de vie.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          L'évaluation des critères comportementaux, des addictions et du sevrage pré-greffe est strictement restreinte aux équipes médicales d'investigation et de suivi.
+        </p>
       </div>
     );
   }

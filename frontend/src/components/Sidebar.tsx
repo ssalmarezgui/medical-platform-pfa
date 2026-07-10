@@ -20,7 +20,6 @@ export const Sidebar = () => {
   const { user, logout } = useAuthStore();
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   const queryClient = useQueryClient();
 
   const handleConfirmLogout = () => {
@@ -58,12 +57,12 @@ export const Sidebar = () => {
 
           <nav className="mt-4 px-2 space-y-4">
             
-            {(isInvestigateur || isMedecinSuivi || isAgentLabo) && (
+            {(isSystemAdmin || isInvestigateur || isMedecinSuivi || isAgentLabo) && (
               <div className="space-y-1.5">
                 <div className="px-4 pb-1">
                   <p className="text-[9px] font-black text-[#6588BB] uppercase tracking-[0.2em]">Receveurs</p>
                 </div>
-                {(isInvestigateur || isMedecinSuivi) && (
+                {(isSystemAdmin || isInvestigateur || isMedecinSuivi) && (
                   <NavItem 
                     icon={<IconUsersGroup size={20} />} 
                     label="Registre Patients" 
@@ -71,7 +70,7 @@ export const Sidebar = () => {
                     active={location.pathname === '/patients'} 
                   />
                 )}
-                {(isInvestigateur || isAgentLabo) && (
+                {(isSystemAdmin || isInvestigateur || isMedecinSuivi || isAgentLabo) && (
                   <NavItem 
                     icon={<IconStethoscope size={20} />} 
                     label="Bilan pré-greffe" 
@@ -82,12 +81,12 @@ export const Sidebar = () => {
               </div>
             )}
 
-            {(isInvestigateur || isMedecinSuivi || isAgentLabo) && (
+            {(isSystemAdmin || isInvestigateur || isMedecinSuivi || isAgentLabo) && (
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
                 <div className="px-4 pb-1">
                   <p className="text-[9px] font-black text-[#6588BB] uppercase tracking-[0.2em]">Donneurs d'Organes</p>
                 </div>
-                {(isInvestigateur || isMedecinSuivi) && (
+                {(isSystemAdmin || isInvestigateur || isMedecinSuivi) && (
                   <NavItem 
                     icon={<IconUsersGroup size={20} />} 
                     label="Registre Donneurs" 
@@ -95,7 +94,7 @@ export const Sidebar = () => {
                     active={location.pathname === '/donors'} 
                   />
                 )}
-                {(isInvestigateur || isAgentLabo) && (
+                {(isSystemAdmin || isInvestigateur || isMedecinSuivi || isAgentLabo) && (
                   <NavItem 
                     icon={<IconStethoscope size={20} />} 
                     label="Bilans Donneurs" 
@@ -106,7 +105,7 @@ export const Sidebar = () => {
               </div>
             )}
 
-            {(isSystemAdmin || isMedecinSuivi || isAgentImmuno) && (
+            {(isSystemAdmin || isMedecinSuivi || isAgentImmuno || isInvestigateur) && (
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
                 <div className="px-4 pb-1">
                   <p className="text-[9px] font-black text-[#6588BB] uppercase tracking-[0.2em]">Suivi & Thérapeutique</p>
@@ -119,7 +118,7 @@ export const Sidebar = () => {
                     active={location.pathname === '/hospitalisation-hub'} 
                   />
                 )}
-                {isMedecinSuivi && (
+                {(isSystemAdmin || isMedecinSuivi) && (
                   <NavItem 
                     icon={<IconHeartbeat size={20} />} 
                     label="Transplantations" 
@@ -127,7 +126,7 @@ export const Sidebar = () => {
                     active={location.pathname === '/transplantations-hub'} 
                   />
                 )}
-                {(isAgentImmuno || isMedecinSuivi) && (
+                {(isSystemAdmin || isMedecinSuivi || isAgentImmuno) && (
                   <NavItem 
                     icon={<IconPill size={20} />} 
                     label="Immuno-suppresseurs" 
@@ -135,8 +134,7 @@ export const Sidebar = () => {
                     active={location.pathname === '/immuno-treatments'} 
                   />
                 )}
-                
-                {(isSystemAdmin || isMedecinSuivi) && (
+                {(isSystemAdmin || isMedecinSuivi || isInvestigateur || isAgentImmuno) && (
                   <NavItem 
                     icon={<IconPill size={20} />} 
                     label="Catalogue Molécules" 

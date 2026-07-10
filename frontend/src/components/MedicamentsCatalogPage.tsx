@@ -3,17 +3,22 @@ import { useMedicamentsList, useCreateMedicament, useUpdateMedicament, useDelete
 import { 
   IconPill, IconSearch, IconPlus, IconTrash, IconEdit, IconLoader,
   IconAlertCircle, IconActivity, IconReportMedical, IconDatabaseImport,
-  IconFileSpreadsheet, IconX, IconDownload
+  IconFileSpreadsheet, IconX, IconDownload,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
-import { usePermission } from '../hooks/usePermission'; 
+import { useAuthStore } from '../store/useAuthStore';
 
 export const MedicamentsCatalogPage = () => {
-  const { hasPermission } = usePermission();
+  const { user } = useAuthStore();
+  const roleU = user?.roleU;
 
-  const canAccess = hasPermission('READ_PATIENT') || hasPermission('WRITE_HOPITAL');
-  const isReadOnly = !hasPermission('WRITE_HOPITAL');
+  const estAdmin = roleU === 'ADMIN';
+  const estLecteur = roleU === 'MEDECIN_INVESTIGATEUR' || roleU === 'MEDECIN_SUIVI' || roleU === 'AGENT_IMMUNO';
+
+  const aAccesPage = estAdmin || estLecteur;
+  const isReadOnly = estLecteur;
 
   const { data: medicaments, isLoading: loadingMeds } = useMedicamentsList();
 
@@ -42,10 +47,16 @@ export const MedicamentsCatalogPage = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  if (!canAccess) {
+  if (!aAccesPage) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter le catalogue de référence des médicaments.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          La consultation et l'administration du catalogue de référence des médicaments sont strictement réservées aux prescripteurs cliniques, agents de pharmacovigilance et administrateurs autorisés.
+        </p>
       </div>
     );
   }

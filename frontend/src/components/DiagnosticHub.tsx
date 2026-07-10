@@ -28,7 +28,7 @@ export const DiagnosticHub = () => {
       icon: <IconHeartbeat size={32} />, 
       path: "/nephropathy-initial", 
       color: "bg-teal-50 text-teal-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI']
     },
     { 
       title: "Antécédents Familiaux",
@@ -36,7 +36,7 @@ export const DiagnosticHub = () => {
       icon: <IconUsersGroup size={32} />, 
       path: "/family-history", 
       color: "bg-indigo-50 text-indigo-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI']
     },
     { 
       title: "Habitudes", 
@@ -44,7 +44,7 @@ export const DiagnosticHub = () => {
       icon: <IconActivity size={32} />, 
       path: "/habits", 
       color: "bg-blue-50 text-[#2B5296]",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] 
     },
     { 
       title: "Antécédents Médicaux", 
@@ -52,7 +52,7 @@ export const DiagnosticHub = () => {
       icon: <IconMedicalCross size={32} />, 
       path: "/medical-history", 
       color: "bg-emerald-50 text-emerald-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI']
     },
     { 
       title: "Antécédents Chirurgicaux", 
@@ -60,7 +60,7 @@ export const DiagnosticHub = () => {
       icon: <IconScissors size={32} />, 
       path: "/surgery-history", 
       color: "bg-purple-50 text-purple-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI']
     },
     { 
       title: "Antécédents Gynéco-Obstétriques", 
@@ -68,7 +68,7 @@ export const DiagnosticHub = () => {
       icon: <IconDna size={32} />, 
       path: "/obgyn-history", 
       color: "bg-pink-50 text-pink-500",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI']
     },
     { 
       title: "Médicaments Long Cours", 
@@ -76,7 +76,7 @@ export const DiagnosticHub = () => {
       icon: <IconPill size={32} />, 
       path: "/medications", 
       color: "bg-amber-50 text-amber-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] 
     },
     { 
       title: "Transplantation Antérieure", 
@@ -84,7 +84,7 @@ export const DiagnosticHub = () => {
       icon: <IconHeartbeat size={32} />, 
       path: "/transplants", 
       color: "bg-teal-50 text-teal-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_SUIVI', 'MEDECIN_INVESTIGATEUR']
+      allowedRoles: ['MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] 
     },
     { 
       title: "Hématologie & Hémostase",
@@ -92,7 +92,7 @@ export const DiagnosticHub = () => {
       icon: <IconDroplet size={32} />, 
       path: "/hematology", 
       color: "bg-red-50 text-red-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Bilan Immunologique",
@@ -100,7 +100,7 @@ export const DiagnosticHub = () => {
       icon: <IconBiohazard size={32} />, 
       path: "/immunology", 
       color: "bg-orange-50 text-orange-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Biochimie Sanguine",
@@ -108,7 +108,7 @@ export const DiagnosticHub = () => {
       icon: <IconFlask size={32} />, 
       path: "/biochemistry-blood", 
       color: "bg-sky-50 text-sky-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Biochimie Urinaire",
@@ -116,7 +116,7 @@ export const DiagnosticHub = () => {
       icon: <IconTestPipe size={32} />, 
       path: "/biochemistry-urine", 
       color: "bg-violet-50 text-violet-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Marqueurs Tumoraux",
@@ -124,7 +124,7 @@ export const DiagnosticHub = () => {
       icon: <IconShield size={32} />, 
       path: "/tumor-markers", 
       color: "bg-yellow-50 text-yellow-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Microbiologie & Sérologie",
@@ -132,7 +132,7 @@ export const DiagnosticHub = () => {
       icon: <IconVirus size={32} />, 
       path: "/infectious", 
       color: "bg-rose-50 text-rose-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Examens d'Imagerie",
@@ -140,7 +140,7 @@ export const DiagnosticHub = () => {
       icon: <IconPhoto size={32} />, 
       path: "/imaging", 
       color: "bg-gray-50 text-gray-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
     { 
       title: "Hormones & Vitamines",
@@ -148,7 +148,7 @@ export const DiagnosticHub = () => {
       icon: <IconPill size={32} />, 
       path: "/hormones-vitamins", 
       color: "bg-teal-50 text-teal-600",
-      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'AGENT_LABORATOIRE']
+      allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_LABORATOIRE']
     },
   ];
 

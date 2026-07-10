@@ -6,12 +6,12 @@ import { immunoService } from '../features/immuno-treatments/api/immunoService';
 import { 
   IconPill, IconSearch, IconPlus, IconTrash, IconUserCheck, IconAlertCircle, IconCalendar, IconEdit, IconLoader, IconHeartbeat, IconActivity, IconInfoCircle,
   IconFileSpreadsheet, IconDatabaseImport, IconX, IconDownload, IconFolderOpen,
-  IconFlask
+  IconFlask,
+  IconLock
 } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import { DeleteConfirmModal } from './ui/DeleteConfirmModal';
 import axios from 'axios';
-import { usePermission } from '../hooks/usePermission';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const ImmunoTreatmentsPage = () => {
@@ -25,7 +25,6 @@ export const ImmunoTreatmentsPage = () => {
   const { data: treatments, isLoading: loadingHistory } = useImmunoHistory(patientIdString || undefined);
   const { data: listMeds } = useMedicaments();
 
-  const { hasPermission } = usePermission();
   const user = useAuthStore((state) => state.user);
   const userRole = user?.roleU;
   
@@ -34,13 +33,22 @@ export const ImmunoTreatmentsPage = () => {
   const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
 
   const canAccess = isSuivi || isImmuno || isAdmin;
+
+  const canManageProtocol = isSuivi;
+  const canManageDosagesAndComplications = isSuivi || isImmuno;
   const isReadOnly = isAdmin;
   const canDelete = isSuivi;
 
   if (!canAccess) {
     return (
-      <div className="max-w-[1200px] mx-auto py-8 px-6 bg-red-50 text-red-700 rounded-[20px] border border-red-200 font-bold text-xs">
-        Accès refusé : Vous ne possédez pas les habilitations de sécurité pour consulter le pôle de traitement immunosuppresseur.
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8 bg-white border border-red-100 rounded-[30px] shadow-sm max-w-lg mx-auto mt-12 text-xs">
+        <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6">
+          <IconLock size={36} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Accès Non Autorisé</h3>
+        <p className="text-[#6588BB] text-sm leading-relaxed mb-6">
+          La consultation, le suivi et la prescription thérapeutique des traitements immunosuppresseurs sont strictement restreints aux cliniciens et agents de pharmacovigilance habilités.
+        </p>
       </div>
     );
   }
@@ -123,18 +131,15 @@ export const ImmunoTreatmentsPage = () => {
       };
 
       if (selectedDosage) {
-        // --- MODE ÉDITION (PUT) ---
         await axios.put(`http://localhost:8081/api/dosages-sanguins/${selectedDosage.identifiantDMS}`, payload);
         setToastMessage("Dosage sanguin modifié avec succès !");
       } else {
-        // --- MODE CRÉATION (POST) ---
         await immunoService.createDosage(selectedTreatmentId, payload);
         setToastMessage("Dosage sanguin enregistré avec succès !");
       }
 
       queryClient.invalidateQueries({ queryKey: ['dosages', selectedTreatmentId] });
       
-      // Réinitialisation
       setValeurDMS('');
       setDateDMS('');
       setObservationDMS('');
@@ -209,7 +214,7 @@ export const ImmunoTreatmentsPage = () => {
     const payload: any = {
       dciTIS,
       durerTraitementTIS,
-      typeTIS,
+      type: typeTIS,
       patientId: patientIdString,
       patient: { identifiantP: patientIdString }
     };
@@ -231,7 +236,7 @@ export const ImmunoTreatmentsPage = () => {
 
     try {
       if (selectedTIS) {
-        await axios.put(`http://localhost:8081/api/traitements-immuno/${selectedTIS.identifiantTIS}`, payload);
+        await axios.put(`http://localhost:8081/api/traitements-immuno/${selectedTIS.id}`, payload);
         setToastMessage("Le protocole d'immuno-suppression a été mis à jour !");
       } else {
         await immunoService.createTIS(payload);
@@ -614,7 +619,7 @@ export const ImmunoTreatmentsPage = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
           
-          {!isReadOnly && (
+          {canManageProtocol && (
             <div className="lg:col-span-1 bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm h-fit space-y-6">
               <h3 className="text-base font-bold text-[#2B5296] flex items-center gap-1.5"><IconPlus size={20} /> {selectedTIS ? "Modifier le Protocole" : "Saisir un Protocole"}</h3>
               
@@ -680,7 +685,7 @@ export const ImmunoTreatmentsPage = () => {
             </div>
           )}
 
-          <div className={`${!isReadOnly ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
+          <div className={`${canManageProtocol ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
             
             <div className="bg-white border border-[#A7C0E4]/30 rounded-[30px] p-8 shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
@@ -724,22 +729,22 @@ export const ImmunoTreatmentsPage = () => {
               ) : filteredLocalTreatments && filteredLocalTreatments.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {filteredLocalTreatments.map((t) => {
-                    const isInduction = t.typeTIS === 'INDUCTION';
+                    const isInduction = t.type === 'INDUCTION';
                     return (
                       <div 
-                        key={t.identifiantTIS} 
-                        onClick={() => setSelectedTreatmentId(t.identifiantTIS!)}
+                        key={t.id}
+                        onClick={() => setSelectedTreatmentId(t.id!)}
                         className={`border p-5 rounded-2xl cursor-pointer transition-all ${
-                          selectedTreatmentId === t.identifiantTIS 
+                          selectedTreatmentId === t.id
                             ? 'border-[#2B5296] bg-blue-50/30 ring-1 ring-[#2B5296]/20' 
                             : 'border-slate-100 bg-[#F8FAFC]/50 hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex justify-between items-start mb-3">
                           <span className="text-[10px] font-black text-[#2B5296] bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full uppercase">
-                            {t.typeTIS}
+                            {t.type}
                           </span>
-                          <span className="text-[10px] text-[#6588BB] font-mono">ID : #{t.identifiantTIS}</span>
+                          <span className="text-[10px] text-[#6588BB] font-mono">ID : #{t.id}</span>
                         </div>
 
                         <h4 className="text-sm font-bold text-slate-800 mt-2">{t.dciTIS}</h4>
@@ -753,12 +758,10 @@ export const ImmunoTreatmentsPage = () => {
                           )}
                         </div>
 
-                        {!isReadOnly && (
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => setSelectedTIS(t)} className="p-1.5 bg-white text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border border-slate-100 cursor-pointer"><IconEdit size={14} /></button>
-                            {canDelete && <button onClick={() => triggerDelete(t.identifiantTIS!, 'TIS')} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer"><IconTrash size={14} /></button>}
-                          </div>
-                        )}
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {canManageProtocol && <button onClick={() => setSelectedTIS(t)} className="p-1.5 bg-white text-[#006591] hover:bg-[#DCE6F5]/50 rounded-lg border border-slate-100 cursor-pointer"><IconEdit size={14} /></button>}
+                          {canDelete && <button onClick={() => triggerDelete(t.id!, 'TIS')} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg border-none cursor-pointer"><IconTrash size={14} /></button>}
+                        </div>
                       </div>
                     );
                   })}
