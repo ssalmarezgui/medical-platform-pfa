@@ -22,6 +22,7 @@ provider "aws" {
   }
 }
 
+
 resource "aws_s3_bucket" "medical_bucket" {
   bucket = "pfa-medical-secure-bucket"
 
@@ -30,6 +31,34 @@ resource "aws_s3_bucket" "medical_bucket" {
     Environment = "Dev"
   }
 }
+
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.medical_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "public_access" {
+  bucket = aws_s3_bucket.medical_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption" {
+  bucket = aws_s3_bucket.medical_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+
 
 resource "aws_instance" "web_server" {
   ami           = "ami-0c55b159cbfafe1f0"
@@ -55,6 +84,7 @@ resource "aws_instance" "web_server" {
     Name = "Mon-Serveur-Web-AWS-Simule"
   }
 }
+
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "pfa-medical-ec2-profile"
