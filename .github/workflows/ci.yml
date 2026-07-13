@@ -100,6 +100,13 @@ jobs:
       - name: Recuperer le code source
         uses: actions/checkout@v3
 
+      - name: Analyser la securite de l'IaC avec Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: true
+
       - name: Installer Terraform
         uses: hashicorp/setup-terraform@v2
         with:
