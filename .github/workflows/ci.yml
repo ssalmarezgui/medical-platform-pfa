@@ -106,10 +106,9 @@ jobs:
           terraform_version: 1.15.8
 
       - name: Demarrer LocalStack (Simulateur AWS)
-        uses: localstack/setup-localstack@v0.2.1
-        with:
-          image-tag: '3.2.0'
-          install-cli: 'true'
+        run: |
+          docker run -d --name localstack_aws -p 4566:4566 -e LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT=1 localstack/localstack:latest
+          sleep 15
 
       - name: Valider l'Infrastructure avec Terraform
         run: |
