@@ -106,7 +106,7 @@ jobs:
           terraform_version: 1.15.8
 
       - name: Demarrer LocalStack (Simulateur AWS)
-        uses: localstack/setup-localstack@v2
+        uses: localstack/setup-localstack@v0.2.1
         with:
           image-tag: 'latest'
           install-cli: 'true'
