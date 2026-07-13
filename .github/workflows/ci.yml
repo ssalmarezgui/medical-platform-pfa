@@ -93,6 +93,32 @@ jobs:
         run: snyk test --all-projects --severity-threshold=high
 
 
+  terraform-ci:
+    name: Terraform & LocalStack AWS Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperer le code source
+        uses: actions/checkout@v3
+
+      - name: Installer Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.15.8
+
+      - name: Demarrer LocalStack (Simulateur AWS)
+        uses: localstack/setup-localstack@v2
+        with:
+          image-tag: 'latest'
+          install-cli: 'true'
+
+      - name: Valider l'Infrastructure avec Terraform
+        run: |
+          cd terraform
+          terraform init
+          terraform plan
+          terraform apply -auto-approve
+
+
   docker-cd:
     name: Build, Scan & Push Docker Images
     runs-on: ubuntu-latest

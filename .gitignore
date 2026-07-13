@@ -33,3 +33,10 @@ frontend/.env.production.local
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+
+
+# TERRAFORM IaC
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
