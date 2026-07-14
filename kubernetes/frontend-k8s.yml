@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medical-frontend-deployment
+  labels:
+    app: medical-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: medical-frontend
+  template:
+    metadata:
+      labels:
+        app: medical-frontend
+    spec:
+      containers:
+        - name: medical-frontend-container
+          image: ssalmarezgui/medical-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80 # en prod, React est servi par Nginx sur le port 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    app: medical-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30001 # Expose le site sur le port 30001 de mon pc !
+  type: NodePort # permet d'accéder au site depuis l'extérieur de Kubernetes

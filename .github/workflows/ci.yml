@@ -106,6 +106,13 @@ jobs:
           directory: terraform/
           framework: terraform
           soft_fail: true
+      
+      - name: Analyser la securite de Kubernetes avec Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: kubernetes/
+          framework: kubernetes
+          soft_fail: true
 
       - name: Installer Terraform
         uses: hashicorp/setup-terraform@v2

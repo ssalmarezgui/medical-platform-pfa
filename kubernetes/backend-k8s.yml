@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medical-backend-deployment
+  labels:
+    app: medical-backend
+spec:
+  replicas: 1 # On demande à Kubernetes de garder toujours 1 copie active du backend
+  selector:
+    matchLabels:
+      app: medical-backend
+  template:
+    metadata:
+      labels:
+        app: medical-backend
+    spec:
+      containers:
+        - name: medical-backend-container
+          # !!!! : On pointe directement sur l'image propre de mon Docker Hub !
+          image: ssalmarezgui/medical-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081 # Le port d'écoute de Spring Boot
+          # Injection des variables de configuration
+          env:
+            - name: MYSQL_HOST
+              value: "medical-mysql-db"
+            - name: MYSQL_USER
+              value: "root"
+            - name: MYSQL_PASSWORD
+              value: "ProjetPFA2026"
+            - name: JWT_SECRET
+              value: "eac254079850187e0203c87d057416fb012c6c6efba618e3c3c27465c5a8136b527d8365c7d6a71225d6401e651651136a0287800357bbbe6811145e63d5668d"
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service # le nom de domaine fixe que React utilisera pour appeler l'API !
+spec:
+  selector:
+    app: medical-backend
+  ports:
+    - protocol: TCP
+      port: 8081      # Le port exposé par le service
+      targetPort: 8081 # Le port réel du conteneur Spring Boot
+  type: ClusterIP # Type de réseau interne
