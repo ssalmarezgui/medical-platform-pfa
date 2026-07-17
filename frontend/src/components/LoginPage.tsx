@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { IconPill, IconLock, IconUser, IconBuildingHospital, IconId, IconDeviceMobile } from '@tabler/icons-react';
+import { IconPill, IconLock, IconUser, IconBuildingHospital, IconId, IconDeviceMobile, IconMail } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import axios from 'axios';
 
@@ -13,16 +13,22 @@ interface Hospital {
 export const LoginPage = () => {
   const navigate = useNavigate();
   const loginUser = useAuthStore((state) => state.login);
-  const [email, setEmail] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>('login');
   
   const [loginStep, setLoginStep] = useState<'credentials' | 'otp'>('credentials');
+
+  const [forgotStep, setForgotStep] = useState<'request' | 'reset'>('request');
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [matricule, setMatricule] = useState('');
+  const [email, setEmail] = useState('');
+
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospital, setSelectedHospital] = useState('');
@@ -53,7 +59,9 @@ export const LoginPage = () => {
 
     loginUser(login, role, permissions, token, selectedHospital);
 
-    if (role === 'AGENT_IMMUNO') {
+    if (role === 'ADMIN') {
+      navigate('/admin-dashboard');
+    } else if (role === 'AGENT_IMMUNO') {
       navigate('/immuno-treatments');
     } else if (role === 'MEDECIN_INVESTIGATEUR') {
       navigate('/diagnostic-hub');
@@ -123,7 +131,6 @@ export const LoginPage = () => {
       });
 
       setIsLoading(false);
-      
       const auth = response.data;
       handleLoginSuccess(auth.token, auth.role, auth.authorities, auth.loginU);
 
@@ -168,7 +175,80 @@ export const LoginPage = () => {
     } catch (err: any) {
       setIsLoading(false);
       setToastType('error');
-      setToastMessage(err.response?.data?.message || "Erreur d'inscription. Vérifiez votre matricule médecin.");
+      setToastMessage(err.response?.data?.message || "Erreur d'inscription.");
+      setToastOpen(true);
+    }
+  };
+
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      setToastType('error');
+      setToastMessage("Veuillez saisir votre adresse email.");
+      setToastOpen(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await axios.post('http://localhost:8081/api/v1/auth/forgot-password', {
+        emailU: forgotEmail
+      });
+
+      setIsLoading(false);
+      setForgotStep('reset');
+      setToastType('success');
+      setToastMessage("Un code de réinitialisation a été envoyé à votre adresse email.");
+      setToastOpen(true);
+    } catch (err: any) {
+      setIsLoading(false);
+      setToastType('error');
+      setToastMessage(err.response?.data?.message || "Erreur lors de la demande.");
+      setToastOpen(true);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotOtp || !newPassword) {
+      setToastType('error');
+      setToastMessage("Veuillez remplir tous les champs.");
+      setToastOpen(true);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setToastType('error');
+      setToastMessage("Le mot de passe doit faire au moins 8 caractères.");
+      setToastOpen(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await axios.post('http://localhost:8081/api/v1/auth/reset-password', {
+        emailU: forgotEmail,
+        otpCode: forgotOtp,
+        newPassword: newPassword
+      });
+
+      setIsLoading(false);
+      setToastType('success');
+      setToastMessage("Votre mot de passe a été réinitialisé ! Connectez-vous.");
+      setToastOpen(true);
+
+      setForgotEmail('');
+      setForgotOtp('');
+      setNewPassword('');
+      setActiveTab('login');
+      setLoginStep('credentials');
+      setForgotStep('request');
+    } catch (err: any) {
+      setIsLoading(false);
+      setToastType('error');
+      setToastMessage(err.response?.data?.message || "Erreur de réinitialisation.");
       setToastOpen(true);
     }
   };
@@ -193,7 +273,7 @@ export const LoginPage = () => {
           <p className="text-[10px] font-bold text-[#6588BB] uppercase tracking-[0.15em] mt-1.5">Portail de Connexion Clinique</p>
         </div>
 
-        {loginStep === 'credentials' && (
+        {loginStep === 'credentials' && activeTab !== 'forgot' && (
           <div className="flex border-b border-slate-100 pb-2">
             <button 
               type="button" 
@@ -212,7 +292,7 @@ export const LoginPage = () => {
           </div>
         )}
 
-        {activeTab === 'login' ? (
+        {activeTab === 'login' && (
           loginStep === 'credentials' ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
               <div>
@@ -251,7 +331,16 @@ export const LoginPage = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Mot de passe *</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[10px] font-black text-[#6588BB] uppercase">Mot de passe *</label>
+                  <button 
+                    type="button" 
+                    onClick={() => { setActiveTab('forgot'); setForgotStep('request'); }}
+                    className="text-[10px] text-[#2B5296] font-bold border-none bg-transparent cursor-pointer hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
                 <div className="relative">
                   <IconLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input 
@@ -316,7 +405,9 @@ export const LoginPage = () => {
               </div>
             </form>
           )
-        ) : (
+        )}
+
+        {activeTab === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
             <div>
               <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Matricule de Médecin de Référence *</label>
@@ -336,13 +427,14 @@ export const LoginPage = () => {
             <div>
               <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Adresse Email Professionnelle *</label>
               <div className="relative">
+                <IconMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
                   type="email" 
                   required 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none font-semibold text-slate-800 bg-white" 
-                  placeholder="" 
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-semibold text-slate-800 bg-white" 
+                  placeholder="dr.nom@hopital.com" 
                 />
               </div>
             </div>
@@ -386,6 +478,109 @@ export const LoginPage = () => {
             </button>
           </form>
         )}
+
+        {activeTab === 'forgot' && (
+          forgotStep === 'request' ? (
+            <form onSubmit={handleForgotPasswordRequest} className="space-y-4 text-xs">
+              <div className="text-center bg-blue-50/40 p-4 rounded-xl border border-blue-50">
+                <p className="text-[#2B5296] font-bold mb-1">Mot de passe oublié ?</p>
+                <p className="text-[11px] text-[#6588BB] leading-relaxed">
+                  Saisissez votre adresse email clinique. Un code de réinitialisation vous sera envoyé.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Adresse Email clinique *</label>
+                <div className="relative">
+                  <IconMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="email" 
+                    required 
+                    value={forgotEmail} 
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-semibold text-slate-800 bg-white" 
+                    placeholder="exemple@hopital.com" 
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setActiveTab('login')} 
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold border-none cursor-pointer hover:bg-slate-200"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="flex-[2] bg-[#2B5296] text-white py-3 rounded-xl font-bold border-none cursor-pointer shadow-lg shadow-[#2B5296]/20 transition-all hover:bg-blue-900 disabled:opacity-50"
+                >
+                  {isLoading ? "Envoi..." : "Envoyer le code"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-xs">
+              <div className="text-center bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                <p className="text-emerald-700 font-bold mb-1">Code envoyé !</p>
+                <p className="text-[11px] text-[#6588BB] leading-relaxed">
+                  Saisissez le code temporaire envoyé à <strong className="text-emerald-700">{forgotEmail}</strong> ainsi que votre nouveau mot de passe.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Code de réinitialisation *</label>
+                <div className="relative">
+                  <IconDeviceMobile className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={6}
+                    value={forgotOtp} 
+                    onChange={(e) => setForgotOtp(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-center text-lg tracking-[0.25em] text-[#2B5296] bg-white" 
+                    placeholder="******" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Nouveau mot de passe *</label>
+                <div className="relative">
+                  <IconLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="password" 
+                    required 
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none bg-white" 
+                    placeholder="Minimum 8 caractères" 
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setForgotStep('request')} 
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold border-none cursor-pointer hover:bg-slate-200"
+                >
+                  Retour
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="flex-[2] bg-emerald-600 text-white py-3 rounded-xl font-bold border-none cursor-pointer shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {isLoading ? "Modification..." : "Réinitialiser le mot de passe"}
+                </button>
+              </div>
+            </form>
+          )
+        )}
+
       </div>
 
       <Toast isOpen={toastOpen} message={toastMessage} type={toastType} onClose={() => setToastOpen(false)} />

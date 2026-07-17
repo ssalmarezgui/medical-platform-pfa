@@ -30,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     List<User> findByLoginUContainingIgnoreCase(String loginU);
 
     List <User> findByActive(boolean active);
+
+    Optional<User> findByEmailU(String emailU);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.active = true AND (u.role.nomRole = 'ROLE_MEDECIN_SUIVI' OR u.role.nomRole = 'ROLE_MEDECIN_INVESTIGATEUR')")
+    Long countActiveDoctors();
+    Long countByActive(boolean active);
 }

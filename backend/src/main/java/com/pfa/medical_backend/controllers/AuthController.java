@@ -156,6 +156,77 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Object> forgotPassword(@RequestBody Map<String, String> request) {
+        String emailU = request.get("emailU");
+
+        if (emailU == null || emailU.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "L'adresse email est requise."));
+        }
+        Optional<User> userOpt = userRepository.findByEmailU(emailU);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Aucun compte clinique n'est associé à cette adresse email."));
+        }
+
+        User user = userOpt.get();
+
+        String otpCode = otpService.generateOtp(user.getLoginU());
+
+        sendForgotPasswordEmail(user.getEmailU(), otpCode);
+
+        return ResponseEntity.ok(Map.of("message", "Un code de réinitialisation a été envoyé à votre adresse email."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
+        String emailU = request.get("emailU");
+        String otpCode = request.get("otpCode");
+        String newPassword = request.get("newPassword");
+
+        if (emailU == null || otpCode == null || newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Données invalides ou mot de passe trop court (min 8 caractères)."));
+        }
+
+        Optional<User> userOpt = userRepository.findByEmailU(emailU);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Utilisateur introuvable."));
+        }
+        User user = userOpt.get();
+
+        boolean isOtpValid = otpService.validateOtp(user.getLoginU(), otpCode);
+        if (!isOtpValid) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Code de réinitialisation incorrect ou expiré."));
+        }
+
+        user.setMotPasseU(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Votre mot de passe a été réinitialisé avec succès."));
+    }
+
+    private void sendForgotPasswordEmail(String recipientEmail, String otpCode) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("MedPlatform - Réinitialisation de votre mot de passe");
+            message.setText("Bonjour,\n\n" +
+                    "Vous avez demandé la réinitialisation de votre mot de passe MedPlatform.\n" +
+                    "Voici votre code de sécurité temporaire : " + otpCode + "\n" +
+                    "Ce code est valide pendant 5 minutes.\n\n" +
+                    "Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email et sécuriser votre compte.\n\n" +
+                    "Cordialement,\nL'équipe administrative.");
+            mailSender.send(message);
+            System.out.println("[EMAIL SYSTEM] Code de réinitialisation envoyé à : " + recipientEmail);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email réinitialisation : " + e.getMessage());
+        }
+    }
+
+
+
     private void sendOtpEmail(String recipientEmail, String otpCode) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();

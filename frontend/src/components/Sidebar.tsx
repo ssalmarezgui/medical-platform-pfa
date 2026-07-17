@@ -6,8 +6,10 @@ import {
   IconX,
   IconLogout,
   IconUsersGroup,
-  IconShieldCheck
+  IconShieldCheck,
+  IconLayoutDashboard
 } from '@tabler/icons-react';
+
 import React, { useState } from 'react'; 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../store/useUIStore';
@@ -57,6 +59,17 @@ export const Sidebar = () => {
           </div>
 
           <nav className="mt-4 px-2 space-y-4">
+
+            {isSystemAdmin && (
+              <div className="space-y-1.5">
+                <NavItem 
+                  icon={<IconLayoutDashboard size={20} />} 
+                  label="Accueil Admin" 
+                  path="/admin-dashboard" 
+                  active={location.pathname === '/admin-dashboard'} 
+                />
+              </div>
+            )}
             
             {(isSystemAdmin || isInvestigateur || isMedecinSuivi || isAgentLabo) && (
               <div className="space-y-1.5">

@@ -18,6 +18,8 @@ axios.interceptors.request.use(
   }
 );
 
+
+import { AdminDashboard } from './components/AdminDashboard';
 import { HospitalPage } from './components/HospitalPage';
 import { ServicePage } from './components/ServicePage';
 import { DoctorPage } from './components/DoctorPage';
@@ -127,7 +129,8 @@ function App() {
 
                 <Route path="/validations" element={<ValidationsPage />} />
 
-                
+                <Route path="/admin-dashboard" element={<AdminDashboard />} />
+
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>

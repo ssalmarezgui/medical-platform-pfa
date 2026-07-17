@@ -1,4 +1,5 @@
 package com.pfa.medical_backend.repositories;
+import com.pfa.medical_backend.dto.HospitalStatsDTO;
 import com.pfa.medical_backend.entities.Medecin;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.entities.ServiceMedical;
@@ -35,4 +36,10 @@ public interface PatientIdAdminRepository extends JpaRepository<PatientIdAdmin, 
 
     @Query("SELECT DISTINCT p FROM PatientIdAdmin p JOIN p.affectations a JOIN a.service s JOIN s.hopital h WHERE h.identifiantH = :hopitalId")
     List<PatientIdAdmin> findByHopitalId(@Param("hopitalId") String userHopitalId);
+
+    @Query("SELECT new com.pfa.medical_backend.dto.HospitalStatsDTO(COALESCE(h.libelleH, 'Sans Établissement'), COUNT(p)) " +
+           "FROM PatientIdAdmin p " +
+           "LEFT JOIN HopitalStructureSoin h ON p.indexHopitalP = h.identifiantH " + 
+           "GROUP BY h.libelleH")
+    List<HospitalStatsDTO> getPatientsCountPerHospital();
 }
