@@ -7,6 +7,8 @@ import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.mail.SimpleMailMessage; 
+import org.springframework.mail.javamail.JavaMailSender;
 
 import com.pfa.medical_backend.dto.UserRequestDTO;
 import com.pfa.medical_backend.dto.UserResponseDTO;
@@ -28,13 +30,17 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final MedecinRepository medecinRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
-    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, MedecinRepository medecinRepository, PasswordEncoder passwordEncoder){
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, 
+                           MedecinRepository medecinRepository, PasswordEncoder passwordEncoder,
+                           JavaMailSender mailSender) { 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.medecinRepository = medecinRepository;
         this.passwordEncoder = passwordEncoder;
+        this.mailSender = mailSender; 
     }
     
     @Override
@@ -46,9 +52,13 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setUuid(UUID.randomUUID().toString());
         user.setLoginU(dto.getLoginU());
+        user.setEmailU(dto.getEmailU()); 
         user.setMotPasseU(passwordEncoder.encode(dto.getMotPasseU()));
         user.setAccountNonLocked(true);
         user.setFailedLoginAttempts(0);
+        user.setActive(false);
+
+        String medecinName = "";
 
         if (dto.getMedecinId() != null) {
             Medecin medecin = medecinRepository.findById(dto.getMedecinId())
@@ -60,6 +70,7 @@ public class UserServiceImpl implements UserService {
 
             user.setMedecin(medecin);
             user.setService(medecin.getService());
+            medecinName = medecin.getPrenomM() + " " + medecin.getNomM();
 
             String targetRoleName = "ROLE_MEDECIN_SUIVI";
             
@@ -87,13 +98,91 @@ public class UserServiceImpl implements UserService {
         }
 
         User savedUser = userRepository.save(user);
+
+        sendPendingEmailToDoctor(savedUser.getEmailU(), savedUser.getLoginU());
+
+        sendAdminAlertEmail(savedUser.getLoginU(), medecinName);
+
         return mapToResponseDTO(savedUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getPendingUsers() {
+        return userRepository.findByActive(false).stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    @Override
+    public UserResponseDTO approveUser(String uuid) {
+        User user = userRepository.findByUuid(uuid)
+                .orElseThrow(() -> new EntityNotFoundException("Utilisateur introuvable"));
+        
+        user.setActive(true);
+        User approvedUser = userRepository.save(user);
+
+        sendActivationEmailToDoctor(approvedUser.getEmailU(), approvedUser.getLoginU());
+
+        return mapToResponseDTO(approvedUser);
+    }
+
+    private void sendPendingEmailToDoctor(String recipientEmail, String username) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezguii@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("MedPlatform - Inscription en cours de validation");
+            message.setText("Bonjour,\n\n" +
+                    "Votre inscription sur MedPlatform a été reçue.\n" +
+                    "Pour des raisons de sécurité, votre compte (Identifiant : " + username + ") est actuellement en cours de vérification par notre équipe administrative.\n\n" +
+                    "Vous recevrez un email dès que votre compte sera activé.\n\n" +
+                    "Cordialement,\nL'équipe administrative.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email médecin : " + e.getMessage());
+        }
+    }
+
+    private void sendAdminAlertEmail(String username, String doctorName) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo("ssalmarezgui@gmail.com");
+            message.setSubject("ALERTE : Nouveau compte médecin en attente de validation");
+            message.setText("Bonjour Administrateur,\n\n" +
+                    "Un nouveau médecin s'est inscrit sur la plateforme :\n" +
+                    "- Nom : " + doctorName + "\n" +
+                    "- Identifiant de connexion : " + username + "\n\n" +
+                    "Veuillez vous connecter sur votre tableau de bord de validation pour analyser et activer son compte.\n\n" +
+                    "Lien de connexion : http://localhost:5173/login");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email alerte admin : " + e.getMessage());
+        }
+    }
+    private void sendActivationEmailToDoctor(String recipientEmail, String username) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("MedPlatform - Votre compte a été activé !");
+            message.setText("Félicitations Dr.,\n\n" +
+                    "Votre compte MedPlatform (Identifiant : " + username + ") a été validé et activé par l'administration.\n\n" +
+                    "Vous pouvez dès à présent vous connecter et accéder à votre espace sécurisé.\n\n" +
+                    "Cordialement,\nL'équipe de l'administration médicale.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email activation : " + e.getMessage());
+        }
     }
 
     private UserResponseDTO mapToResponseDTO(User user) {
         UserResponseDTO dto = new UserResponseDTO();
         dto.setUuid(user.getUuid());
         dto.setLoginU(user.getLoginU());
+        dto.setEmailU(user.getEmailU());
+        dto.setActive(user.isActive());
         
         if (user.getRole() != null) {
             dto.setRoleU(user.getRole().getNomRole());
@@ -152,5 +241,39 @@ public class UserServiceImpl implements UserService {
     public void lockUser(User user) {
         user.setAccountNonLocked(false);
         user.setLocktime(LocalDateTime.now(ZoneId.of("Africa/Tunis")));
+    }
+
+    @Override
+    public UserResponseDTO toggleUserStatus(String uuid) {
+        User user = userRepository.findByUuid(uuid)
+                .orElseThrow(() -> new EntityNotFoundException("Utilisateur introuvable"));
+        
+        boolean newStatus = !user.isActive();
+        user.setActive(newStatus);
+        User updatedUser = userRepository.save(user);
+
+        if (newStatus) {
+            sendActivationEmailToDoctor(updatedUser.getEmailU(), updatedUser.getLoginU());
+        } else {
+            sendSuspensionEmailToDoctor(updatedUser.getEmailU(), updatedUser.getLoginU());
+        }
+
+        return mapToResponseDTO(updatedUser);
+    }
+
+    private void sendSuspensionEmailToDoctor(String recipientEmail, String username) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("MedPlatform - Suspension temporaire de votre compte");
+            message.setText("Bonjour,\n\n" +
+                    "Nous vous informons que votre compte MedPlatform (Identifiant : " + username + ") a été temporairement suspendu par l'administration médicale.\n\n" +
+                    "Vos accès à la plateforme sont bloqués jusqu'à nouvel ordre. Si vous pensez qu'il s'agit d'une erreur, merci de contacter l'administrateur de votre établissement.\n\n" +
+                    "Cordialement,\nL'équipe de l'administration médicale.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email suspension : " + e.getMessage());
+        }
     }
 }

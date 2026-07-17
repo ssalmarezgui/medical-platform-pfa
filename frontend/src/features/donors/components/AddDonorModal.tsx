@@ -253,7 +253,7 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
                 <input 
                   type="text" 
                   maxLength={8} 
-                  placeholder={isAdulteSelected ? "Ex: 01234567" : "CIN du tuteur legal"} 
+                  placeholder={isAdulteSelected ? "" : "CIN du tuteur legal"} 
                   {...register('cinD')} 
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white font-semibold" 
                 />
@@ -305,7 +305,7 @@ export const AddDonorModal = ({ isOpen, onClose, donor }: AddDonorProps) => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">WhatsApp</label>
-                <input placeholder="Ex: 50123456" {...register('telephoneWhatsAppD')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white" />
+                <input placeholder="" {...register('telephoneWhatsAppD')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white" />
               </div>
             </div>
 

@@ -4,21 +4,29 @@ import com.pfa.medical_backend.dto.LoginRequest;
 import com.pfa.medical_backend.dto.LoginResponse;
 import com.pfa.medical_backend.dto.UserRequestDTO;
 import com.pfa.medical_backend.dto.UserResponseDTO;
+import com.pfa.medical_backend.entities.User;
+import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.security.JwtUtils;
+import com.pfa.medical_backend.services.OtpService;
 import com.pfa.medical_backend.services.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -27,33 +35,110 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final UserService userService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final OtpService otpService;
+    private final UserDetailsService userDetailsService;
+    private final JavaMailSender mailSender;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils, UserService userService) {
+    public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils, 
+                          UserService userService, UserRepository userRepository, 
+                          PasswordEncoder passwordEncoder, OtpService otpService,
+                          UserDetailsService userDetailsService, JavaMailSender mailSender) { 
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
         this.userService = userService;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.otpService = otpService;
+        this.userDetailsService = userDetailsService;
+        this.mailSender = mailSender; 
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    @PostMapping("/login-step1")
+    public ResponseEntity<Object> loginStep1(@Valid @RequestBody LoginRequest loginRequest) {
+        Optional<User> userOpt = userRepository.findByLoginU(loginRequest.getLoginU());
+        
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Identifiant ou mot de passe incorrect."));
+        }
+
+        User user = userOpt.get();
+
+        if (!user.isAccountNonLocked()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Compte verrouillé suite à plusieurs tentatives infructueuses."));
+        }
+
+        if (!passwordEncoder.matches(loginRequest.getMotPasseU(), user.getMotPasseU())) {
+            userService.registerFailedAttempt(user.getLoginU());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Identifiant ou mot de passe incorrect."));
+        }
+
+        userService.resetFailedAttempts(user.getLoginU());
+
+        if (!user.isActive()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Votre compte est en attente de validation par l'administration médicale."));
+        }
+        if (user.getEmailU() != null && !user.getEmailU().isBlank()) {
+            String recipientEmail = user.getEmailU();
+            
+            String otpCode = otpService.generateOtp(user.getLoginU());
+
+            sendOtpEmail(recipientEmail, otpCode);
+
+            String maskedEmail = maskEmail(recipientEmail);
+
+            return ResponseEntity.ok(Map.of(
+                "requiresOtp", true,
+                "maskedEmail", maskedEmail
+            ));
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getLoginU(), loginRequest.getMotPasseU())
         );
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        
-        String role = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(auth -> auth.startsWith("ROLE_"))
-                .findFirst()
-                .orElse("ROLE_USER");
 
-        List<String> authorities = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
+        String role = getRoleFromUserDetails(userDetails);
+        List<String> authorities = getAuthoritiesFromUserDetails(userDetails);
+
+        return ResponseEntity.ok(Map.of(
+            "requiresOtp", false,
+            "authResponse", new LoginResponse(jwt, userDetails.getUsername(), role, authorities)
+        ));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Object> verifyOtp(@RequestBody Map<String, String> request) {
+        String loginU = request.get("loginU");
+        String otpCode = request.get("otpCode");
+
+        if (loginU == null || otpCode == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Paramètres manquants."));
+        }
+
+        boolean isOtpValid = otpService.validateOtp(loginU, otpCode);
+        if (!isOtpValid) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Code de validation incorrect ou expiré."));
+        }
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(loginU);
+        
+        UsernamePasswordAuthenticationToken authentication = 
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String jwt = jwtUtils.generateJwtToken(authentication);
+
+        String role = getRoleFromUserDetails(userDetails);
+        List<String> authorities = getAuthoritiesFromUserDetails(userDetails);
 
         return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
@@ -67,7 +152,51 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Erreur d'inscription. Vérifiez votre matricule médecin."));
+                    .body(Map.of("message", "Erreur d'inscription."));
         }
+    }
+
+    private void sendOtpEmail(String recipientEmail, String otpCode) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("MedPlatform - Votre code de sécurité");
+            message.setText("Bonjour,\n\n" +
+                    "Voici votre code de sécurité pour la double authentification : " + otpCode + "\n" +
+                    "Ce code est valide pendant 5 minutes.\n\n" +
+                    "Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet email.\n\n" +
+                    "Cordialement,\nL'équipe de l'administration médicale.");
+            
+            mailSender.send(message);
+            System.out.println("[EMAIL SYSTEM] Code de double authentification envoyé à : " + recipientEmail);
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'envoi de l'OTP par email : " + e.getMessage());
+        }
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "votre adresse email";
+        String[] parts = email.split("@");
+        String name = parts[0];
+        String domain = parts[1];
+        if (name.length() <= 2) {
+            return name.substring(0, 1) + "***@" + domain;
+        }
+        return name.substring(0, 1) + "***" + name.substring(name.length() - 1) + "@" + domain;
+    }
+
+    private String getRoleFromUserDetails(UserDetails userDetails) {
+        return userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_"))
+                .findFirst()
+                .orElse("ROLE_USER");
+    }
+
+    private List<String> getAuthoritiesFromUserDetails(UserDetails userDetails) {
+        return userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
     }
 }

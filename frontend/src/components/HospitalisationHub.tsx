@@ -37,6 +37,7 @@ export const HospitalisationHub = () => {
       color: "bg-purple-50 text-purple-600",
       allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI', 'AGENT_IMMUNO'] 
     },
+    /*
     { 
       title: "Patients", 
       desc: "Registre d'admission administrative et suivi clinique.", 
@@ -45,6 +46,7 @@ export const HospitalisationHub = () => {
       color: "bg-pink-50 text-pink-500",
       allowedRoles: ['ADMIN', 'MEDECIN_INVESTIGATEUR', 'MEDECIN_SUIVI'] 
     },
+    */
   ];
 
   const filteredCards = cards.filter(card => {

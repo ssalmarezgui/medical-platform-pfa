@@ -12,8 +12,10 @@ public class UserResponseDTO {
     private String loginU;
     private String roleU;
     private boolean accountNonLocked;
+    private boolean active;
     private LocalDateTime lastlogin;
     private Integer serviceId;
     private Long medecinId;
+    private String emailU;
     
 }

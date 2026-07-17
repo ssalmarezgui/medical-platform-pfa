@@ -21,7 +21,6 @@ public class UserController {
         this.userService = userService;
     }
 
-    // Seul l'ADMIN technique peut créer des comptes utilisateurs
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
@@ -29,7 +28,6 @@ public class UserController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    // Seul l'ADMIN peut lister l'ensemble des comptes de la plateforme
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
@@ -37,7 +35,26 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    // Un utilisateur authentifié peut consulter son propre profil ou un profil ciblé selon les règles RBAC
+    @GetMapping("/pending")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<List<UserResponseDTO>> getPendingUsers() {
+        List<UserResponseDTO> pendingUsers = userService.getPendingUsers();
+        return ResponseEntity.ok(pendingUsers);
+    }
+
+    @PutMapping("/{uuid}/approve")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<UserResponseDTO> approveUser(@PathVariable String uuid) {
+        UserResponseDTO approvedUser = userService.approveUser(uuid);
+        return ResponseEntity.ok(approvedUser);
+    }
+
+    @PutMapping("/{uuid}/toggle-status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<UserResponseDTO> toggleUserStatus(@PathVariable String uuid) {
+        UserResponseDTO updatedUser = userService.toggleUserStatus(uuid);
+        return ResponseEntity.ok(updatedUser);
+    }
     @GetMapping("/{uuid}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MEDECIN_INVESTIGATEUR', 'ROLE_MEDECIN_SUIVI')")
     public ResponseEntity<UserResponseDTO> getUserByUuid(@PathVariable String uuid) {

@@ -5,7 +5,8 @@ import {
   IconPill,           
   IconX,
   IconLogout,
-  IconUsersGroup
+  IconUsersGroup,
+  IconShieldCheck
 } from '@tabler/icons-react';
 import React, { useState } from 'react'; 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -144,6 +145,21 @@ export const Sidebar = () => {
                 )}
               </div>
             )}
+
+            {isSystemAdmin && (
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <div className="px-4 pb-1">
+                  <p className="text-[9px] font-black text-[#6588BB] uppercase tracking-[0.2em]">Gestion Système</p>
+                </div>
+                <NavItem 
+                  icon={<IconShieldCheck size={20} />} 
+                  label="Validation Comptes" 
+                  path="/validations" 
+                  active={location.pathname === '/validations'} 
+                />
+              </div>
+            )}
+
           </nav>
         </div>
 

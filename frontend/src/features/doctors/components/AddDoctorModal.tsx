@@ -113,7 +113,7 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
               <input 
                 type="text" 
                 maxLength={12} 
-                placeholder="Ex: 12345678" 
+                placeholder="" 
                 {...register('identifiantM')} 
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm font-bold text-[#2B5296]" 
               />

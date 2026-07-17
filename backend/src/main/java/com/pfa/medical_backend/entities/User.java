@@ -29,6 +29,9 @@ public class User {
     @Column(name = "LoginU", unique = true, nullable = false, length = 100)
     private String loginU;
 
+    @Column(name = "EmailU", unique = true, nullable = true, length = 150)
+    private String emailU;
+
     @Column(name = "MotPasseU", nullable = false)
     @JsonIgnore
     private String motPasseU; 
@@ -42,6 +45,9 @@ public class User {
 
     @Column(name="account_non_locked", nullable = false)
     private boolean accountNonLocked = true;
+
+    @Column(name="active", nullable = false)
+    private boolean active = false;
 
     @Column(name="failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;

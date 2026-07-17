@@ -28,4 +28,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     List<User> findByHopitalId(@Param("hopitalId") Integer hopitalId);
 
     List<User> findByLoginUContainingIgnoreCase(String loginU);
+
+    List <User> findByActive(boolean active);
 }

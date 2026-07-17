@@ -219,7 +219,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <input 
                   type="text" 
                   maxLength={8} 
-                  placeholder={isAdulteSelected ? "Ex: 01234567" : "CIN du tuteur legal"} 
+                  placeholder={isAdulteSelected ? "" : "CIN du tuteur legal"} 
                   {...register('numeroCin')} 
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" 
                 />
@@ -271,7 +271,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
               </div>
               <div>
                 <label className="block text-xs font-bold text-[#6588BB] uppercase mb-1.5">WhatsApp *</label>
-                <input placeholder="Ex: 50123456" {...register('telephoneWhatsAppP')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
+                <input placeholder="" {...register('telephoneWhatsAppP')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
             </div>
 

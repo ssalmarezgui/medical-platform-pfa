@@ -46,6 +46,8 @@ import { NephropathyPage } from './components/NephropathyPage';
 import { DiagnosticDonorHub } from './components/DiagnosticDonorHub';
 import { MedicamentsCatalogPage } from './components/MedicamentsCatalogPage';
 
+import { ValidationsPage } from './components/ValidationsPage';
+
 function App() {
   return (
     <Routes>
@@ -121,6 +123,11 @@ function App() {
                 <Route path="/immuno-treatments" element={<ImmunoTreatmentsPage />} />
                 
                 <Route path="/medicaments-catalog" element={<MedicamentsCatalogPage />} />
+
+
+                <Route path="/validations" element={<ValidationsPage />} />
+
+                
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>

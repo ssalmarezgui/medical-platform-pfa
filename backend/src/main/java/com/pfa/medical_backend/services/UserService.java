@@ -14,6 +14,11 @@ public interface UserService {
     void resetFailedAttempts(String loginU);
     void lockUser(User user);
 
+    List<UserResponseDTO> getPendingUsers();
+    UserResponseDTO approveUser(String uuid);
+
+    UserResponseDTO toggleUserStatus(String uuid);
+
 
 }
 

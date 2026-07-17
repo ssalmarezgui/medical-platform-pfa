@@ -3,8 +3,6 @@ package com.pfa.medical_backend.entities;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "marqueurs_tumoraux")

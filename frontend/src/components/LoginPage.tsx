@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { IconPill, IconLock, IconUser, IconBuildingHospital, IconId } from '@tabler/icons-react';
+import { IconPill, IconLock, IconUser, IconBuildingHospital, IconId, IconDeviceMobile } from '@tabler/icons-react';
 import { Toast } from './ui/Toast';
 import axios from 'axios';
 
@@ -13,14 +13,20 @@ interface Hospital {
 export const LoginPage = () => {
   const navigate = useNavigate();
   const loginUser = useAuthStore((state) => state.login);
+  const [email, setEmail] = useState('');
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  
+  const [loginStep, setLoginStep] = useState<'credentials' | 'otp'>('credentials');
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [matricule, setMatricule] = useState('');
+  
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospital, setSelectedHospital] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const [toastOpen, setToastOpen] = useState(false);
@@ -39,6 +45,27 @@ export const LoginPage = () => {
     fetchHospitals();
   }, []);
 
+  const handleLoginSuccess = (token: string, rawRole: string, rawAuthorities: any[], login: string) => {
+    const role = rawRole.startsWith("ROLE_") ? rawRole.replace("ROLE_", "") : rawRole;
+    const permissions = rawAuthorities.map((auth: string) => 
+      auth.startsWith("ROLE_") ? auth.replace("ROLE_", "") : auth
+    );
+
+    loginUser(login, role, permissions, token, selectedHospital);
+
+    if (role === 'AGENT_IMMUNO') {
+      navigate('/immuno-treatments');
+    } else if (role === 'MEDECIN_INVESTIGATEUR') {
+      navigate('/diagnostic-hub');
+    } else if (role === 'MEDECIN_SUIVI') {
+      navigate('/patients');
+    } else if (role === 'AGENT_LABORATOIRE') {
+      navigate('/diagnostic-hub'); 
+    } else {
+      navigate('/hospitalisation-hub');
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password || !selectedHospital) {
@@ -51,40 +78,23 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8081/api/v1/auth/login', {
+      const response = await axios.post('http://localhost:8081/api/v1/auth/login-step1', {
         loginU: username,
         motPasseU: password,
-        hopitalId: selectedHospital
+        hopitalId: Number(selectedHospital)
       });
 
-      const rawToken = response.data.token; 
-      const rawRole = response.data.role;  
-      const rawAuthorities = response.data.authorities || []; 
-      const login = response.data.loginU || username; 
-
-      if (!rawToken) {
-        throw new Error("Le serveur n'a pas retourné de jeton de sécurité.");
-      }
-
-      const role = rawRole.startsWith("ROLE_") ? rawRole.replace("ROLE_", "") : rawRole;
-
-      const permissions = rawAuthorities.map((auth: string) => 
-        auth.startsWith("ROLE_") ? auth.replace("ROLE_", "") : auth
-      );
-
-      loginUser(login, role, permissions, rawToken, selectedHospital);
       setIsLoading(false);
 
-      if (role === 'AGENT_IMMUNO') {
-        navigate('/immuno-treatments');
-      } else if (role === 'MEDECIN_INVESTIGATEUR') {
-        navigate('/diagnostic-hub');
-      } else if (role === 'MEDECIN_SUIVI') {
-        navigate('/patients');
-      } else if (role === 'AGENT_LABORATOIRE') {
-        navigate('/diagnostic-hub'); 
+      if (response.data.requiresOtp) {
+        setMaskedEmail(response.data.maskedEmail || "votre adresse email");
+        setLoginStep('otp');
+        setToastType('success');
+        setToastMessage("Un code de sécurité a été envoyé sur votre adresse email.");
+        setToastOpen(true);
       } else {
-        navigate('/hospitalisation-hub');
+        const auth = response.data.authResponse;
+        handleLoginSuccess(auth.token, auth.role, auth.authorities, auth.loginU);
       }
 
     } catch (err: any) {
@@ -95,11 +105,39 @@ export const LoginPage = () => {
     }
   };
 
-  // Dans LoginPage.tsx, au niveau de handleRegisterSubmit :
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode) {
+      setToastType('error');
+      setToastMessage("Veuillez saisir le code OTP.");
+      setToastOpen(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:8081/api/v1/auth/verify-otp', {
+        loginU: username,
+        otpCode: otpCode
+      });
+
+      setIsLoading(false);
+      
+      const auth = response.data;
+      handleLoginSuccess(auth.token, auth.role, auth.authorities, auth.loginU);
+
+    } catch (err: any) {
+      setIsLoading(false);
+      setToastType('error');
+      setToastMessage(err.response?.data?.message || "Code de validation incorrect ou expiré.");
+      setToastOpen(true);
+    }
+  };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password || !matricule) {
+    if (!username || !password || !matricule || !email) {
       setToastType('error');
       setToastMessage("Veuillez remplir tous les champs d'inscription.");
       setToastOpen(true);
@@ -113,16 +151,19 @@ export const LoginPage = () => {
         loginU: username,
         motPasseU: password,
         medecinId: Number(matricule),
+        emailU: email,
       });
 
       setIsLoading(false);
       setToastType('success');
-      setToastMessage("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+      setToastMessage("Compte créé avec succès ! Votre compte est en attente de validation par l'administration.");
       setToastOpen(true);
       
       setPassword('');
       setMatricule('');
+      setEmail('');
       setActiveTab('login');
+      setLoginStep('credentials');
 
     } catch (err: any) {
       setIsLoading(false);
@@ -152,83 +193,129 @@ export const LoginPage = () => {
           <p className="text-[10px] font-bold text-[#6588BB] uppercase tracking-[0.15em] mt-1.5">Portail de Connexion Clinique</p>
         </div>
 
-        <div className="flex border-b border-slate-100 pb-2">
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('login')} 
-            className={`flex-1 pb-2 text-xs font-bold border-none bg-transparent cursor-pointer transition-colors ${activeTab === 'login' ? 'text-[#2B5296] border-b-2 border-[#2B5296]' : 'text-slate-400'}`}
-          >
-            Se Connecter
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('register')} 
-            className={`flex-1 pb-2 text-xs font-bold border-none bg-transparent cursor-pointer transition-colors ${activeTab === 'register' ? 'text-[#2B5296] border-b-2 border-[#2B5296]' : 'text-slate-400'}`}
-          >
-            Créer un compte
-          </button>
-        </div>
+        {loginStep === 'credentials' && (
+          <div className="flex border-b border-slate-100 pb-2">
+            <button 
+              type="button" 
+              onClick={() => setActiveTab('login')} 
+              className={`flex-1 pb-2 text-xs font-bold border-none bg-transparent cursor-pointer transition-colors ${activeTab === 'login' ? 'text-[#2B5296] border-b-2 border-[#2B5296]' : 'text-slate-400'}`}
+            >
+              Se Connecter
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setActiveTab('register')} 
+              className={`flex-1 pb-2 text-xs font-bold border-none bg-transparent cursor-pointer transition-colors ${activeTab === 'register' ? 'text-[#2B5296] border-b-2 border-[#2B5296]' : 'text-slate-400'}`}
+            >
+              Créer un compte
+            </button>
+          </div>
+        )}
 
         {activeTab === 'login' ? (
-          <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
-            <div>
-              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Établissement Hospitalier *</label>
-              <div className="relative">
-                <IconBuildingHospital className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <select
-                  required
-                  value={selectedHospital}
-                  onChange={(e) => setSelectedHospital(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white appearance-none cursor-pointer"
+          loginStep === 'credentials' ? (
+            <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Établissement Hospitalier *</label>
+                <div className="relative">
+                  <IconBuildingHospital className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <select
+                    required
+                    value={selectedHospital}
+                    onChange={(e) => setSelectedHospital(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>Sélectionner votre hôpital</option>
+                    {hospitals.map((h) => (
+                      <option key={h.identifiantH} value={h.identifiantH}>
+                        {h.libelleH}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Identifiant Clinique / Matricule *</label>
+                <div className="relative">
+                  <IconUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    required 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
+                    placeholder="" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Mot de passe *</label>
+                <div className="relative">
+                  <IconLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="password" 
+                    required 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none bg-white" 
+                    placeholder="••••••••" 
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-[#2B5296] text-white py-3.5 rounded-xl font-bold border-none cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[#2B5296]/20 transition-all hover:bg-blue-900 disabled:opacity-50 mt-6"
+              >
+                {isLoading ? "Vérification..." : "Demander le code de validation"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleOtpSubmit} className="space-y-4 text-xs">
+              <div className="text-center bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                <p className="text-[#2B5296] font-bold mb-1">Double Authentification</p>
+                <p className="text-[11px] text-[#6588BB] font-medium">
+                  Saisissez le code de sécurité envoyé à l'adresse email <strong className="text-[#2B5296]">{maskedEmail}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Code de validation (OTP) *</label>
+                <div className="relative">
+                  <IconDeviceMobile className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={6}
+                    value={otpCode} 
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-center text-lg tracking-[0.25em] text-[#2B5296] bg-white" 
+                    placeholder="******" 
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setLoginStep('credentials'); setOtpCode(''); }} 
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold border-none cursor-pointer hover:bg-slate-200"
                 >
-                  <option value="" disabled>Sélectionner votre hôpital</option>
-                  {hospitals.map((h) => (
-                    <option key={h.identifiantH} value={h.identifiantH}>
-                      {h.libelleH}
-                    </option>
-                  ))}
-                </select>
+                  Retour
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="flex-[2] bg-emerald-600 text-white py-3 rounded-xl font-bold border-none cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {isLoading ? "Validation..." : "Valider et se connecter"}
+                </button>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Identifiant Clinique *</label>
-              <div className="relative">
-                <IconUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input 
-                  type="text" 
-                  required 
-                  value={username} 
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
-                  placeholder="Ex: suivi" 
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Mot de passe *</label>
-              <div className="relative">
-                <IconLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input 
-                  type="password" 
-                  required 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none bg-white" 
-                  placeholder="••••••••" 
-                />
-              </div>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full bg-[#2B5296] text-white py-3.5 rounded-xl font-bold border-none cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[#2B5296]/20 transition-all hover:bg-blue-900 disabled:opacity-50 mt-6"
-            >
-              {isLoading ? "Connexion sécurisée..." : "Se Connecter"}
-            </button>
-          </form>
+            </form>
+          )
         ) : (
           <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
             <div>
@@ -241,6 +328,20 @@ export const LoginPage = () => {
                   value={matricule} 
                   onChange={(e) => setMatricule(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
+                  placeholder="" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Adresse Email Professionnelle *</label>
+              <div className="relative">
+                <input 
+                  type="email" 
+                  required 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none font-semibold text-slate-800 bg-white" 
                   placeholder="" 
                 />
               </div>
@@ -281,7 +382,7 @@ export const LoginPage = () => {
               disabled={isLoading}
               className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold border-none cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 disabled:opacity-50 mt-6"
             >
-              {isLoading ? "Inscription clinique..." : "Créer mon compte clinique"}
+              {isLoading ? "Inscription..." : "Créer mon compte clinique"}
             </button>
           </form>
         )}
