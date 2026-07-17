@@ -7,7 +7,8 @@ import {
   IconLogout,
   IconUsersGroup,
   IconShieldCheck,
-  IconLayoutDashboard
+  IconLayoutDashboard,
+  IconHistory
 } from '@tabler/icons-react';
 
 import React, { useState } from 'react'; 
@@ -169,6 +170,13 @@ export const Sidebar = () => {
                   label="Validation Comptes" 
                   path="/validations" 
                   active={location.pathname === '/validations'} 
+                />
+                {/* NOUVEAU LIEN D'AUDIT AJOUTÉ ICI */}
+                <NavItem 
+                  icon={<IconHistory size={20} />} 
+                  label="Journal d'Activité" 
+                  path="/audit-logs" 
+                  active={location.pathname === '/audit-logs'} 
                 />
               </div>
             )}

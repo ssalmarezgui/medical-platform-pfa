@@ -49,6 +49,7 @@ import { DiagnosticDonorHub } from './components/DiagnosticDonorHub';
 import { MedicamentsCatalogPage } from './components/MedicamentsCatalogPage';
 
 import { ValidationsPage } from './components/ValidationsPage';
+import { AuditLogsPage } from './components/AuditLogsPage';
 
 function App() {
   return (
@@ -130,6 +131,7 @@ function App() {
                 <Route path="/validations" element={<ValidationsPage />} />
 
                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/audit-logs" element={<AuditLogsPage />} />
 
               </Routes>
             </DashboardLayout>

@@ -7,6 +7,7 @@ import com.pfa.medical_backend.dto.UserResponseDTO;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.security.JwtUtils;
+import com.pfa.medical_backend.services.AuditLogService;
 import com.pfa.medical_backend.services.OtpService;
 import com.pfa.medical_backend.services.UserService;
 import jakarta.validation.Valid;
@@ -40,11 +41,13 @@ public class AuthController {
     private final OtpService otpService;
     private final UserDetailsService userDetailsService;
     private final JavaMailSender mailSender;
+    private final AuditLogService auditLogService;
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils, 
                           UserService userService, UserRepository userRepository, 
                           PasswordEncoder passwordEncoder, OtpService otpService,
-                          UserDetailsService userDetailsService, JavaMailSender mailSender) { 
+                          UserDetailsService userDetailsService, JavaMailSender mailSender,
+                          AuditLogService auditLogService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
         this.userService = userService;
@@ -53,6 +56,7 @@ public class AuthController {
         this.otpService = otpService;
         this.userDetailsService = userDetailsService;
         this.mailSender = mailSender; 
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping("/login-step1")
@@ -73,6 +77,10 @@ public class AuthController {
 
         if (!passwordEncoder.matches(loginRequest.getMotPasseU(), user.getMotPasseU())) {
             userService.registerFailedAttempt(user.getLoginU());
+            
+            auditLogService.log(loginRequest.getLoginU(), "ROLE_USER", "CONNEXION_ECHEC", 
+                    "Authentification Étape 1", "Saisie de mot de passe incorrect.");
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Identifiant ou mot de passe incorrect."));
         }
@@ -80,9 +88,15 @@ public class AuthController {
         userService.resetFailedAttempts(user.getLoginU());
 
         if (!user.isActive()) {
+            auditLogService.log(user.getLoginU(), "ROLE_USER", "CONNEXION_BLOQUEE", 
+                    "Compte non validé", "Tentative de connexion refusée car le compte est en attente de validation.");
+
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Votre compte est en attente de validation par l'administration médicale."));
         }
+
+        String roleName = user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER";
+
         if (user.getEmailU() != null && !user.getEmailU().isBlank()) {
             String recipientEmail = user.getEmailU();
             
@@ -91,6 +105,9 @@ public class AuthController {
             sendOtpEmail(recipientEmail, otpCode);
 
             String maskedEmail = maskEmail(recipientEmail);
+
+            auditLogService.log(user.getLoginU(), roleName, "DEMANDE_OTP", 
+                    "Authentification Étape 1", "Identifiants corrects. Code OTP envoyé par email à " + maskedEmail);
 
             return ResponseEntity.ok(Map.of(
                 "requiresOtp", true,
@@ -107,6 +124,9 @@ public class AuthController {
 
         String role = getRoleFromUserDetails(userDetails);
         List<String> authorities = getAuthoritiesFromUserDetails(userDetails);
+
+        auditLogService.log(user.getLoginU(), role, "CONNEXION_REUSSITE", 
+                "Connexion Directe", "Session ouverte directement (sans OTP).");
 
         return ResponseEntity.ok(Map.of(
             "requiresOtp", false,
@@ -125,6 +145,9 @@ public class AuthController {
 
         boolean isOtpValid = otpService.validateOtp(loginU, otpCode);
         if (!isOtpValid) {
+            auditLogService.log(loginU, "ROLE_USER", "OTP_ECHEC", 
+                    "Authentification Étape 2", "Code OTP saisi incorrect ou expiré.");
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Code de validation incorrect ou expiré."));
         }
@@ -139,6 +162,9 @@ public class AuthController {
 
         String role = getRoleFromUserDetails(userDetails);
         List<String> authorities = getAuthoritiesFromUserDetails(userDetails);
+
+        auditLogService.log(loginU, role, "CONNEXION_REUSSITE", 
+                "Connexion Double-Facteur", "Code OTP validé. Session clinique sécurisée ouverte.");
 
         return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
@@ -155,77 +181,6 @@ public class AuthController {
                     .body(Map.of("message", "Erreur d'inscription."));
         }
     }
-
-    @PostMapping("/forgot-password")
-    public ResponseEntity<Object> forgotPassword(@RequestBody Map<String, String> request) {
-        String emailU = request.get("emailU");
-
-        if (emailU == null || emailU.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "L'adresse email est requise."));
-        }
-        Optional<User> userOpt = userRepository.findByEmailU(emailU);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Aucun compte clinique n'est associé à cette adresse email."));
-        }
-
-        User user = userOpt.get();
-
-        String otpCode = otpService.generateOtp(user.getLoginU());
-
-        sendForgotPasswordEmail(user.getEmailU(), otpCode);
-
-        return ResponseEntity.ok(Map.of("message", "Un code de réinitialisation a été envoyé à votre adresse email."));
-    }
-
-    @PostMapping("/reset-password")
-    public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
-        String emailU = request.get("emailU");
-        String otpCode = request.get("otpCode");
-        String newPassword = request.get("newPassword");
-
-        if (emailU == null || otpCode == null || newPassword == null || newPassword.length() < 8) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Données invalides ou mot de passe trop court (min 8 caractères)."));
-        }
-
-        Optional<User> userOpt = userRepository.findByEmailU(emailU);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Utilisateur introuvable."));
-        }
-        User user = userOpt.get();
-
-        boolean isOtpValid = otpService.validateOtp(user.getLoginU(), otpCode);
-        if (!isOtpValid) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Code de réinitialisation incorrect ou expiré."));
-        }
-
-        user.setMotPasseU(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        return ResponseEntity.ok(Map.of("message", "Votre mot de passe a été réinitialisé avec succès."));
-    }
-
-    private void sendForgotPasswordEmail(String recipientEmail, String otpCode) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("ssalmarezgui@gmail.com");
-            message.setTo(recipientEmail);
-            message.setSubject("MedPlatform - Réinitialisation de votre mot de passe");
-            message.setText("Bonjour,\n\n" +
-                    "Vous avez demandé la réinitialisation de votre mot de passe MedPlatform.\n" +
-                    "Voici votre code de sécurité temporaire : " + otpCode + "\n" +
-                    "Ce code est valide pendant 5 minutes.\n\n" +
-                    "Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email et sécuriser votre compte.\n\n" +
-                    "Cordialement,\nL'équipe administrative.");
-            mailSender.send(message);
-            System.out.println("[EMAIL SYSTEM] Code de réinitialisation envoyé à : " + recipientEmail);
-        } catch (Exception e) {
-            System.err.println("Erreur envoi email réinitialisation : " + e.getMessage());
-        }
-    }
-
-
 
     private void sendOtpEmail(String recipientEmail, String otpCode) {
         try {
