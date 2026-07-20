@@ -39,6 +39,23 @@ export const LoginPage = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('error');
 
+
+  const [regRole, setRegRole] = useState<'ROLE_MEDECIN_SUIVI' | 'ROLE_MEDECIN_INVESTIGATEUR' | 'ROLE_AGENT_LABORATOIRE' | 'ROLE_AGENT_IMMUNO'>('ROLE_MEDECIN_SUIVI');
+  const [regHospital, setRegHospital] = useState('');
+  const [services, setServices] = useState<{ identifiantS: number; libelleS: string }[]>([]);
+  const [regService, setRegService] = useState('');
+
+
+  useEffect(() => {
+    if (regHospital) {
+      axios.get(`http://localhost:8081/api/services/public?hopitalId=${regHospital}`)
+        .then(res => setServices(res.data))
+        .catch(err => console.error("Impossible de charger les services", err));
+    } else {
+      setServices([]);
+    }
+  }, [regHospital]);
+
   useEffect(() => {
     const fetchHospitals = async () => {
       try {
@@ -144,9 +161,12 @@ export const LoginPage = () => {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password || !matricule || !email) {
+    
+    const isMedecin = regRole.startsWith('ROLE_MEDECIN');
+
+    if (!username || !password || !email || (isMedecin && !matricule) || (!isMedecin && !regService)) {
       setToastType('error');
-      setToastMessage("Veuillez remplir tous les champs d'inscription.");
+      setToastMessage("Veuillez remplir tous les champs obligatoires.");
       setToastOpen(true);
       return;
     }
@@ -154,12 +174,20 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      await axios.post('http://localhost:8081/api/v1/auth/register', {
+      const payload: any = {
         loginU: username,
         motPasseU: password,
-        medecinId: Number(matricule),
         emailU: email,
-      });
+        roleU: regRole,
+      };
+
+      if (isMedecin) {
+        payload.medecinId = Number(matricule);
+      } else {
+        payload.serviceId = Number(regService);
+      }
+
+      await axios.post('http://localhost:8081/api/v1/auth/register', payload);
 
       setIsLoading(false);
       setToastType('success');
@@ -169,6 +197,8 @@ export const LoginPage = () => {
       setPassword('');
       setMatricule('');
       setEmail('');
+      setRegService('');
+      setRegHospital('');
       setActiveTab('login');
       setLoginStep('credentials');
 
@@ -176,35 +206,6 @@ export const LoginPage = () => {
       setIsLoading(false);
       setToastType('error');
       setToastMessage(err.response?.data?.message || "Erreur d'inscription.");
-      setToastOpen(true);
-    }
-  };
-
-  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotEmail) {
-      setToastType('error');
-      setToastMessage("Veuillez saisir votre adresse email.");
-      setToastOpen(true);
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await axios.post('http://localhost:8081/api/v1/auth/forgot-password', {
-        emailU: forgotEmail
-      });
-
-      setIsLoading(false);
-      setForgotStep('reset');
-      setToastType('success');
-      setToastMessage("Un code de réinitialisation a été envoyé à votre adresse email.");
-      setToastOpen(true);
-    } catch (err: any) {
-      setIsLoading(false);
-      setToastType('error');
-      setToastMessage(err.response?.data?.message || "Erreur lors de la demande.");
       setToastOpen(true);
     }
   };
@@ -269,7 +270,7 @@ export const LoginPage = () => {
           <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#2B5296] mx-auto mb-4">
             <IconPill size={32} className="animate-pulse" />
           </div>
-          <h1 className="text-2xl font-black text-[#2B5296]">MedPlatform</h1>
+          <h1 className="text-2xl font-black text-[#2B5296]">NephroCare</h1>
           <p className="text-[10px] font-bold text-[#6588BB] uppercase tracking-[0.15em] mt-1.5">Portail de Connexion Clinique</p>
         </div>
 
@@ -409,20 +410,77 @@ export const LoginPage = () => {
 
         {activeTab === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
+            
+            {/* SÉLECTEUR DE RÔLE */}
             <div>
-              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Matricule de Médecin de Référence *</label>
+              <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Profil Clinique *</label>
               <div className="relative">
-                <IconId className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input 
-                  type="text" 
-                  required 
-                  value={matricule} 
-                  onChange={(e) => setMatricule(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
-                  placeholder="" 
-                />
+                <select
+                  value={regRole}
+                  onChange={(e: any) => setRegRole(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white"
+                >
+                  <option value="ROLE_MEDECIN_SUIVI">Médecin de Suivi</option>
+                  <option value="ROLE_MEDECIN_INVESTIGATEUR">Médecin Investigateur</option>
+                  <option value="ROLE_AGENT_LABORATOIRE">Agent de Laboratoire</option>
+                  <option value="ROLE_AGENT_IMMUNO">Agent d'Immunologie</option>
+                </select>
               </div>
             </div>
+
+            {/* SI C'EST UN MÉDECIN : Saisie du matricule de référence */}
+            {regRole.startsWith('ROLE_MEDECIN') ? (
+              <div>
+                <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Matricule de Médecin de Référence *</label>
+                <div className="relative">
+                  <IconId className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    required 
+                    value={matricule} 
+                    onChange={(e) => setMatricule(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
+                    placeholder="Ex: 12345678" 
+                  />
+                </div>
+              </div>
+            ) : (
+              /* SI C'EST UN AGENT : Sélection obligatoire de l'hôpital puis de son service */
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Établissement *</label>
+                    <select
+                      required
+                      value={regHospital}
+                      onChange={(e) => setRegHospital(e.target.value)}
+                      className="w-full px-3 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {hospitals.map((h) => (
+                        <option key={h.identifiantH} value={h.identifiantH}>{h.libelleH}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Pôle de Soins *</label>
+                    <select
+                      required
+                      disabled={!regHospital}
+                      value={regService}
+                      onChange={(e) => setRegService(e.target.value)}
+                      className="w-full px-3 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white disabled:opacity-50"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {services.map((s) => (
+                        <option key={s.identifiantS} value={s.identifiantS}>{s.libelleS}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-[10px] font-black text-[#6588BB] uppercase mb-1.5">Adresse Email Professionnelle *</label>
@@ -434,7 +492,7 @@ export const LoginPage = () => {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-semibold text-slate-800 bg-white" 
-                  placeholder="dr.nom@hopital.com" 
+                  placeholder="exemple@hopital.com" 
                 />
               </div>
             </div>

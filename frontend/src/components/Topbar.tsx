@@ -41,7 +41,7 @@ export const Topbar = ({ onToggle }: { onToggle: () => void }) => {
           <IconMenu2 size={20} />
         </button>
         <div>
-          <span className="text-[10px] font-black text-[#6588BB] uppercase tracking-widest">MedPlatform</span>
+          <span className="text-[10px] font-black text-[#6588BB] uppercase tracking-widest">NephroCare</span>
           <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider mt-0.5">Console Clinique</h2>
         </div>
       </div>

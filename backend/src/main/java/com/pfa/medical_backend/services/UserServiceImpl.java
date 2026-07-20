@@ -14,10 +14,12 @@ import com.pfa.medical_backend.dto.UserRequestDTO;
 import com.pfa.medical_backend.dto.UserResponseDTO;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.entities.Role;
+import com.pfa.medical_backend.entities.ServiceMedical;
 import com.pfa.medical_backend.entities.Medecin;
 import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.repositories.RoleRepository;
 import com.pfa.medical_backend.repositories.MedecinRepository;
+import com.pfa.medical_backend.repositories.ServiceRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +31,19 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final MedecinRepository medecinRepository;
+    private final ServiceRepository serviceRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final AuditLogService auditLogService;
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
     public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, 
-                           MedecinRepository medecinRepository, PasswordEncoder passwordEncoder,
+                           MedecinRepository medecinRepository, ServiceRepository serviceRepository, PasswordEncoder passwordEncoder,
                            JavaMailSender mailSender, AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.medecinRepository = medecinRepository;
+        this.serviceRepository = serviceRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender; 
         this.auditLogService = auditLogService;
@@ -97,6 +101,14 @@ public class UserServiceImpl implements UserService {
             Role role = roleRepository.findByNomRole(dto.getRoleU())
                     .orElseThrow(() -> new EntityNotFoundException("Rôle introuvable : " + dto.getRoleU()));
             user.setRole(role);
+
+            if (dto.getServiceId() != null) {
+                ServiceMedical service = serviceRepository.findById(dto.getServiceId())
+                    .orElseThrow(() -> new EntityNotFoundException("Pôle de soins (Service) introuvable."));
+                user.setService(service);
+            } else {
+                throw new IllegalArgumentException("Le pôle de soins (Service) est obligatoire pour ce profil.");
+            }
         }
 
         User savedUser = userRepository.save(user);
@@ -161,9 +173,9 @@ public class UserServiceImpl implements UserService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom("ssalmarezgui@gmail.com");
             message.setTo(recipientEmail);
-            message.setSubject("MedPlatform - Inscription en cours de validation");
+            message.setSubject("NephroCare - Inscription en cours de validation");
             message.setText("Bonjour,\n\n" +
-                    "Votre inscription sur MedPlatform a été reçue.\n" +
+                    "Votre inscription sur NephroCare a été reçue.\n" +
                     "Pour des raisons de sécurité, votre compte (Identifiant : " + username + ") est actuellement en cours de vérification par notre équipe administrative.\n\n" +
                     "Vous recevrez un email dès que votre compte sera activé.\n\n" +
                     "Cordialement,\nL'équipe administrative.");
@@ -196,9 +208,9 @@ public class UserServiceImpl implements UserService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom("ssalmarezgui@gmail.com");
             message.setTo(recipientEmail);
-            message.setSubject("MedPlatform - Votre compte a été activé !");
+            message.setSubject("NephroCare - Votre compte a été activé !");
             message.setText("Félicitations Dr.,\n\n" +
-                    "Votre compte MedPlatform (Identifiant : " + username + ") a été validé et activé par l'administration.\n\n" +
+                    "Votre compte NephroCare (Identifiant : " + username + ") a été validé et activé par l'administration.\n\n" +
                     "Vous pouvez dès à présent vous connecter et accéder à votre espace sécurisé.\n\n" +
                     "Cordialement,\nL'équipe de l'administration médicale.");
             mailSender.send(message);
@@ -212,9 +224,9 @@ public class UserServiceImpl implements UserService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom("ssalmarezgui@gmail.com");
             message.setTo(recipientEmail);
-            message.setSubject("MedPlatform - Suspension temporaire de votre compte");
+            message.setSubject("NephroCare - Suspension temporaire de votre compte");
             message.setText("Bonjour,\n\n" +
-                    "Nous vous informons que votre compte MedPlatform (Identifiant : " + username + ") a été temporairement suspendu par l'administration médicale.\n\n" +
+                    "Nous vous informons que votre compte NephroCare (Identifiant : " + username + ") a été temporairement suspendu par l'administration médicale.\n\n" +
                     "Vos accès à la plateforme sont bloqués jusqu'à nouvel ordre. Si vous pensez qu'il s'agit d'une erreur, merci de contacter l'administrateur de votre établissement.\n\n" +
                     "Cordialement,\nL'équipe de l'administration médicale.");
             mailSender.send(message);

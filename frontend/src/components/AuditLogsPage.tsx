@@ -43,7 +43,7 @@ export const AuditLogsPage = () => {
     
     const link = document.createElement("a");
     link.href = url;
-    link.download = `journal_activite_medplatform_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `journal_activite_NephroCare_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -92,14 +92,12 @@ export const AuditLogsPage = () => {
   return (
     <div className="max-w-[1440px] mx-auto p-6 text-xs space-y-6">
       
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Journal d'Activité Système</h1>
-          <p className="text-[#6588BB] text-sm">Registre d'audit et de traçabilité en temps réel (Conformité RGPD / HDS).</p>
+          <p className="text-[#6588BB] text-sm">Registre d'audit et de traçabilité en temps réel .</p>mm
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Recherche */}
           <div className="relative w-full sm:w-64">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -109,7 +107,6 @@ export const AuditLogsPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {/* Bouton Télécharger */}
           <button 
             onClick={handleExportCSV} 
             title="Télécharger les logs (CSV)"
@@ -121,7 +118,6 @@ export const AuditLogsPage = () => {
         </div>
       </div>
 
-      {/* Table des Logs */}
       <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -138,30 +134,24 @@ export const AuditLogsPage = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredLogs?.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                  {/* Date */}
                   <td className="p-4 whitespace-nowrap font-semibold flex items-center gap-2 text-slate-500">
                     <IconClock size={16} />
                     {new Date(log.timestamp).toLocaleString('fr-FR')}
                   </td>
-                  {/* Utilisateur */}
                   <td className="p-4 whitespace-nowrap font-bold text-slate-800">
                     {log.username}
                   </td>
-                  {/* Rôle */}
                   <td className="p-4 whitespace-nowrap font-black uppercase tracking-wider text-[9px] text-[#6588BB]">
                     {log.role.replace('ROLE_', '').replace('_', ' ')}
                   </td>
-                  {/* Badge d'action */}
                   <td className="p-4 whitespace-nowrap">
                     <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${getActionBadgeColor(log.action)}`}>
                       {log.action.replace('_', ' ')}
                     </span>
                   </td>
-                  {/* Cible */}
                   <td className="p-4 font-semibold text-[#2B5296]">
                     {log.target}
                   </td>
-                  {/* Description */}
                   <td className="p-4 text-slate-500 max-w-xs truncate font-medium" title={log.details}>
                     {log.details}
                   </td>

@@ -23,7 +23,7 @@ public class UserRequestDTO {
     @Email(message="Format de l'email invalide")
     private String emailU;
 
-    @Pattern(regexp = "^(ADMIN|MEDECIN_INVESTIGATEUR|MEDECIN_SUIVI|AGENT_LABORATOIRE|AGENT_IMMUNO)$",
+    @Pattern(regexp = "^(ROLE_ADMIN|ROLE_MEDECIN_INVESTIGATEUR|ROLE_MEDECIN_SUIVI|ROLE_AGENT_LABORATOIRE|ROLE_AGENT_IMMUNO)$",
         message = "Le rôle fourni n'est pas valide pour cette plateforme"
     )
     private String roleU;

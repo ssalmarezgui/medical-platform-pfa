@@ -32,7 +32,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <MenuButton onClick={toggleSidebar} />
           )}
           <div className="ml-4 font-black text-[#2B5296] uppercase tracking-widest text-xs">
-            {isSidebarOpen ? '' : 'MedPlatform Admin'}
+            {isSidebarOpen ? '' : 'NephroCare Admin'}
           </div>
         </header>
 

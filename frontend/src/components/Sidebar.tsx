@@ -46,7 +46,7 @@ export const Sidebar = () => {
         <div>
           <div className="p-6 mb-2 flex justify-between items-start">
             <div>
-              <h1 className="text-[#2B5296] font-bold text-xl">MedPlatform</h1>
+              <h1 className="text-[#2B5296] font-bold text-xl">NephroCare</h1>
               <p className="text-[10px] font-bold text-[#6588BB] uppercase tracking-[0.15em] mt-1">
                 {user?.roleU?.replace('_', ' ')}
               </p>

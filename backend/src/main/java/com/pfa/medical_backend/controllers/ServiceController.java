@@ -50,6 +50,14 @@ public class ServiceController {
         return s;
     }
 
+    @GetMapping("/public")
+    public List<ServiceDTO> getPublicServices(@RequestParam String hopitalId) {
+        log.info("Consultation publique de la liste des services pour l'hôpital {}", hopitalId);
+        return serviceHospitalierService.getServicesByHopital(hopitalId).stream()
+                .map(this::toServiceDTO)
+                .toList();
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('READ_SERVICE')")
     public List<ServiceDTO> getAll(@RequestParam(required = false) String hopitalId) { 

@@ -89,7 +89,7 @@ public class AuthController {
 
         if (!user.isActive()) {
             auditLogService.log(user.getLoginU(), "ROLE_USER", "CONNEXION_BLOQUEE", 
-                    "Compte non validé", "Tentative de connexion refusée car le compte est en attente de validation.");
+                    "Compte non validé", "Tentative de connexion refusée : compte en attente de validation.");
 
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Votre compte est en attente de validation par l'administration médicale."));
@@ -169,6 +169,65 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse(jwt, userDetails.getUsername(), role, authorities));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Object> forgotPassword(@RequestBody Map<String, String> request) {
+        String emailU = request.get("emailU");
+
+        if (emailU == null || emailU.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "L'adresse email est requise."));
+        }
+
+        Optional<User> userOpt = userRepository.findByEmailU(emailU);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Aucun compte clinique n'est associé à cette adresse email."));
+        }
+
+        User user = userOpt.get();
+        String otpCode = otpService.generateOtp(user.getLoginU());
+
+        sendForgotPasswordEmail(user.getEmailU(), otpCode);
+
+        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
+                "DEMANDE_REINITIALISATION_MDP", "Récupération Mot de passe", "Code de réinitialisation envoyé par email.");
+
+        return ResponseEntity.ok(Map.of("message", "Un code de réinitialisation a été envoyé à votre adresse email."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
+        String emailU = request.get("emailU");
+        String otpCode = request.get("otpCode");
+        String newPassword = request.get("newPassword");
+
+        if (emailU == null || otpCode == null || newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Données invalides ou mot de passe trop court."));
+        }
+
+        Optional<User> userOpt = userRepository.findByEmailU(emailU);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Utilisateur introuvable."));
+        }
+        User user = userOpt.get();
+
+        boolean isOtpValid = otpService.validateOtp(user.getLoginU(), otpCode);
+        if (!isOtpValid) {
+            auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
+                    "REINITIALISATION_MDP_ECHEC", "Récupération Mot de passe", "Saisie de code de réinitialisation invalide.");
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Code de réinitialisation incorrect ou expiré."));
+        }
+
+        user.setMotPasseU(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
+                "REINITIALISATION_MDP_SUCCES", "Récupération Mot de passe", "Mot de passe réinitialisé avec succès.");
+
+        return ResponseEntity.ok(Map.of("message", "Votre mot de passe a été réinitialisé avec succès."));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Object> registerUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
         try {
@@ -187,7 +246,7 @@ public class AuthController {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom("ssalmarezgui@gmail.com");
             message.setTo(recipientEmail);
-            message.setSubject("MedPlatform - Votre code de sécurité");
+            message.setSubject("NephroCare - Votre code de sécurité");
             message.setText("Bonjour,\n\n" +
                     "Voici votre code de sécurité pour la double authentification : " + otpCode + "\n" +
                     "Ce code est valide pendant 5 minutes.\n\n" +
@@ -198,6 +257,24 @@ public class AuthController {
             System.out.println("[EMAIL SYSTEM] Code de double authentification envoyé à : " + recipientEmail);
         } catch (Exception e) {
             System.err.println("Erreur lors de l'envoi de l'OTP par email : " + e.getMessage());
+        }
+    }
+
+    private void sendForgotPasswordEmail(String recipientEmail, String otpCode) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("ssalmarezgui@gmail.com");
+            message.setTo(recipientEmail);
+            message.setSubject("NephroCare - Réinitialisation de votre mot de passe");
+            message.setText("Bonjour,\n\n" +
+                    "Vous avez demandé la réinitialisation de votre mot de passe NephroCare.\n" +
+                    "Voici votre code de sécurité temporaire : " + otpCode + "\n" +
+                    "Ce code est valide pendant 5 minutes.\n\n" +
+                    "Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email.\n\n" +
+                    "Cordialement,\nL'équipe administrative.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Erreur envoi email réinitialisation : " + e.getMessage());
         }
     }
 

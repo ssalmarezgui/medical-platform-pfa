@@ -60,7 +60,7 @@ export const AdminDashboard = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Bonjour, Administrateur</h1>
-          <p className="text-[#6588BB] text-sm mt-1">Voici l'état actuel de votre réseau hospitalier MedPlatform.</p>
+          <p className="text-[#6588BB] text-sm mt-1">Voici l'état actuel de votre réseau hospitalier NephroCare.</p>
         </div>
         <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200/50 text-[#2B5296] font-bold">
           <IconCalendarEvent size={18} />

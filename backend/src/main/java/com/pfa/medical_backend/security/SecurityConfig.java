@@ -54,6 +54,7 @@ public class SecurityConfig {
                     .requestMatchers("/", "/index.html", "/static/**", "/assets/**", "/*.js", "/*.css", "/*.png", "/*.jpg", "/error").permitAll()
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/api/hopitaux/public").permitAll()
+                    .requestMatchers("/api/services/public").permitAll()
                     .anyRequest().authenticated()
                 );
 
