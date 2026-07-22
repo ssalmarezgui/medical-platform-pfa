@@ -1,0 +1,58 @@
+# Le scénario d'installation et de configuration
+
+# 1. Spécifier sur quels serveurs je veux exécuter cle groupe "webservers" 
+- name: Configurer le serveur de production et demarrer l'application
+  hosts: webservers
+  become: yes # S'exécuter en tant qu'administrateur (sudo) sur le serveur
+
+  tasks:
+    # Étape A : Mettre à jour le gestionnaire de paquets Ubuntu (apt)
+    - name: Mettre a jour le cache APT
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    # Étape B : Installer les pré-requis système pour Docker
+    - name: Installer les paquets requis pour Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg
+        state: present
+
+    # Étape C : Installer le moteur Docker officiel sur le serveur
+    - name: Installer le moteur Docker
+      apt:
+        name: docker.io
+        state: present
+
+    # Étape D : S'assurer que le service Docker est démarré et actif
+    - name: Demarrer le service Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Étape E : Créer un dossier pour le projet sur le serveur de production
+    - name: Creer le dossier de l'application sur le serveur
+      file:
+        path: /app/medical_pfa
+        state: directory
+        mode: '0755'
+
+    # Étape F : Copier le fichier docker-compose.yml depuis lon PC (ou la CI) vers le serveur
+    - name: Copier le fichier docker-compose.yml vers le serveur
+      copy:
+        src: ../docker-compose.yml
+        dest: /app/medical_pfa/docker-compose.yml
+        mode: '0644'
+
+    # Étape G : Lancer l'application médicale dans Docker sur le serveur !
+    - name: Demarrer l'application avec Docker Compose
+      shell: |
+        cd /app/medical_pfa
+        docker compose pull
+        docker compose up -d
