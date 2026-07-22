@@ -136,6 +136,8 @@ jobs:
     runs-on: ubuntu-latest
     # On attend que le backend et le frontend soient compilés avec succès
     needs: [backend-ci, frontend-ci]
+    permissions:
+      issues: write
     
     steps:
       - name: Recuperer le code source
