@@ -138,6 +138,7 @@ jobs:
     needs: [backend-ci, frontend-ci]
     permissions:
       issues: write
+      contents: read
     
     steps:
       - name: Recuperer le code source
