@@ -129,6 +129,32 @@ jobs:
           cd terraform
           terraform init
           terraform plan
+
+
+  dast-ci:
+    name: OWASP ZAP DAST Security Scan
+    runs-on: ubuntu-latest
+    # On attend que le backend et le frontend soient compilés avec succès
+    needs: [backend-ci, frontend-ci]
+    
+    steps:
+      - name: Recuperer le code source
+        uses: actions/checkout@v3
+
+      # Étape 1 : Démarrer toute l'application en arrière-plan sur le runner
+      - name: Demarrer l'application avec Docker Compose
+        run: |
+          docker compose up -d
+          # Attendre 25 secondes que Spring Boot démarre complètement
+          sleep 25
+
+      # Étape 2 : Lancer le scan OWASP ZAP sur le site React local 
+      - name: Executer OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # Requis pour que ZAP puisse créer le ticket d'alerte automatiquement
+          target: 'http://localhost:5173'
+          fail_action: false # N'échoue pas le pipeline pour des alertes mineures (en-têtes manquants)
         
 
 
