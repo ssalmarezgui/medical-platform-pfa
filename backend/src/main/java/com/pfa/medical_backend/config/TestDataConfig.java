@@ -32,7 +32,6 @@ public class TestDataConfig {
         DonneurRepository donneurRepo,
         TransplantationRepository transplantationRepo,
         NephropathieInitialeRepository nephropathieRepo,
-        GreffeRepository greffeRepo,
         BilanPreGreffeRepository bilanPreGreffeRepo,
         TraitementImmunoSuppresseurRepository tisRepo,
         MedicamentRepository medicamentRepo,

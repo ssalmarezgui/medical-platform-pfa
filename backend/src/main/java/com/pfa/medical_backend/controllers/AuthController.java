@@ -39,7 +39,7 @@ public class AuthController {
 
     private static final String MSG_KEY = "message";
     private static final String ROLE_USER = "ROLE_USER";
-    private static final String ACTION_PASSWORD_RESET = "Récupération Mot de passe";
+    private static final String ACTION_RESET_MDP = "Récupération Mot de passe";
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
@@ -182,7 +182,7 @@ public class AuthController {
         sendForgotPasswordEmail(user.getEmailU(), otpCode);
 
         auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
-                "DEMANDE_REINITIALISATION_MDP", ACTION_PASSWORD_RESET, "Code de réinitialisation envoyé par email.");
+                "DEMANDE_REINITIALISATION_MDP", ACTION_RESET_MDP, "Code de réinitialisation envoyé par email.");
 
         return ResponseEntity.ok(Map.of(MSG_KEY, "Un code de réinitialisation a été envoyé à votre adresse email."));
     }
@@ -206,7 +206,7 @@ public class AuthController {
         boolean isOtpValid = otpService.validateOtp(user.getLoginU(), otpCode);
         if (!isOtpValid) {
             auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
-                    "REINITIALISATION_MDP_ECHEC", ACTION_PASSWORD_RESET, "Saisie de code de réinitialisation invalide.");
+                    "REINITIALISATION_MDP_ECHEC", ACTION_RESET_MDP, "Saisie de code de réinitialisation invalide.");
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of(MSG_KEY, "Code de réinitialisation incorrect ou expiré."));
@@ -216,7 +216,7 @@ public class AuthController {
         userRepository.save(user);
 
         auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
-                "REINITIALISATION_MDP_SUCCES", ACTION_PASSWORD_RESET, "Mot de passe réinitialisé avec succès.");
+                "REINITIALISATION_MDP_SUCCES", ACTION_RESET_MDP, "Mot de passe réinitialisé avec succès.");
 
         return ResponseEntity.ok(Map.of(MSG_KEY, "Votre mot de passe a été réinitialisé avec succès."));
     }

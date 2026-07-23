@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import com.pfa.medical_backend.dto.UserResponseDTO;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.entities.Role;
 import com.pfa.medical_backend.entities.ServiceMedical;
+import com.pfa.medical_backend.entities.TypeMedecin;
 import com.pfa.medical_backend.entities.Medecin;
 import com.pfa.medical_backend.repositories.UserRepository;
 import com.pfa.medical_backend.repositories.RoleRepository;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service 
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private static final String USER_NOT_FOUND = "Utilisateur introuvable";
@@ -42,17 +45,6 @@ public class UserServiceImpl implements UserService {
     private final AuditLogService auditLogService;
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
-    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, 
-                           MedecinRepository medecinRepository, ServiceRepository serviceRepository, PasswordEncoder passwordEncoder,
-                           JavaMailSender mailSender, AuditLogService auditLogService) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.medecinRepository = medecinRepository;
-        this.serviceRepository = serviceRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.mailSender = mailSender; 
-        this.auditLogService = auditLogService;
-    }
     
     @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
@@ -86,13 +78,10 @@ public class UserServiceImpl implements UserService {
             String targetRoleName = "ROLE_MEDECIN_SUIVI";
             
             if (medecin.getTypeMedecin() != null) {
-                switch (medecin.getTypeMedecin()) {
-                    case SUIVI:
-                        targetRoleName = "ROLE_MEDECIN_SUIVI";
-                        break;
-                    case INVESTIGATEUR:
-                        targetRoleName = "ROLE_MEDECIN_INVESTIGATEUR";
-                        break;
+                if (medecin.getTypeMedecin() == TypeMedecin.SUIVI) {
+                    targetRoleName = "ROLE_MEDECIN_SUIVI";
+                } else if (medecin.getTypeMedecin() == TypeMedecin.INVESTIGATEUR) {
+                    targetRoleName = "ROLE_MEDECIN_INVESTIGATEUR";
                 }
             }
 

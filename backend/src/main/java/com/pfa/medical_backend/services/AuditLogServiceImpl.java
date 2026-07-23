@@ -3,8 +3,9 @@ package com.pfa.medical_backend.services;
 import com.pfa.medical_backend.dto.AuditLogResponseDTO;
 import com.pfa.medical_backend.entities.AuditLog;
 import com.pfa.medical_backend.repositories.AuditLogRepository;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -15,24 +16,22 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
-    public AuditLogServiceImpl(AuditLogRepository auditLogRepository) {
-        this.auditLogRepository = auditLogRepository;
-    }
 
     @Override
     public void log(String username, String role, String action, String target, String details) {
-        AuditLog log = new AuditLog();
-        log.setTimestamp(LocalDateTime.now(ZoneId.of("Africa/Tunis")));
-        log.setUsername(username);
-        log.setRole(role);
-        log.setAction(action);
-        log.setTarget(target);
-        log.setDetails(details);
-        auditLogRepository.save(log);
+        AuditLog logObj = new AuditLog();
+        logObj.setTimestamp(LocalDateTime.now(ZoneId.of("Africa/Tunis")));
+        logObj.setUsername(username);
+        logObj.setRole(role);
+        logObj.setAction(action);
+        logObj.setTarget(target);
+        logObj.setDetails(details);
+        auditLogRepository.save(logObj);
     }
 
     @Override
@@ -43,15 +42,16 @@ public class AuditLogServiceImpl implements AuditLogService {
 
         if (authentication != null && authentication.isAuthenticated()) {
             Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails) {
-                username = ((UserDetails) principal).getUsername();
+            
+            if (principal instanceof UserDetails userDetails) {
+                username = userDetails.getUsername();
                 role = authentication.getAuthorities().stream()
-                        .map(auth -> auth.getAuthority())
+                        .map(GrantedAuthority::getAuthority)
                         .filter(auth -> auth.startsWith("ROLE_"))
                         .findFirst()
                         .orElse("ROLE_USER");
-            } else if (principal instanceof String) {
-                username = (String) principal;
+            } else if (principal instanceof String stringPrincipal) {
+                username = stringPrincipal;
             }
         }
 
@@ -66,15 +66,15 @@ public class AuditLogServiceImpl implements AuditLogService {
                 .toList();
     }
 
-    private AuditLogResponseDTO mapToResponseDTO(AuditLog log) {
+    private AuditLogResponseDTO mapToResponseDTO(AuditLog logObj) {
         AuditLogResponseDTO dto = new AuditLogResponseDTO();
-        dto.setId(log.getId());
-        dto.setTimestamp(log.getTimestamp());
-        dto.setUsername(log.getUsername());
-        dto.setRole(log.getRole());
-        dto.setAction(log.getAction());
-        dto.setTarget(log.getTarget());
-        dto.setDetails(log.getDetails());
+        dto.setId(logObj.getId());
+        dto.setTimestamp(logObj.getTimestamp());
+        dto.setUsername(logObj.getUsername());
+        dto.setRole(logObj.getRole());
+        dto.setAction(logObj.getAction());
+        dto.setTarget(logObj.getTarget());
+        dto.setDetails(logObj.getDetails());
         return dto;
     }
 }

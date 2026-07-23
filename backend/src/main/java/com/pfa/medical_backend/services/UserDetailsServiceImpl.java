@@ -2,6 +2,7 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,13 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    public UserDetailsServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -29,15 +28,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
 
-        if (user.getRole() != null){
+        if (user.getRole() != null) {
             authorities.add(new SimpleGrantedAuthority(user.getRole().getNomRole()));
 
-            user.getRole().getPermissions().forEach(permission -> { 
-                authorities.add(new SimpleGrantedAuthority(permission.getNomPermission()));
-            });
+            user.getRole().getPermissions().forEach(permission -> 
+                authorities.add(new SimpleGrantedAuthority(permission.getNomPermission()))
+            );
         }
 
-        // Construction de l'objet UserDetails de Spring Security
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getLoginU())
                 .password(user.getMotPasseU())

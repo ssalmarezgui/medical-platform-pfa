@@ -3,6 +3,7 @@ package com.pfa.medical_backend.entities;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.time.ZoneId; // Import du fuseau horaire
 
 @Entity
 @Table(name = "audit_logs")
@@ -16,7 +17,7 @@ public class AuditLog {
     private Long id;
 
     @Column(name = "timestamp", nullable = false)
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private LocalDateTime timestamp = LocalDateTime.now(ZoneId.of("Africa/Tunis"));
 
     @Column(name = "username", nullable = false)
     private String username;

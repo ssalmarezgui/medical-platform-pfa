@@ -2,6 +2,7 @@ package com.pfa.medical_backend.services;
 
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.security.SecureRandom;
 import java.util.Random;
@@ -26,7 +27,7 @@ public class OtpService {
 
     public String generateOtp(String loginU){
         String code = String.format("%06d", random.nextInt(999999));
-        LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
+        LocalDateTime expiry = LocalDateTime.now(ZoneId.of("Africa/Tunis")).plusMinutes(5);
         otpStorage.put(loginU, new OtpDetails(code, expiry));
         return code;
     }
@@ -35,8 +36,7 @@ public class OtpService {
         OtpDetails details = otpStorage.get(loginU);
 
         if (details == null) return false;
-
-        if (details.expiryTime.isBefore(LocalDateTime.now())){
+        if (details.expiryTime.isBefore(LocalDateTime.now(ZoneId.of("Africa/Tunis")))){
             otpStorage.remove(loginU);
             return false;
         }
@@ -47,6 +47,4 @@ public class OtpService {
         }
         return isValid;
     }
-
-    
 }
