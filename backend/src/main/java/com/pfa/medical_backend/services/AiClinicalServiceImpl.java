@@ -102,18 +102,22 @@ public class AiClinicalServiceImpl implements AiClinicalService {
         if (transplantations != null && !transplantations.isEmpty()) {
             sb.append("\n--- CHIRURGIE ET TRANSPLANTATION ---\n");
             for (int i = 0; i < transplantations.size(); i++) {
-                Transplantation t = transplantations.get(i);
-                sb.append("Greffe n°").append(i+1).append(" :\n");
-                sb.append("- Date de la greffe : ").append(t.getDateTR() != null ? t.getDateTR() : NOT_SPECIFIED_F).append("\n");
-                sb.append("- Lieu de la greffe : ").append(t.getLieuDeLaGreffe() != null ? t.getLieuDeLaGreffe() : NOT_SPECIFIED_M).append("\n");
-                sb.append("- Lieu de suivi post-greffe : ").append(t.getLieuDeSuivi() != null ? t.getLieuDeSuivi() : NOT_SPECIFIED_M).append("\n");
-                sb.append("- Rein greffé : ").append(t.getRein() != null ? t.getRein() : "Non spécifié").append("\n");
-                sb.append("- Sonde Double JJ présente : ").append(t.getSondeEnDoubleJJ() != null && t.getSondeEnDoubleJJ() ? "Oui" : "Non").append("\n");
-                sb.append("- Nombre d'artères/veines reliées : ").append(t.getNbArtereVeine() != null ? t.getNbArtereVeine() : NOT_SPECIFIED_M).append("\n");
-                sb.append("- Durée d'ischémie froide : ").append(t.getDureeIschemieFroide() != null ? t.getDureeIschemieFroide() + " minutes" : NOT_SPECIFIED_F).append("\n");
+                // Appel d'une sous-méthode pour formater chaque greffe et abaisser la complexité cognitive
+                appendSingleTransplantationDetails(sb, transplantations.get(i), i + 1);
             }
         } else {
             sb.append("\n--- CHIRURGIE ET TRANSPLANTATION ---\nAucune chirurgie de greffe enregistrée à ce jour.\n");
         }
+    }
+
+    private void appendSingleTransplantationDetails(StringBuilder sb, Transplantation t, int index) {
+        sb.append("Greffe n°").append(index).append(" :\n");
+        sb.append("- Date de la greffe : ").append(t.getDateTR() != null ? t.getDateTR() : NOT_SPECIFIED_F).append("\n");
+        sb.append("- Lieu de la greffe : ").append(t.getLieuDeLaGreffe() != null ? t.getLieuDeLaGreffe() : NOT_SPECIFIED_M).append("\n");
+        sb.append("- Lieu de suivi post-greffe : ").append(t.getLieuDeSuivi() != null ? t.getLieuDeSuivi() : NOT_SPECIFIED_M).append("\n");
+        sb.append("- Rein greffé : ").append(t.getRein() != null ? t.getRein() : "Non spécifié").append("\n");
+        sb.append("- Sonde Double JJ présente : ").append(t.getSondeEnDoubleJJ() != null && t.getSondeEnDoubleJJ() ? "Oui" : "Non").append("\n");
+        sb.append("- Nombre d'artères/veines reliées : ").append(t.getNbArtereVeine() != null ? t.getNbArtereVeine() : NOT_SPECIFIED_M).append("\n");
+        sb.append("- Durée d'ischémie froide : ").append(t.getDureeIschemieFroide() != null ? t.getDureeIschemieFroide() + " minutes" : NOT_SPECIFIED_F).append("\n");
     }
 }

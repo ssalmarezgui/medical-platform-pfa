@@ -115,7 +115,7 @@ public class PatientService {
 
         log.info("=== ENQUÊTE D'IDENTITO-VIGILANCE EN BASE ===");
         
-        boolean isAdulte = incoming.getAdulteP() != null ? incoming.getAdulteP() : true;
+        boolean isAdulte = !Boolean.FALSE.equals(incoming.getAdulteP());
         
         String checkCin = incoming.getNumeroCin() != null ? String.valueOf(incoming.getNumeroCin()).trim() : "";
         String checkCarnet = incoming.getNumCarnetP() != null ? String.valueOf(incoming.getNumCarnetP()).trim() : "";

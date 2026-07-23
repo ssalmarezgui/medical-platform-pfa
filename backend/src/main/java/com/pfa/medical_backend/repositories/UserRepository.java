@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByLoginU(String loginU);
     Optional<User> findByUuid(String uuid);
 
-    Boolean existsByLoginU(String loginU);
+    boolean existsByLoginU(String loginU);
 
     
     @Query("SELECT u FROM User u WHERE LOWER(u.role.nomRole) = LOWER(:roleU)")

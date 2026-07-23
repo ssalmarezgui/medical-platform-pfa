@@ -16,7 +16,6 @@ public class FicheHematologieService {
     public FicheHematologieService(
         HemotologieHemostaseRepository hhRepository,
         PatientIdAdminRepository patientRepository,
-        AnalyseRepository analyseRepository,
         DonneurRepository donneurRepository
     ) {
         this.hhRepository = hhRepository;
