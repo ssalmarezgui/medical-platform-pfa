@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.mail.SimpleMailMessage; 
@@ -26,7 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service 
 @Transactional
+@Slf4j
 public class UserServiceImpl implements UserService {
+
+    private static final String USER_NOT_FOUND = "Utilisateur introuvable";
+    private static final String ADMIN_EMAIL = "ssalmarezgui@gmail.com";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -133,7 +138,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDTO approveUser(String uuid) {
         User user = userRepository.findByUuid(uuid)
-                .orElseThrow(() -> new EntityNotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND));
         
         user.setActive(true); 
         User approvedUser = userRepository.save(user);
@@ -149,7 +154,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDTO toggleUserStatus(String uuid) {
         User user = userRepository.findByUuid(uuid)
-                .orElseThrow(() -> new EntityNotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND));
         
         boolean newStatus = !user.isActive(); 
         user.setActive(newStatus);
@@ -171,7 +176,7 @@ public class UserServiceImpl implements UserService {
     private void sendPendingEmailToDoctor(String recipientEmail, String username) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("ssalmarezgui@gmail.com");
+            message.setFrom(ADMIN_EMAIL);
             message.setTo(recipientEmail);
             message.setSubject("NephroCare - Inscription en cours de validation");
             message.setText("Bonjour,\n\n" +
@@ -181,15 +186,15 @@ public class UserServiceImpl implements UserService {
                     "Cordialement,\nL'équipe administrative.");
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Erreur envoi email médecin : " + e.getMessage());
+            log.error("Erreur lors de l'envoi de l'email d'inscription en cours de validation au médecin : ", e);
         }
     }
 
     private void sendAdminAlertEmail(String username, String doctorName) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("ssalmarezgui@gmail.com");
-            message.setTo("ssalmarezgui@gmail.com"); 
+            message.setFrom(ADMIN_EMAIL);
+            message.setTo(ADMIN_EMAIL); 
             message.setSubject("ALERTE : Nouveau compte médecin en attente de validation");
             message.setText("Bonjour Administrateur,\n\n" +
                     "Un nouveau médecin s'est inscrit sur la plateforme :\n" +
@@ -199,14 +204,14 @@ public class UserServiceImpl implements UserService {
                     "Lien de connexion : http://localhost:5173/login");
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Erreur envoi email alerte admin : " + e.getMessage());
+            log.error("Erreur lors de l'envoi de l'email d'alerte à l'administrateur : ", e);
         }
     }
 
     private void sendActivationEmailToDoctor(String recipientEmail, String username) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("ssalmarezgui@gmail.com");
+            message.setFrom(ADMIN_EMAIL);
             message.setTo(recipientEmail);
             message.setSubject("NephroCare - Votre compte a été activé !");
             message.setText("Félicitations Dr.,\n\n" +
@@ -215,14 +220,14 @@ public class UserServiceImpl implements UserService {
                     "Cordialement,\nL'équipe de l'administration médicale.");
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Erreur envoi email activation : " + e.getMessage());
+            log.error("Erreur lors de l'envoi de l'email d'activation du compte au médecin : ", e);
         }
     }
 
     private void sendSuspensionEmailToDoctor(String recipientEmail, String username) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("ssalmarezgui@gmail.com");
+            message.setFrom(ADMIN_EMAIL);
             message.setTo(recipientEmail);
             message.setSubject("NephroCare - Suspension temporaire de votre compte");
             message.setText("Bonjour,\n\n" +
@@ -231,7 +236,7 @@ public class UserServiceImpl implements UserService {
                     "Cordialement,\nL'équipe de l'administration médicale.");
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Erreur envoi email suspension : " + e.getMessage());
+            log.error("Erreur lors de l'envoi de l'email de suspension du compte au médecin : ", e);
         }
     }
 
@@ -262,7 +267,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserResponseDTO getUserByUuid(String uuid) {
         User user = userRepository.findByUuid(uuid)
-                .orElseThrow(() -> new EntityNotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND));
         return mapToResponseDTO(user);
     }
 

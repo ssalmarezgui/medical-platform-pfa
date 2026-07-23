@@ -1,6 +1,4 @@
 package com.pfa.medical_backend.repositories;
-
-import com.pfa.medical_backend.entities.AntecedentChirurgical;
 import com.pfa.medical_backend.entities.BiochimieSang;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

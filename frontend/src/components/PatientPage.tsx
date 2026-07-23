@@ -24,7 +24,12 @@ import { useAuthStore } from '../store/useAuthStore';
 
 import { usePermission } from '../hooks/usePermission';
 
+import { AiAssistantModal } from '../features/patients/components/AiAssistantModal';
+import { IconSparkles } from '@tabler/icons-react';
+
 export const PatientPage = () => {
+  const [isAiOpen, setIsAiOpen] = useState(false);
+
   const { user } = useAuthStore();
   const userHopitalId = user?.hopitalId;
 
@@ -209,6 +214,16 @@ export const PatientPage = () => {
 
             {canCreateOrUpdate && (
               <div className="mt-6 pt-4 border-t flex justify-end gap-2">
+                <button 
+                  type="button"
+                  title="Assistant Clinique IA"
+                  onClick={() => { setSelectedPatient(p); setIsAiOpen(true); }} 
+                  className="p-2 bg-blue-50 hover:bg-blue-100 text-[#2B5296] cursor-pointer rounded-lg border-none transition-colors flex items-center justify-center"
+                >
+                  <IconSparkles size={16} />
+                </button>
+
+
                 <button onClick={() => { setSelectedPatient(p); setIsEditOpen(true); }} className="p-2 bg-slate-50 text-[#2B5296] cursor-pointer rounded-lg">
                   <IconEdit size={16} />
                 </button>
@@ -238,6 +253,14 @@ export const PatientPage = () => {
           
           <ImportPatientsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
         </>
+      )}
+
+      {selectedPatient && (
+        <AiAssistantModal 
+          isOpen={isAiOpen} 
+          onClose={() => { setIsAiOpen(false); setSelectedPatient(null); }} 
+          patient={selectedPatient} 
+        />
       )}
 
       {canDelete && (

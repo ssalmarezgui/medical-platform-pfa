@@ -2,7 +2,8 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import com.pfa.medical_backend.security.SecurityConfig;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
@@ -10,27 +11,14 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class MedecinService {
 
-    private final SecurityConfig securityConfig;
     private final MedecinRepository medecinRepository;
     private final ServiceRepository serviceRepository;
     private final PatientIdAdminRepository patientRepository;
     private final UserRepository userRepository;
 
-    public MedecinService(
-        SecurityConfig securityConfig,
-        MedecinRepository medecinRepository,
-        ServiceRepository serviceRepository,
-        PatientIdAdminRepository patientRepository,
-        UserRepository userRepository
-    ) {
-        this.securityConfig = securityConfig;
-        this.medecinRepository = medecinRepository;
-        this.serviceRepository = serviceRepository;
-        this.patientRepository = patientRepository;
-        this.userRepository = userRepository;
-    }
     
     @Transactional("transactionManager")
     public Medecin assignerMedecinAuService(Long medecinId, Integer serviceId) {
@@ -44,7 +32,7 @@ public class MedecinService {
             m.setService(s);
             return medecinRepository.save(m);
         }
-        throw new RuntimeException("Médecin ou Service non trouvé");
+        throw new EntityNotFoundException("Médecin ou Service non trouvé");
     }
 
     @Transactional("transactionManager")
@@ -57,7 +45,7 @@ public class MedecinService {
             m.setService(null);
             return medecinRepository.save(m);
         }
-        throw new RuntimeException("Médecin ou Service non trouvé");
+        throw new EntityNotFoundException("Médecin ou Service non trouvé");
     }
 
     public List<Medecin> getAllMedecins() {
@@ -74,7 +62,7 @@ public class MedecinService {
   
     public List<Medecin> getMedecinsParService(Integer serviceId) {
         if (!serviceRepository.existsById(serviceId)) {
-            throw new RuntimeException("Service non trouvé");
+            throw new EntityNotFoundException("Service non trouvé");
         }
         return medecinRepository.findByService_IdentifiantS(serviceId);
     }
@@ -91,7 +79,7 @@ public class MedecinService {
     public Medecin createMedecin(Medecin medecin) {
         if (medecin.getService() != null && medecin.getService().getIdentifiantS() != null) {
             ServiceMedical service = serviceRepository.findById(medecin.getService().getIdentifiantS())
-                .orElseThrow(() -> new RuntimeException("Service non trouvé"));
+                .orElseThrow(() -> new EntityNotFoundException("Service non trouvé"));
             validateServiceBelongsToMedecinHopital(medecin, service);
             medecin.setService(service);
         }
@@ -101,7 +89,7 @@ public class MedecinService {
     @Transactional("transactionManager")
     public Medecin updateMedecin(Long medecinId, Medecin medecinDetails) {
         Medecin m = medecinRepository.findById(medecinId)
-            .orElseThrow(() -> new RuntimeException("Médecin non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Médecin non trouvé"));
 
         boolean hopitalUpdated = updateMedecinFields(m, medecinDetails);
         resolveMedecinService(m, medecinDetails, hopitalUpdated);
@@ -145,7 +133,7 @@ public class MedecinService {
     @Transactional("transactionManager")
     public void deleteMedecin(Long medecinId) {
         Medecin medecin = medecinRepository.findById(medecinId)
-            .orElseThrow(() -> new RuntimeException("Médecin non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Médecin non trouvé"));
 
         if (medecin.getUtilisateur() != null) {
             User user = medecin.getUtilisateur();

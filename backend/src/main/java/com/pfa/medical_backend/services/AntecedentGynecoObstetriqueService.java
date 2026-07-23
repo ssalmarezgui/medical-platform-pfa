@@ -6,26 +6,19 @@ import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.repositories.AntecedentGynecoObstetriqueRepository;
 import com.pfa.medical_backend.repositories.DonneurRepository;
 import com.pfa.medical_backend.repositories.PatientIdAdminRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class AntecedentGynecoObstetriqueService {
 
     private final AntecedentGynecoObstetriqueRepository agoRepository;
     private final PatientIdAdminRepository patientRepository;
     private final DonneurRepository donneurRepository;
-
-    public AntecedentGynecoObstetriqueService(
-        AntecedentGynecoObstetriqueRepository agoRepository,
-        PatientIdAdminRepository patientRepository,
-        DonneurRepository donneurRepository
-    ) {
-        this.agoRepository = agoRepository;
-        this.patientRepository = patientRepository;
-        this.donneurRepository = donneurRepository;
-    }
 
     public Optional<AntecedentGynecoObstetrique> getByPatient(String patientId) {
         return agoRepository.findByPatient_IdentifiantP(patientId);
@@ -43,11 +36,11 @@ public class AntecedentGynecoObstetriqueService {
     public AntecedentGynecoObstetrique create(AntecedentGynecoObstetrique ago, String patientId) {
         Optional<AntecedentGynecoObstetrique> existing = agoRepository.findByPatient_IdentifiantP(patientId);
         if (existing.isPresent()) {
-            throw new RuntimeException("Erreur : Un dossier gynéco existe déjà pour cette patiente.");
+            throw new IllegalArgumentException("Erreur : Un dossier gynéco existe déjà pour cette patiente.");
         }
 
         PatientIdAdmin patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new RuntimeException("Patiente non trouvée"));
+            .orElseThrow(() -> new EntityNotFoundException("Patiente non trouvée"));
         
         if (!"F".equalsIgnoreCase(patient.getSexeP())) {
             throw new IllegalArgumentException("Erreur clinique : Ce dossier ne s'applique qu'aux patientes de sexe féminin.");
@@ -61,11 +54,11 @@ public class AntecedentGynecoObstetriqueService {
     public AntecedentGynecoObstetrique createForDonor(AntecedentGynecoObstetrique ago, Integer donorId) {
         Optional<AntecedentGynecoObstetrique> existing = agoRepository.findByDonneur_IdentifiantD(donorId);
         if (existing.isPresent()) {
-            throw new RuntimeException("Erreur : Un dossier gynéco existe déjà pour ce donneur.");
+            throw new IllegalArgumentException("Erreur : Un dossier gynéco existe déjà pour ce donneur.");
         }
 
         Donneur donneur = donneurRepository.findById(donorId)
-            .orElseThrow(() -> new RuntimeException("Donneur non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Donneur non trouvé"));
         
         if (!"F".equalsIgnoreCase(donneur.getSexeD())) {
             throw new IllegalArgumentException("Erreur clinique : Ce dossier ne s'applique qu'aux donneuses de sexe féminin.");
@@ -79,7 +72,7 @@ public class AntecedentGynecoObstetriqueService {
     @Transactional("transactionManager")
     public AntecedentGynecoObstetrique update(Integer id, AntecedentGynecoObstetrique details) {
         AntecedentGynecoObstetrique ago = agoRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Dossier non trouvé"));
 
         if (details.getDatePremieresRegles() != null) ago.setDatePremieresRegles(details.getDatePremieresRegles());
         if (details.getMenopause() != null) ago.setMenopause(details.getMenopause());

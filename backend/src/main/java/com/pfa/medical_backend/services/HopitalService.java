@@ -4,8 +4,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pfa.medical_backend.repositories.*;
-
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 
 import com.pfa.medical_backend.entities.*;
 
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class HopitalService {
 
     private static final String ERR_HOPITAL_NOT_FOUND = "Hôpital non trouvé";
@@ -23,23 +25,7 @@ public class HopitalService {
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
     private final MedecinRepository medecinRepository;
-    private final PatientIdAdminRepository patientRepository;
-
-    public HopitalService(
-        EntityManager entityManager,
-        HopitalStructureSoinRepository hopitalRepository,
-        ServiceRepository serviceRepository,
-        UserRepository userRepository,
-        MedecinRepository medecinRepository,
-        PatientIdAdminRepository patientRepository
-    ) {
-        this.entityManager = entityManager;
-        this.hopitalRepository = hopitalRepository;
-        this.serviceRepository = serviceRepository;
-        this.userRepository = userRepository;
-        this.medecinRepository = medecinRepository;
-        this.patientRepository = patientRepository;
-    }
+    
 
     public List<HopitalStructureSoin> getAllHopitaux() {
         entityManager.clear();
@@ -77,7 +63,7 @@ public class HopitalService {
         }
         
         if (hopitalRepository.existsById(hopital.getIdentifiantH())) {
-            throw new RuntimeException("Erreur : Un hôpital avec ce code unique existe déjà.");
+            throw new IllegalArgumentException("Erreur : Un hôpital avec ce code unique existe déjà.");
         }
         
         return hopitalRepository.save(hopital);
@@ -86,7 +72,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public HopitalStructureSoin updateHopital(String hopitalId, HopitalStructureSoin details) {
         HopitalStructureSoin h = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
+            .orElseThrow(() -> new EntityNotFoundException(ERR_HOPITAL_NOT_FOUND));
 
         if (details.getLibelleH() != null) h.setLibelleH(details.getLibelleH());
         if (details.getAdresseH() != null) h.setAdresseH(details.getAdresseH());
@@ -102,7 +88,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public void deleteHopital(String hopitalId) {
         HopitalStructureSoin hopital = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
+            .orElseThrow(() -> new EntityNotFoundException(ERR_HOPITAL_NOT_FOUND));
 
         List<ServiceMedical> services = serviceRepository.findByHopital_IdentifiantH(hopitalId);
 
@@ -122,7 +108,7 @@ public class HopitalService {
 
     public List<ServiceMedical> getServicesOfHopital(String hopitalId) {
         if (!hopitalRepository.existsById(hopitalId)) {
-            throw new RuntimeException(ERR_HOPITAL_NOT_FOUND);
+            throw new EntityNotFoundException(ERR_HOPITAL_NOT_FOUND);
         }
         return serviceRepository.findByHopital_IdentifiantH(hopitalId);
     }
@@ -130,7 +116,7 @@ public class HopitalService {
     @Transactional("transactionManager")
     public HopitalStructureSoin ajouterServiceAHopital(String hopitalId, ServiceMedical service) {
         HopitalStructureSoin h = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException(ERR_HOPITAL_NOT_FOUND));
+            .orElseThrow(() -> new EntityNotFoundException(ERR_HOPITAL_NOT_FOUND));
         
         service.setHopital(h);
         serviceRepository.save(service);
@@ -154,6 +140,6 @@ public class HopitalService {
             h.getServices().remove(s);
             return hopitalRepository.save(h);
         }
-        throw new RuntimeException("Hôpital ou Service non trouvé");
+        throw new EntityNotFoundException("Hôpital ou Service non trouvé");
     }
 }

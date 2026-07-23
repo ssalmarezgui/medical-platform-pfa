@@ -3,6 +3,8 @@ package com.pfa.medical_backend.services;
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class ServiceHospitalierService {
 
     private final EntityManager entityManager;
@@ -19,21 +22,6 @@ public class ServiceHospitalierService {
     private final MedecinRepository medecinRepository;
     private final PatientIdAdminRepository patientRepository;
 
-    public ServiceHospitalierService(
-        EntityManager entityManager,
-        ServiceRepository serviceRepository,
-        HopitalStructureSoinRepository hopitalRepository,
-        UserRepository userRepository,
-        MedecinRepository medecinRepository,
-        PatientIdAdminRepository patientRepository
-    ) {
-        this.entityManager = entityManager;
-        this.serviceRepository = serviceRepository;
-        this.hopitalRepository = hopitalRepository;
-        this.userRepository = userRepository;
-        this.medecinRepository = medecinRepository;
-        this.patientRepository = patientRepository;
-    }
 
     @Transactional("transactionManager")
     public ServiceMedical assignerUtilisateurAuService(Integer serviceId, Integer userId) {
@@ -46,7 +34,7 @@ public class ServiceHospitalierService {
             s.getUsers().add(u);
             return serviceRepository.save(s);
         }
-        throw new RuntimeException("Service ou Utilisateur non trouvé");
+        throw new EntityNotFoundException("Service ou Utilisateur non trouvé");
     }
 
     @Transactional("transactionManager")
@@ -60,7 +48,7 @@ public class ServiceHospitalierService {
             s.getUsers().remove(u);
             return serviceRepository.save(s);
         }
-        throw new RuntimeException("Service ou Utilisateur non trouvé");
+        throw new EntityNotFoundException("Service ou Utilisateur non trouvé");
     }
 
     public List<ServiceMedical> getAllServices() {
@@ -81,7 +69,7 @@ public class ServiceHospitalierService {
         entityManager.clear();
         
         if (!hopitalRepository.existsById(hopitalId)) {
-            throw new RuntimeException("Hôpital non trouvé avec le code : " + hopitalId);
+            throw new EntityNotFoundException("Hôpital non trouvé avec le code : " + hopitalId);
         }
         
         List<ServiceMedical> services = serviceRepository.findByHopital_IdentifiantH(hopitalId);
@@ -110,7 +98,7 @@ public class ServiceHospitalierService {
             }
             return services;
         }
-        throw new RuntimeException("Hôpital non trouvé");
+        throw new EntityNotFoundException("Hôpital non trouvé");
     }
 
     public Optional<ServiceMedical> getServiceById(Integer serviceId) {
@@ -126,7 +114,7 @@ public class ServiceHospitalierService {
     @Transactional("transactionManager")
     public ServiceMedical createService(ServiceMedical service, String hopitalId) {
         HopitalStructureSoin hopital = hopitalRepository.findById(hopitalId)
-            .orElseThrow(() -> new RuntimeException("Hôpital non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Hôpital non trouvé"));
         
         service.setHopital(hopital);
 
@@ -144,13 +132,13 @@ public class ServiceHospitalierService {
             if (serviceDetails.getNbMedecinsS() != null) s.setNbMedecinsS(serviceDetails.getNbMedecinsS());
             return serviceRepository.save(s);
         }
-        throw new RuntimeException("Service non trouvé");
+        throw new EntityNotFoundException("Service non trouvé");
     }
 
     @Transactional("transactionManager")
     public void deleteService(Integer serviceId) {
         ServiceMedical service = serviceRepository.findById(serviceId)
-            .orElseThrow(() -> new RuntimeException("Service non trouvé"));
+            .orElseThrow(() -> new EntityNotFoundException("Service non trouvé"));
 
         for (User user : new HashSet<>(service.getUsers())) {
             user.setService(null);
@@ -181,6 +169,6 @@ public class ServiceHospitalierService {
         if (service.isPresent()) {
             return userRepository.findByService(service.get());
         }
-        throw new RuntimeException("Service non trouvé");
+        throw new EntityNotFoundException("Service non trouvé");
     }
 }

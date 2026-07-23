@@ -1,0 +1,26 @@
+# le framework web pour python comme spring web en java
+# pour creer les routes d'API
+fastapi
+
+# c'est le serveur web ultra-rapide pour python (tomcat en java)
+# il fait tourner l'application FastAPI et ecoute sur le port 
+uvicorn
+
+# bib de validation de données
+# elle verifie que les données envoyées par Spring Boot ont le bon format avant de les traiter
+pydantic
+
+# permet de lire les variables de configuration ecrites dans un fichier ".env"
+python-dotenv
+
+# contient les interfaces de base de LangChain(def des prompts, msgs)
+langchain-core
+
+# le framework principal d'IA pour orchestrer les appels au modele
+# formater les prompts et chainer les actions
+langchain
+
+
+# Contient les connecteurs développés par la communauté
+# je peux connecter LangChain a mon outil local "Ollama"
+langchain-community

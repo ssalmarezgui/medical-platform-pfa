@@ -2,8 +2,9 @@ package com.pfa.medical_backend.services;
 
 import com.pfa.medical_backend.entities.*;
 import com.pfa.medical_backend.repositories.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import com.pfa.medical_backend.dto.PatientDTO;
 
@@ -16,23 +17,14 @@ import java.util.Optional;
 
 @Service
 @Transactional("transactionManager")
+@RequiredArgsConstructor
+@Slf4j
 public class PatientService {
-
-    private static final Logger log = LoggerFactory.getLogger(PatientService.class);
 
     private final PatientIdAdminRepository patientRepository;
     private final MedecinRepository medecinRepository;
     private final ServiceRepository serviceRepository;
 
-    public PatientService(
-        PatientIdAdminRepository patientRepository,
-        MedecinRepository medecinRepository,
-        ServiceRepository serviceRepository
-    ) {
-        this.patientRepository = patientRepository;
-        this.medecinRepository = medecinRepository;
-        this.serviceRepository = serviceRepository;
-    }
 
     public PatientIdAdmin affecterPatientAuService(String patientId, Integer serviceId) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
@@ -51,7 +43,7 @@ public class PatientService {
             }
             return p;
         }
-        throw new RuntimeException("Patient ou service non trouve");
+        throw new EntityNotFoundException("Patient ou service non trouvé");
     }
 
     public PatientIdAdmin desaffecterPatientDuService(String patientId, Integer serviceId) {
@@ -63,7 +55,7 @@ public class PatientService {
             p.getAffectations().removeIf(a -> a.getService().getIdentifiantS().equals(serviceId));
             return patientRepository.save(p);
         }
-        throw new RuntimeException("Patient ou service non trouve");
+        throw new EntityNotFoundException("Patient ou service non trouvé");
     }
 
     public PatientIdAdmin assignerMedecinAuPatient(String patientId, Long medecinId) {
@@ -77,7 +69,7 @@ public class PatientService {
             p.getMedecinsSuivi().add(m);
             return patientRepository.save(p);
         }
-        throw new RuntimeException("Patient ou medecin non trouve");
+        throw new EntityNotFoundException("Patient ou médecin non trouvé");
     }
 
     public PatientIdAdmin retirerMedecinDuPatient(String patientId, Long medecinId) {
@@ -90,7 +82,7 @@ public class PatientService {
             p.getMedecinsSuivi().remove(m);
             return patientRepository.save(p);
         }
-        throw new RuntimeException("Patient ou medecin non trouve");
+        throw new EntityNotFoundException("Patient ou médecin non trouvé");
     }
 
     public List<PatientIdAdmin> getAllPatients() {
@@ -217,7 +209,7 @@ public class PatientService {
     public PatientIdAdmin updatePatient(String patientId, PatientIdAdmin patientDetails) {
         Optional<PatientIdAdmin> patient = patientRepository.findById(patientId);
         if (patient.isEmpty()) {
-            throw new RuntimeException("Patient non trouve");
+            throw new EntityNotFoundException("Patient non trouvé");
         }
 
         PatientIdAdmin existing = patient.get();
@@ -247,7 +239,7 @@ public class PatientService {
     @Transactional("transactionManager")
     public void deletePatient(String patientId) {
         PatientIdAdmin patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new RuntimeException("Patient non trouve"));
+            .orElseThrow(() -> new EntityNotFoundException("Patient non trouvé"));
 
         for (Medecin medecin : new HashSet<>(patient.getMedecinsSuivi())) {
             medecin.getPatientsSuivis().remove(patient);

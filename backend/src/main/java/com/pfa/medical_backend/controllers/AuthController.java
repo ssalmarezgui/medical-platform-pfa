@@ -11,6 +11,8 @@ import com.pfa.medical_backend.services.AuditLogService;
 import com.pfa.medical_backend.services.OtpService;
 import com.pfa.medical_backend.services.UserService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
@@ -31,7 +33,13 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+@Slf4j
 public class AuthController {
+
+    private static final String MSG_KEY = "message";
+    private static final String ROLE_USER = "ROLE_USER";
+    private static final String ACTION_PASSWORD_RESET = "Récupération Mot de passe";
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
@@ -43,21 +51,6 @@ public class AuthController {
     private final JavaMailSender mailSender;
     private final AuditLogService auditLogService;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtUtils jwtUtils, 
-                          UserService userService, UserRepository userRepository, 
-                          PasswordEncoder passwordEncoder, OtpService otpService,
-                          UserDetailsService userDetailsService, JavaMailSender mailSender,
-                          AuditLogService auditLogService) {
-        this.authenticationManager = authenticationManager;
-        this.jwtUtils = jwtUtils;
-        this.userService = userService;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.otpService = otpService;
-        this.userDetailsService = userDetailsService;
-        this.mailSender = mailSender; 
-        this.auditLogService = auditLogService;
-    }
 
     @PostMapping("/login-step1")
     public ResponseEntity<Object> loginStep1(@Valid @RequestBody LoginRequest loginRequest) {
@@ -65,37 +58,37 @@ public class AuthController {
         
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Identifiant ou mot de passe incorrect."));
+                    .body(Map.of(MSG_KEY, "Identifiant ou mot de passe incorrect."));
         }
 
         User user = userOpt.get();
 
         if (!user.isAccountNonLocked()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Compte verrouillé suite à plusieurs tentatives infructueuses."));
+                    .body(Map.of(MSG_KEY, "Compte verrouillé suite à plusieurs tentatives infructueuses."));
         }
 
         if (!passwordEncoder.matches(loginRequest.getMotPasseU(), user.getMotPasseU())) {
             userService.registerFailedAttempt(user.getLoginU());
             
-            auditLogService.log(loginRequest.getLoginU(), "ROLE_USER", "CONNEXION_ECHEC", 
+            auditLogService.log(loginRequest.getLoginU(), ROLE_USER, "CONNEXION_ECHEC", 
                     "Authentification Étape 1", "Saisie de mot de passe incorrect.");
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Identifiant ou mot de passe incorrect."));
+                    .body(Map.of(MSG_KEY, "Identifiant ou mot de passe incorrect."));
         }
 
         userService.resetFailedAttempts(user.getLoginU());
 
         if (!user.isActive()) {
-            auditLogService.log(user.getLoginU(), "ROLE_USER", "CONNEXION_BLOQUEE", 
+            auditLogService.log(user.getLoginU(), ROLE_USER, "CONNEXION_BLOQUEE", 
                     "Compte non validé", "Tentative de connexion refusée : compte en attente de validation.");
 
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Votre compte est en attente de validation par l'administration médicale."));
+                    .body(Map.of(MSG_KEY, "Votre compte est en attente de validation par l'administration médicale."));
         }
 
-        String roleName = user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER";
+        String roleName = user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER;
 
         if (user.getEmailU() != null && !user.getEmailU().isBlank()) {
             String recipientEmail = user.getEmailU();
@@ -140,16 +133,16 @@ public class AuthController {
         String otpCode = request.get("otpCode");
 
         if (loginU == null || otpCode == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Paramètres manquants."));
+            return ResponseEntity.badRequest().body(Map.of(MSG_KEY, "Paramètres manquants."));
         }
 
         boolean isOtpValid = otpService.validateOtp(loginU, otpCode);
         if (!isOtpValid) {
-            auditLogService.log(loginU, "ROLE_USER", "OTP_ECHEC", 
+            auditLogService.log(loginU, ROLE_USER, "OTP_ECHEC", 
                     "Authentification Étape 2", "Code OTP saisi incorrect ou expiré.");
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Code de validation incorrect ou expiré."));
+                    .body(Map.of(MSG_KEY, "Code de validation incorrect ou expiré."));
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(loginU);
@@ -174,13 +167,13 @@ public class AuthController {
         String emailU = request.get("emailU");
 
         if (emailU == null || emailU.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "L'adresse email est requise."));
+            return ResponseEntity.badRequest().body(Map.of(MSG_KEY, "L'adresse email est requise."));
         }
 
         Optional<User> userOpt = userRepository.findByEmailU(emailU);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Aucun compte clinique n'est associé à cette adresse email."));
+                    .body(Map.of(MSG_KEY, "Aucun compte clinique n'est associé à cette adresse email."));
         }
 
         User user = userOpt.get();
@@ -188,10 +181,10 @@ public class AuthController {
 
         sendForgotPasswordEmail(user.getEmailU(), otpCode);
 
-        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
-                "DEMANDE_REINITIALISATION_MDP", "Récupération Mot de passe", "Code de réinitialisation envoyé par email.");
+        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
+                "DEMANDE_REINITIALISATION_MDP", ACTION_PASSWORD_RESET, "Code de réinitialisation envoyé par email.");
 
-        return ResponseEntity.ok(Map.of("message", "Un code de réinitialisation a été envoyé à votre adresse email."));
+        return ResponseEntity.ok(Map.of(MSG_KEY, "Un code de réinitialisation a été envoyé à votre adresse email."));
     }
 
     @PostMapping("/reset-password")
@@ -201,31 +194,31 @@ public class AuthController {
         String newPassword = request.get("newPassword");
 
         if (emailU == null || otpCode == null || newPassword == null || newPassword.length() < 8) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Données invalides ou mot de passe trop court."));
+            return ResponseEntity.badRequest().body(Map.of(MSG_KEY, "Données invalides ou mot de passe trop court."));
         }
 
         Optional<User> userOpt = userRepository.findByEmailU(emailU);
         if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Utilisateur introuvable."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(MSG_KEY, "Utilisateur introuvable."));
         }
         User user = userOpt.get();
 
         boolean isOtpValid = otpService.validateOtp(user.getLoginU(), otpCode);
         if (!isOtpValid) {
-            auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
-                    "REINITIALISATION_MDP_ECHEC", "Récupération Mot de passe", "Saisie de code de réinitialisation invalide.");
+            auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
+                    "REINITIALISATION_MDP_ECHEC", ACTION_PASSWORD_RESET, "Saisie de code de réinitialisation invalide.");
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Code de réinitialisation incorrect ou expiré."));
+                    .body(Map.of(MSG_KEY, "Code de réinitialisation incorrect ou expiré."));
         }
 
         user.setMotPasseU(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : "ROLE_USER", 
-                "REINITIALISATION_MDP_SUCCES", "Récupération Mot de passe", "Mot de passe réinitialisé avec succès.");
+        auditLogService.log(user.getLoginU(), user.getRole() != null ? user.getRole().getNomRole() : ROLE_USER, 
+                "REINITIALISATION_MDP_SUCCES", ACTION_PASSWORD_RESET, "Mot de passe réinitialisé avec succès.");
 
-        return ResponseEntity.ok(Map.of("message", "Votre mot de passe a été réinitialisé avec succès."));
+        return ResponseEntity.ok(Map.of(MSG_KEY, "Votre mot de passe a été réinitialisé avec succès."));
     }
 
     @PostMapping("/register")
@@ -234,10 +227,10 @@ public class AuthController {
             UserResponseDTO response = userService.createUser(userRequestDTO);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of(MSG_KEY, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Erreur d'inscription."));
+                    .body(Map.of(MSG_KEY, "Erreur d'inscription."));
         }
     }
 
@@ -254,9 +247,9 @@ public class AuthController {
                     "Cordialement,\nL'équipe de l'administration médicale.");
             
             mailSender.send(message);
-            System.out.println("[EMAIL SYSTEM] Code de double authentification envoyé à : " + recipientEmail);
+            log.info("[EMAIL SYSTEM] Code de double authentification envoyé à : {}", recipientEmail);
         } catch (Exception e) {
-            System.err.println("Erreur lors de l'envoi de l'OTP par email : " + e.getMessage());
+            log.error("Erreur lors de l'envoi de l'OTP par email : ", e);
         }
     }
 
@@ -274,7 +267,7 @@ public class AuthController {
                     "Cordialement,\nL'équipe administrative.");
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Erreur envoi email réinitialisation : " + e.getMessage());
+            log.error("Erreur envoi email réinitialisation : ", e);
         }
     }
 
@@ -294,7 +287,7 @@ public class AuthController {
                 .map(GrantedAuthority::getAuthority)
                 .filter(auth -> auth.startsWith("ROLE_"))
                 .findFirst()
-                .orElse("ROLE_USER");
+                .orElse(ROLE_USER);
     }
 
     private List<String> getAuthoritiesFromUserDetails(UserDetails userDetails) {

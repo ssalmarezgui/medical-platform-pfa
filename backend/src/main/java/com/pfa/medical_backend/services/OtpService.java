@@ -3,13 +3,14 @@ package com.pfa.medical_backend.services;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.security.SecureRandom;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class OtpService {
 
-    // Stockage temporaire d'OTP pour chaque login
+    private final Random random = new SecureRandom();
 
     private final Map<String, OtpDetails> otpStorage = new ConcurrentHashMap<>();
 
@@ -24,7 +25,7 @@ public class OtpService {
     }
 
     public String generateOtp(String loginU){
-        String code = String.format("%06d", new Random().nextInt(999999));
+        String code = String.format("%06d", random.nextInt(999999));
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
         otpStorage.put(loginU, new OtpDetails(code, expiry));
         return code;

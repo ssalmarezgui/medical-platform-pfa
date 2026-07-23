@@ -3,7 +3,7 @@ package com.pfa.medical_backend.security;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
+@Slf4j
 public class JwtUtils {
 
     @Value("${jwt.secret}")
@@ -48,6 +49,7 @@ public class JwtUtils {
             Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Échec de la validation du jeton JWT : {}", e.getMessage());
         }
         return false;
     }
