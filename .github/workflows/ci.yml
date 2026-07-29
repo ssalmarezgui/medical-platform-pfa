@@ -38,13 +38,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Compiler et Analyser avec SonarCloud
+      # Étape corrigée : On retire -DskipTests et on indique à SonarCloud le chemin du rapport de couverture JaCoCo
+      - name: Compiler, Tester et Analyser avec SonarCloud
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   
         run: |
           cd backend
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ssalmarezgui_medical-platform-pfa -DskipTests
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=ssalmarezgui_medical-platform-pfa \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
 
   frontend-ci:
@@ -79,10 +82,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Telecharger les dependances Maven
+      # Étape corrigée : Compilation sans les tests pour générer l'arbre des dépendances proprement avant Snyk
+      - name: Compiler les dependances Maven
         run: |
           cd backend
-          mvn dependency:resolve
+          mvn clean compile -DskipTests
 
       - name: Installer le Snyk CLI
         uses: snyk/actions/setup@master
