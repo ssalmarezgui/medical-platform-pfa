@@ -91,7 +91,7 @@ public class PatientIdAdmin {
 
     // Realtions
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_Medecin_Investigateur")
     private Medecin medecinInvestigateur;
 
@@ -129,7 +129,7 @@ public class PatientIdAdmin {
     @JsonIgnore
     private Set<AffectationPatientService> affectations = new HashSet<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "patient_suivi_medecin",
         joinColumns = @JoinColumn(name = "IdentifiantP"),

@@ -1,6 +1,7 @@
 package com.pfa.medical_backend.controllers;
 
 import com.pfa.medical_backend.dto.PatientDTO;
+import com.pfa.medical_backend.entities.Medecin;
 import com.pfa.medical_backend.entities.PatientIdAdmin;
 import com.pfa.medical_backend.entities.User;
 import com.pfa.medical_backend.repositories.UserRepository;
@@ -93,6 +94,19 @@ public class PatientController {
         p.setEvolution(dto.getEvolution());
         p.setNiveauEducation(dto.getNiveauEducation());
         p.setEnEtatActivite(dto.getEnEtatActivite());
+        
+        if (dto.getMedecinInvestigateurId() != null) {
+            Medecin inv = new Medecin();
+            inv.setIdentifiantM(dto.getMedecinInvestigateurId());
+            p.setMedecinInvestigateur(inv);
+        }
+
+        if (dto.getMedecinSuiviId() != null) {
+            Medecin suivi = new Medecin();
+            suivi.setIdentifiantM(dto.getMedecinSuiviId());
+            p.setMedecinsSuivi(new java.util.HashSet<>(java.util.List.of(suivi)));
+        }
+
         return p;
     }
 

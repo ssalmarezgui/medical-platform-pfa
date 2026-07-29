@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGenerateSummary, useGenerateReport } from '../hooks/usePatientAi';
 import { Patient } from '../types/patients';
+import { marked } from 'marked';
 import { 
   IconX, 
   IconLoader, 
@@ -65,26 +66,61 @@ export const AiAssistantModal = ({ isOpen, onClose, patient }: AiAssistantModalP
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    const parsedHtml = marked(aiResult);
+
     printWindow.document.write(`
       <html>
         <head>
           <title>Rapport Médical - ${patient.identifiantP}</title>
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
-            h1 { color: #2B5296; border-bottom: 2px solid #2B5296; padding-bottom: 10px; }
-            h2 { color: #1e293b; margin-top: 30px; }
-            pre { white-space: pre-wrap; font-family: sans-serif; font-size: 14px; }
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+            h1, h2, h3 { color: #2B5296; margin-top: 20px; font-weight: bold; }
+            h1 { border-bottom: 2px solid #2B5296; padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; }
+            h2 { font-size: 18px; }
+            h3 { font-size: 16px; }
+            p { margin-bottom: 12px; font-size: 14px; }
+            ul { margin-bottom: 12px; padding-left: 20px; font-size: 14px; }
+            li { margin-bottom: 6px; }
+            strong { font-weight: bold; color: #0f172a; }
+            hr { border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0; }
           </style>
         </head>
         <body>
-          <pre>${aiResult}</pre>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
+          <h1>Rapport Médical Clinique - NephroCare</h1>
+          <div>${parsedHtml}</div>
         </body>
       </html>
     `);
     printWindow.document.close();
+
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  const renderMarkdown = (markdownText: string) => {
+    const rawHtml = marked(markdownText) as string;
+    return (
+      <>
+        <style>{`
+          .markdown-content h1 { font-size: 1.4rem; font-weight: 700; color: #2B5296; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+          .markdown-content h2 { font-size: 1.2rem; font-weight: 700; color: #2B5296; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+          .markdown-content h3 { font-size: 1rem; font-weight: 700; color: #1e293b; margin-top: 1rem; margin-bottom: 0.5rem; }
+          .markdown-content p { margin-bottom: 0.75rem; font-size: 13px; color: #334155; }
+          .markdown-content ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; font-size: 13px; }
+          .markdown-content li { margin-bottom: 0.35rem; color: #334155; }
+          .markdown-content strong { font-weight: 700; color: #0f172a; }
+          .markdown-content hr { margin: 1.5rem 0; border: 0; border-top: 1px solid #e2e8f0; }
+        `}</style>
+        <div 
+          className="markdown-content select-text leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: rawHtml }} 
+        />
+      </>
+    );
   };
 
   return (
@@ -115,9 +151,7 @@ export const AiAssistantModal = ({ isOpen, onClose, patient }: AiAssistantModalP
               <p className="text-[#6588BB] text-[11px] mt-1 font-semibold">Analyse sécurisée des constantes locales en cours. Veuillez patienter.</p>
             </div>
           ) : aiResult ? (
-            <div className="text-xs text-slate-700 font-semibold leading-relaxed whitespace-pre-wrap select-text">
-              {aiResult}
-            </div>
+            renderMarkdown(aiResult)
           ) : (
             <div className="flex flex-col items-center justify-center text-center h-full p-6 text-slate-400">
               <IconSparkles size={36} className="text-blue-200 mb-2" />

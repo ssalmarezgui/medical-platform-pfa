@@ -125,23 +125,33 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
 
     let doublon: any = null;
 
+    const normalizeCin = (cin: any) => String(cin).trim().replace(/^0+/, '');
+
     if (isPatientAdulte) {
-      doublon = existingPatients?.find(p => 
-        (p.adulteP === true && p.numeroCin === checkCin && p.dateNaissP === checkDate)
-      );
+      doublon = existingPatients?.find(p => {
+        const pAdulte = typeof p.adulteP === 'string' ? p.adulteP === 'true' : !!p.adulteP;
+        return (
+          pAdulte === true && 
+          normalizeCin(p.numeroCin) === normalizeCin(checkCin) && 
+          p.dateNaissP === checkDate
+        );
+      });
     } else {
-      doublon = existingPatients?.find(p => 
-        p.adulteP === false &&
-        p.numeroCin === checkCin && 
-        p.dateNaissP === checkDate &&
-        p.nomP.trim().toLowerCase() === checkNom &&
-        p.prenomP.trim().toLowerCase() === checkPrenom
-      );
+      doublon = existingPatients?.find(p => {
+        const pAdulte = typeof p.adulteP === 'string' ? p.adulteP === 'true' : !!p.adulteP;
+        return (
+          pAdulte === false &&
+          normalizeCin(p.numeroCin) === normalizeCin(checkCin) && 
+          p.dateNaissP === checkDate &&
+          p.nomP.trim().toLowerCase() === checkNom &&
+          p.prenomP.trim().toLowerCase() === checkPrenom
+        );
+      });
     }
 
     if (doublon) {
       setDuplicatePatient(doublon);
-      return; 
+      return;
     }
 
     const codeHopital = selectedHospital ? selectedHospital.substring(0, 3).toUpperCase() : "HOS";
@@ -161,7 +171,7 @@ export const AddPatientModal = ({ isOpen, onClose }: AddPatientProps) => {
         adulteP: isPatientAdulte,
         enEtatActivite: typeof data.enEtatActivite === 'string' ? data.enEtatActivite === 'true' : !!data.enEtatActivite,
         medecinInvestigateur: data.medecinInvestigateurId ? { identifiantM: Number(data.medecinInvestigateurId) } : null,
-        medecinsSuivi: rawSuiviId ? [{ identifiantM: Number(rawSuiviId) }] : [],
+        medecinSuiviId: (rawSuiviId && rawSuiviId !== "") ? Number(rawSuiviId) : null,
         affectations: [],
       };
 

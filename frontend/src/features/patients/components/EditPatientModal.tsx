@@ -59,10 +59,9 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
   }, [watchedDateNaiss, setValue]);
 
   useEffect(() => {
-    if (patient) {
-      const initialSuiviId = patient.medecinsSuivi?.[0]?.identifiantM || (patient as any).medecinSuiviId || undefined;
-
-      const initialSuiviIdStr = initialSuiviId ? String(initialSuiviId) : '';
+    if (patient && doctors) {
+      const initialInvestigatorIdStr = patient.medecinInvestigateurId ? String(patient.medecinInvestigateurId) : '';
+      const initialSuiviIdStr = patient.medecinSuiviId ? String(patient.medecinSuiviId) : '';
 
       reset({
         nomP: patient.nomP,
@@ -85,15 +84,17 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         evolution: patient.evolution,
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
-        medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
+        medecinInvestigateurId: initialInvestigatorIdStr,
         medecinSuiviId: initialSuiviIdStr
       });
     }
-  }, [patient, reset]);
+  }, [patient, doctors, reset]);
 
   const handleCloseAndCancel = () => {
     if (patient) {
-      const initialSuiviId = patient.medecinsSuivi?.[0]?.identifiantM || (patient as any).medecinSuiviId || undefined;
+      const initialInvestigatorIdStr = patient.medecinInvestigateurId ? String(patient.medecinInvestigateurId) : '';
+      const initialSuiviIdStr = patient.medecinSuiviId ? String(patient.medecinSuiviId) : '';
+
       reset({
         nomP: patient.nomP,
         prenomP: patient.prenomP,
@@ -115,8 +116,8 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         evolution: patient.evolution,
         niveauEducation: patient.niveauEducation,
         enEtatActivite: patient.enEtatActivite,
-        medecinInvestigateurId: patient.medecinInvestigateurId || undefined,
-        medecinSuiviId: initialSuiviId
+        medecinInvestigateurId: initialInvestigatorIdStr,
+        medecinSuiviId: initialSuiviIdStr
       });
     }
     onClose();
@@ -138,7 +139,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
         medecinInvestigateur: data.medecinInvestigateurId 
           ? { identifiantM: Number(data.medecinInvestigateurId) } 
           : null,
-        medecinsSuivi: rawSuiviId ? [{ identifiantM: Number(rawSuiviId) }] : [],
+        medecinSuiviId: (rawSuiviId && rawSuiviId !== "") ? Number(rawSuiviId) : null,
       };
 
       await updatePatientMutation.mutateAsync({
@@ -333,7 +334,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <select {...register('medecinInvestigateurId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-white font-bold text-[#2B5296]">
                   <option value="">Associer...</option>
                   {investigators?.map(doc => (
-                    <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>
+                    <option key={doc.identifiantM} value={String(doc.identifiantM)}>Dr. {doc.prenomM} {doc.nomM}</option>
                   ))}
                 </select>
               </div>
@@ -343,7 +344,7 @@ export const EditPatientModal = ({ isOpen, onClose, patient }: EditPatientProps)
                 <select {...register('medecinSuiviId')} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-white font-bold text-[#2B5296]">
                   <option value="">Sélectionner...</option>
                   {suiviDoctors?.map(doc => (
-                    <option key={doc.identifiantM} value={doc.identifiantM}>Dr. {doc.prenomM} {doc.nomM}</option>
+                    <option key={doc.identifiantM} value={String(doc.identifiantM)}>Dr. {doc.prenomM} {doc.nomM}</option>
                   ))}
                 </select>
               </div>
