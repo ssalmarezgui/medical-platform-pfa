@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Inclure la configuration de base de Spring Boot pour la console -->
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <!-- Appender pour envoyer automatiquement les logs à Logstash via TCP -->
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <!-- Nom du conteneur logstash configuré dans votre docker-compose.yml -->
+        <destination>medical-logstash:5044</destination>
+        
+        <!-- Formater les logs en JSON structuré pour Elasticsearch -->
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                            "severity": "%level",
+                            "service": "medical-backend",
+                            "thread": "%thread",
+                            "class": "%logger{40}",
+                            "message": "%message"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Appliquer la configuration pour tous les logs d'activité de niveau INFO et supérieur -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="LOGSTASH" />
+    </root>
+</configuration>

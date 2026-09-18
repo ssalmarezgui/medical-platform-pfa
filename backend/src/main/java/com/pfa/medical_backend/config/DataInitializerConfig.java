@@ -42,8 +42,6 @@ public class DataInitializerConfig {
     private static final String READ_LABO = "READ_LABO";
     private static final String READ_IMMUNO = "READ_IMMUNO";
 
-
-
     @Value("${app.bootstrap-admin.enabled:false}")
     private boolean bootstrapAdminEnabled;
 
@@ -100,7 +98,7 @@ public class DataInitializerConfig {
                 READ_IMMUNO, "WRITE_IMMUNO_COMPLICATION"
             ));
 
-
+// --- 1. HCN ---
             HopitalStructureSoin hcnInput = new HopitalStructureSoin();
             hcnInput.setIdentifiantH("HCN_TUNIS1");
             hcnInput.setLibelleH("HCN");
@@ -108,11 +106,12 @@ public class DataInitializerConfig {
             hcnInput.setNbBlocH(30);
             hcnInput.setNbServiceH(30);
             hcnInput.setNbLitsH(1025);
-            hcnInput.setDescriptionH("Hôpital universitaire de référence nationale.");
+            hcnInput.setDescriptionH("Hôpital universitaire de référence nationale. Dispose d'un service de néphrologie et transplantation rénale de renommée nationale, avec un plateau technique de pointe incluant des unités de dialyse, de réanimation et de chirurgie urologique.");
             hcnInput.setDateCreationH(LocalDate.of(1938, Month.APRIL, 9));
 
             bootstrapHopital(hopitalRepository, serviceRepository, hcnInput);
 
+            // --- 2. La Rabta ---
             HopitalStructureSoin rabtaInput = new HopitalStructureSoin();
             rabtaInput.setIdentifiantH("LA_RABTA_1");
             rabtaInput.setLibelleH("La Rabta");
@@ -120,11 +119,12 @@ public class DataInitializerConfig {
             rabtaInput.setNbBlocH(12);
             rabtaInput.setNbServiceH(34);
             rabtaInput.setNbLitsH(872);
-            rabtaInput.setDescriptionH("Grand hôpital universitaire situé au cœur de Tunis.");
+            rabtaInput.setDescriptionH("Grand hôpital universitaire situé au cœur de Tunis, spécialisé dans la prise en charge des maladies chroniques dont les pathologies rénales. Accueille un service de néphrologie actif avec programme de dialyse péritonéale et hémodialyse.");
             rabtaInput.setDateCreationH(LocalDate.of(1895, Month.JANUARY, 1));
 
             bootstrapHopital(hopitalRepository, serviceRepository, rabtaInput);
 
+            // --- 3. HMPIT ---
             HopitalStructureSoin hmpitInput = new HopitalStructureSoin();
             hmpitInput.setIdentifiantH("HMPIT_TUN1");
             hmpitInput.setLibelleH("HMPIT");
@@ -132,10 +132,50 @@ public class DataInitializerConfig {
             hmpitInput.setNbBlocH(3);
             hmpitInput.setNbServiceH(15);
             hmpitInput.setNbLitsH(620);
-            hmpitInput.setDescriptionH("Hôpital militaire universitaire de référence.");
+            hmpitInput.setDescriptionH("Hôpital militaire universitaire de référence assurant des soins spécialisés pour le personnel militaire et civil. Dispose d'une unité de néphrologie et de transplantation rénale équipée de technologies modernes.");
             hmpitInput.setDateCreationH(LocalDate.of(1900, Month.JANUARY, 1));
 
             bootstrapHopital(hopitalRepository, serviceRepository, hmpitInput);
+
+            // --- 4. Sahloul ---
+            HopitalStructureSoin sahloulInput = new HopitalStructureSoin();
+            sahloulInput.setIdentifiantH("SAHLOUL_S1");
+            sahloulInput.setLibelleH("Sahloul");
+            sahloulInput.setAdresseH("Route de Ceinture Sahloul, Hammam‑Sousse 4011, Sousse, Tunisie");
+            sahloulInput.setNbBlocH(12);
+            sahloulInput.setNbServiceH(30);
+            sahloulInput.setNbLitsH(700);
+            sahloulInput.setDescriptionH("Hôpital universitaire régional de référence du Centre-Est tunisien. Son service de néphrologie prend en charge les patients insuffisants rénaux chroniques avec un programme complet incluant hémodialyse, dialyse péritonéale et suivi post-transplantation.");
+            sahloulInput.setDateCreationH(LocalDate.of(1900, Month.JANUARY, 1));
+
+            bootstrapHopital(hopitalRepository, serviceRepository, sahloulInput);
+
+            // --- 5. Fattouma Bourguiba ---
+            HopitalStructureSoin fattoumaInput = new HopitalStructureSoin();
+            fattoumaInput.setIdentifiantH("FATTOUMA_1");
+            fattoumaInput.setLibelleH("Fattouma Bourguiba");
+            fattoumaInput.setAdresseH("Avenue Farhat‑Hached et Rue du 1er Juin 1995, Monastir 5000, Tunisie");
+            fattoumaInput.setNbBlocH(13);
+            fattoumaInput.setNbServiceH(39);
+            fattoumaInput.setNbLitsH(888);
+            fattoumaInput.setDescriptionH("Hôpital universitaire de la région du Sahel. Reconnu pour son excellence en médecine interne et néphrologie, avec une unité spécialisée dans la transplantation rénale et le suivi des greffés.");
+            fattoumaInput.setDateCreationH(LocalDate.of(1900, Month.JANUARY, 1));
+
+            bootstrapHopital(hopitalRepository, serviceRepository, fattoumaInput);
+
+            // --- 6. Hédi Chaker ---
+            HopitalStructureSoin hediChakerInput = new HopitalStructureSoin();
+            hediChakerInput.setIdentifiantH("H_CHAKER_1");
+            hediChakerInput.setLibelleH("Hédi Chaker");
+            hediChakerInput.setAdresseH("Route El Ain Km 0,5, 3000 Sfax, Tunisie");
+            hediChakerInput.setNbBlocH(13);
+            hediChakerInput.setNbServiceH(18);
+            hediChakerInput.setNbLitsH(889);
+            hediChakerInput.setDescriptionH("Principal hôpital universitaire du Sud tunisien. Dispose d'un service de néphrologie et dialyse très actif couvrant toute la région sud, avec une expertise reconnue en transplantation rénale et prise en charge de l'insuffisance rénale chronique.");
+            hediChakerInput.setDateCreationH(LocalDate.of(1900, Month.JANUARY, 1));
+
+            bootstrapHopital(hopitalRepository, serviceRepository, hediChakerInput);
+
 
             ServiceMedical referenceService = serviceRepository.findAll().stream()
                 .filter(s -> s.getHopital() != null && "HCN_TUNIS1".equals(s.getHopital().getIdentifiantH()))
@@ -148,6 +188,7 @@ public class DataInitializerConfig {
             admin.setRole(roleAdmin);
             admin.setService(referenceService);
             admin.setAccountNonLocked(true);
+            admin.setActive(true); // <--- AJOUT : Force le compte admin à actif
             userRepository.save(admin);
             log.info("Admin synchronized: {} ({}) rattaché à HCN", adminLogin, adminRole);
 
@@ -198,6 +239,7 @@ public class DataInitializerConfig {
         user.setRole(role);
         user.setService(service);
         user.setAccountNonLocked(true); 
+        user.setActive(true);
         userRepository.save(user);
         log.info("Demo user synchronized: {} ({})", login, role.getNomRole());
     }

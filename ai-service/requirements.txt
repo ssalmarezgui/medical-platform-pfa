@@ -24,3 +24,6 @@ langchain
 # Contient les connecteurs développés par la communauté
 # je peux connecter LangChain a mon outil local "Ollama"
 langchain-community
+
+# Permet de faire des requêtes HTTP pour appeler l'API Google Gemini
+requests

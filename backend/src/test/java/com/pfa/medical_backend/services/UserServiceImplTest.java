@@ -61,7 +61,7 @@ class UserServiceImplTest {
         userRequestDTO = new UserRequestDTO();
         userRequestDTO.setLoginU("dr_salma");
         userRequestDTO.setMotPasseU("password123");
-        userRequestDTO.setEmailU("salma@ensi-uma.tn");
+        userRequestDTO.setEmailU("salma.rezgui@ensi-uma.tn");
         userRequestDTO.setRoleU("ROLE_MEDECIN_SUIVI");
         userRequestDTO.setServiceId(1);
 
@@ -73,7 +73,7 @@ class UserServiceImplTest {
 
         user = new User();
         user.setLoginU("dr_salma");
-        user.setEmailU("salma@ensi-uma.tn");
+        user.setEmailU("salma.rezgui@ensi-uma.tn");
         user.setRole(role);
         user.setService(serviceMedical);
         user.setActive(false);
@@ -91,7 +91,7 @@ class UserServiceImplTest {
 
         assertNotNull(response);
         assertEquals("dr_salma", response.getLoginU());
-        assertEquals("salma@ensi-uma.tn", response.getEmailU());
+        assertEquals("salma.rezgui@ensi-uma.tn", response.getEmailU());
         assertFalse(response.isActive());
 
         verify(userRepository, times(1)).save(any(User.class));

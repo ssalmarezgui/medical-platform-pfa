@@ -76,7 +76,7 @@ export const AddDoctorModal = ({ isOpen, onClose }: AddDoctorProps) => {
         indexHopitalM: data.indexHopitalM,
         autreInfo: data.autreInfo || null,
         typeMedecin: data.typeMedecin as TypeMedecin,
-        service: data.serviceId ? { identifiantS: Number(data.serviceId) } : null,
+        serviceId: data.serviceId ? Number(data.serviceId) : null,
       };
 
       await createDoctorMutation.mutateAsync(formattedData);

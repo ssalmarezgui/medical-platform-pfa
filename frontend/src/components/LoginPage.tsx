@@ -210,6 +210,37 @@ export const LoginPage = () => {
     }
   };
 
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      setToastType('error');
+      setToastMessage("Veuillez saisir votre adresse email.");
+      setToastOpen(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await axios.post('http://localhost:8081/api/v1/auth/forgot-password', {
+        emailU: forgotEmail
+      });
+
+      setIsLoading(false);
+      setToastType('success');
+      setToastMessage("Un code de réinitialisation vous a été envoyé par email.");
+      setToastOpen(true);
+      
+      // Passage à l'étape suivante (saisie du nouveau mot de passe et de l'OTP)
+      setForgotStep('reset');
+    } catch (err: any) {
+      setIsLoading(false);
+      setToastType('error');
+      setToastMessage(err.response?.data?.message || "Impossible de traiter la demande pour cette adresse email.");
+      setToastOpen(true);
+    }
+  };
+
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotOtp || !newPassword) {
@@ -440,7 +471,7 @@ export const LoginPage = () => {
                     value={matricule} 
                     onChange={(e) => setMatricule(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 outline-none font-bold text-slate-800 bg-white" 
-                    placeholder="Ex: 12345678" 
+                    placeholder="" 
                   />
                 </div>
               </div>

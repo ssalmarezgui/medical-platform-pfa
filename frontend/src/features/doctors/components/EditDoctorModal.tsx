@@ -49,7 +49,7 @@ export const EditDoctorModal = ({ isOpen, onClose, doctor }: EditDoctorProps) =>
         indexHopitalM: doctor.indexHopitalM,
         autreInfo: doctor.autreInfo || '',
         typeMedecin: doctor.typeMedecin,
-        serviceId: doctor.serviceId,
+        
       });
     }
   }, [doctor, reset]);
@@ -71,7 +71,7 @@ export const EditDoctorModal = ({ isOpen, onClose, doctor }: EditDoctorProps) =>
         indexHopitalM: data.indexHopitalM,
         autreInfo: data.autreInfo || null,
         typeMedecin: data.typeMedecin as TypeMedecin,
-        service: data.serviceId ? { identifiantS: Number(data.serviceId) } : null,
+        serviceId: data.serviceId ? Number(data.serviceId) : null,
       };
 
       await updateDoctorMutation.mutateAsync({
