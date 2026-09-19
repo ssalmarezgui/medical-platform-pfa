@@ -41,66 +41,88 @@ class AiClinicalServiceImplTest {
     @InjectMocks
     private AiClinicalServiceImpl aiClinicalService;
 
-    private PatientIdAdmin patient;
-    private Transplantation transplantation;
+    private PatientIdAdmin patientFull;
+    private Transplantation transFull;
 
     @BeforeEach
     void setUp() {
-        // Injection du mock RestTemplate dans le service
         ReflectionTestUtils.setField(aiClinicalService, "restTemplate", restTemplate);
 
-        patient = new PatientIdAdmin();
-        patient.setIdentifiantP("P123");
-        patient.setSexeP("M");
-        patient.setNationaliteP("Tunisienne");
-        patient.setAdresseP("Tunis");
-        patient.setTypeCarnetP("CNAM");
-        patient.setStatut("Hospitalisé");
+        patientFull = new PatientIdAdmin();
+        patientFull.setIdentifiantP("P100");
+        patientFull.setSexeP("F");
+        patientFull.setNationaliteP("Tunisienne");
+        patientFull.setAdresseP("Sousse");
+        patientFull.setTypeCarnetP("CNAM");
+        patientFull.setStatut("Suivi");
 
-        transplantation = new Transplantation();
-        transplantation.setLieuDeLaGreffe("Hôpital Charles Nicolle");
-        transplantation.setLieuDeSuivi("Service Néphrologie");
-        transplantation.setRein("Gauche");
-        transplantation.setSondeEnDoubleJJ(true);
-        transplantation.setDureeIschemieFroide(120);
+        transFull = new Transplantation();
+        transFull.setLieuDeLaGreffe("CHU");
+        transFull.setLieuDeSuivi("Service A");
+        transFull.setRein("Droit");
+        transFull.setSondeEnDoubleJJ(true);
+        transFull.setDureeIschemieFroide(90);
     }
 
     @Test
-    void getPatientSummary_Success_WithTransplantation() {
-        AiResponseDTO mockResponse = new AiResponseDTO();
+    void getPatientSummary_FullData() {
+        when(patientRepository.findById("P100")).thenReturn(Optional.of(patientFull));
+        when(transplantationRepository.findByPatient_IdentifiantP("P100")).thenReturn(List.of(transFull));
+        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(new AiResponseDTO());
 
-        when(patientRepository.findById("P123")).thenReturn(Optional.of(patient));
-        when(transplantationRepository.findByPatient_IdentifiantP("P123")).thenReturn(List.of(transplantation));
-        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(mockResponse);
+        AiResponseDTO res = aiClinicalService.getPatientSummary("P100");
 
-        AiResponseDTO result = aiClinicalService.getPatientSummary("P123");
-
-        assertNotNull(result);
-        verify(auditLogService).logAuto(eq("GENERATION_SYNTHESE_IA"), contains("P123"), anyString());
+        assertNotNull(res);
+        verify(auditLogService).logAuto(eq("GENERATION_SYNTHESE_IA"), contains("P100"), anyString());
     }
 
     @Test
-    void getPatientSummary_PatientNotFound_ShouldThrowException() {
-        when(patientRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
+    void getPatientSummary_NotFound() {
+        when(patientRepository.findById("NONE")).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> aiClinicalService.getPatientSummary("UNKNOWN"));
+        assertThrows(EntityNotFoundException.class, () -> aiClinicalService.getPatientSummary("NONE"));
     }
 
     @Test
-    void getPatientReport_Success_WithoutTransplantation() {
-        // Cas où les champs du patient sont nuls pour tester les branches "Non renseigné"
-        PatientIdAdmin emptyPatient = new PatientIdAdmin();
-        emptyPatient.setIdentifiantP("P999");
+    void getPatientReport_WithNullFieldsAndFalseSonde() {
+        // Couvre toutes les branches ternaires null et sonde false
+        PatientIdAdmin pEmpty = new PatientIdAdmin();
+        pEmpty.setIdentifiantP("P200");
 
-        AiResponseDTO mockResponse = new AiResponseDTO();
+        Transplantation tEmpty = new Transplantation();
+        tEmpty.setSondeEnDoubleJJ(false); // test condition sonde == false
 
-        when(patientRepository.findById("P999")).thenReturn(Optional.of(emptyPatient));
-        when(transplantationRepository.findByPatient_IdentifiantP("P999")).thenReturn(Collections.emptyList());
-        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(mockResponse);
+        when(patientRepository.findById("P200")).thenReturn(Optional.of(pEmpty));
+        when(transplantationRepository.findByPatient_IdentifiantP("P200")).thenReturn(List.of(tEmpty));
+        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(new AiResponseDTO());
 
-        AiResponseDTO result = aiClinicalService.getPatientReport("P999");
+        AiResponseDTO res = aiClinicalService.getPatientReport("P200");
 
-        assertNotNull(result);
-        verify(auditLogService).logAuto(eq("GENERATION_RAPPORT_IA"), contains("P999"), anyString());
+        assertNotNull(res);
+        verify(auditLogService).logAuto(eq("GENERATION_RAPPORT_IA"), contains("P200"), anyString());
+    }
+
+    @Test
+    void getPatientReport_EmptyTransplantationsList() {
+        // Couvre la branche "Aucune chirurgie de greffe"
+        when(patientRepository.findById("P100")).thenReturn(Optional.of(patientFull));
+        when(transplantationRepository.findByPatient_IdentifiantP("P100")).thenReturn(Collections.emptyList());
+        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(new AiResponseDTO());
+
+        AiResponseDTO res = aiClinicalService.getPatientReport("P100");
+
+        assertNotNull(res);
+    }
+
+    @Test
+    void getPatientReport_NullTransplantationsList() {
+        // Couvre la branche où la liste est carrément null
+        when(patientRepository.findById("P100")).thenReturn(Optional.of(patientFull));
+        when(transplantationRepository.findByPatient_IdentifiantP("P100")).thenReturn(null);
+        when(restTemplate.postForObject(anyString(), any(), eq(AiResponseDTO.class))).thenReturn(new AiResponseDTO());
+
+        AiResponseDTO res = aiClinicalService.getPatientReport("P100");
+
+        assertNotNull(res);
     }
 }

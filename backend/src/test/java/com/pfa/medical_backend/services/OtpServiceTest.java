@@ -30,7 +30,6 @@ class OtpServiceTest {
         boolean isValid = otpService.validateOtp("user1", code);
 
         assertTrue(isValid);
-        // Doit être supprimé après validation réussie
         assertFalse(otpService.validateOtp("user1", code));
     }
 
