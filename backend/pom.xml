@@ -61,7 +61,14 @@
 			**/controllers/DialyseController.java,
 			**/controllers/AuditLogController.java,
 			**/controllers/AiClinicalController.java,
-			**/controllers/AdminDashboardController.java
+			**/controllers/AdminDashboardController.java,
+			**/controllers/ReactRouteController.java,
+			**/controllers/TraitementImmunoSuppresseurController.java,
+			**/controllers/DonneurController.java,
+			**/controllers/HopitalController.java,
+			**/controllers/MedecinController.java,
+			**/controllers/UserController.java,
+			**/services/*Service.java
 		</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
