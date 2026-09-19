@@ -25,16 +25,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             backgroundPosition: 'center',
           }}
         />
+        
 
-
-        <header className="h-20 flex items-center px-8 shrink-0 bg-transparent relative z-10">
-          {!isSidebarOpen && (
-            <MenuButton onClick={toggleSidebar} />
-          )}
-          <div className="ml-4 font-black text-[#2B5296] uppercase tracking-widest text-xs">
-            {isSidebarOpen ? '' : 'NephroCare Admin'}
-          </div>
-        </header>
+        
 
         <main className="flex-1 p-8 overflow-y-auto relative z-10">
           <div className="w-full">

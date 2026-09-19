@@ -3,60 +3,52 @@ import requests
 from dotenv import load_dotenv
 from app.core.prompts import SYSTEM_SUMMARY_PROMPT, SYSTEM_REPORT_PROMPT
 
-# Charger les variables d'environnement
 load_dotenv()
 
 class LLMService:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self.api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+        self.model = os.getenv("LLM_MODEL", "mistral")
+        self.api_url = f"{self.base_url.rstrip('/')}/api/generate"
 
-    def _query_gemini_api(self, system_prompt: str, patient_data: str) -> str:
-        if not self.api_key:
-            return "Erreur : Clé d'API Google Gemini manquante dans votre fichier .env."
-
-        # Fusionner les consignes de sécurité avec les données cliniques du patient
+    def _query_ollama_local(self, system_prompt: str, patient_data: str, max_tokens: int) -> str:
         full_prompt = f"{system_prompt}\n\nDonnées cliniques réelles du patient :\n{patient_data}"
 
-        # Payload officiel requis par l'API Google Gemini
         payload = {
-            "contents": [{
-                "parts": [{
-                    "text": full_prompt
-                }]
-            }]
+            "model": self.model,
+            "prompt": full_prompt,
+            "stream": False,
+            "options": {
+                "num_predict": max_tokens,  # Taille dynamique selon le besoin
+                "temperature": 0.2
+            }
         }
 
-        # En-têtes requis contenant votre clé de type AQ.
         headers = {
-            "Content-Type": "application/json",
-            "X-goog-api-key": self.api_key
+            "Content-Type": "application/json"
         }
 
         try:
-            # Appel sécurisé avec les en-têtes (headers)
-            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+            # Timeout généreux de 5 minutes pour laisser le temps au CPU d'écrire un long rapport
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=300) # 60*5
             
             if response.status_code == 200:
                 result_json = response.json()
-                # Extraire le texte généré par l'IA
-                candidates = result_json.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        return parts[0].get("text", "Erreur de format de réponse de l'IA.")
-                return str(result_json)
+                return result_json.get("response", "Erreur : Réponse vide.")
             else:
-                return f"Erreur de l'API Google Gemini (Code {response.status_code}) : {response.text}"
+                return f"Erreur Ollama (Code {response.status_code}) : {response.text}"
                 
+        except requests.exceptions.ConnectionError:
+            return f"Impossible de contacter le serveur local Ollama sur {self.base_url}."
         except Exception as e:
-            return f"Impossible de contacter le serveur d'IA de Google : {str(e)}"
+            return f"Erreur lors de l'inférence : {str(e)}"
 
+    # 1. Synthèse rapide : courte et concise (300 tokens ~ 180 mots)
     def generate_summary(self, patient_data: str) -> str:
-        return self._query_gemini_api(SYSTEM_SUMMARY_PROMPT, patient_data)
+        return self._query_ollama_local(SYSTEM_SUMMARY_PROMPT, patient_data, max_tokens=300)
 
+    # 2. Rapport Officiel : long, riche et détaillé (750 tokens ~ 500 mots complets)
     def generate_report(self, patient_data: str) -> str:
-        return self._query_gemini_api(SYSTEM_REPORT_PROMPT, patient_data)
+        return self._query_ollama_local(SYSTEM_REPORT_PROMPT, patient_data, max_tokens=750)
 
-# Instance du service d'IA
 llm_service = LLMService()

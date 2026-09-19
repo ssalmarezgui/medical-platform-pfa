@@ -1,5 +1,7 @@
 package com.pfa.medical_backend;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.IOException;
@@ -9,6 +11,8 @@ import java.util.List;
 
 @SpringBootApplication
 public class MedicalBackendApplication {
+
+    private static final Logger logger = LoggerFactory.getLogger(MedicalBackendApplication.class);
 
     public static void main(String[] args) {
         loadLocalEnvFile();
@@ -32,12 +36,12 @@ public class MedicalBackendApplication {
                         System.setProperty(key, value);
                     }
                 }
-                System.out.println("[SYSTEM .ENV] Variables de configuration chargées avec succès depuis .env local.");
+                logger.info("[SYSTEM .ENV] Variables de configuration chargées avec succès depuis .env local.");
             } else {
-                System.out.println("[SYSTEM .ENV] Aucun fichier .env trouvé. Utilisation de l'environnement Cloud de production.");
+                logger.info("[SYSTEM .ENV] Aucun fichier .env trouvé. Utilisation de l'environnement Cloud de production.");
             }
         } catch (IOException e) {
-            System.err.println("[SYSTEM .ENV] Impossible de charger le fichier .env : " + e.getMessage());
+            logger.error("[SYSTEM .ENV] Impossible de charger le fichier .env : {}", e.getMessage());
         }
     }
 }
