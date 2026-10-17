@@ -62,7 +62,17 @@ L'audit du prototype hérité a révélé des problèmes sérieux pour une appli
 
 ## 🏗️ Architecture
 
-![Architecture de déploiement](docs/architecture-deployment.png)
+```mermaid
+flowchart LR
+    U[Soignant<br/>navigateur] --> F[frontend-app<br/>React + TypeScript]
+    F -->|REST + JWT| B[backend-app<br/>Spring Boot]
+    B --> M[(mysql-db<br/>MySQL)]
+    B --> L[microservice-llm<br/>FastAPI]
+    L --> O[Ollama<br/>Mistral-7B]
+    P[Prometheus] -. métriques .-> B
+    P --> G[Grafana]
+    B -. journaux .-> LS[Logstash] --> E[Elasticsearch] --> K[Kibana]
+```
 
 | Service | Technologie | Exposition |
 |---|---|---|
@@ -73,18 +83,9 @@ L'audit du prototype hérité a révélé des problèmes sérieux pour une appli
 | `prometheus` / `grafana` | Supervision | Restreint |
 | `elasticsearch` / `kibana` / `logstash` | Journaux techniques | Restreint |
 
-<details>
-<summary>Architecture logique (backend en couches, frontend par fonctionnalités)</summary>
-
-![Architecture logique](docs/architecture-logical.png)
-
-</details>
-
 ## 🔐 Pipeline DevSecOps (Shift Left)
 
 Pipeline **GitHub Actions** exécuté en environ **6 minutes** (5 min 57 s lors de la dernière validation du rapport).
-
-![Chaîne de sécurité](docs/security-chain.png)
 
 | Contrôle | Outil | Résultat mesuré | Bloquant |
 |---|---|---|---|
@@ -96,33 +97,7 @@ Pipeline **GitHub Actions** exécuté en environ **6 minutes** (5 min 57 s lors 
 | Conteneurs | Trivy | 0 vulnérabilité système critique non corrigée | Non (avertissement) |
 | DAST | OWASP ZAP (baseline) | 0 alerte haute | Non (avertissement) |
 
-<details>
-<summary>Voir les captures du pipeline</summary>
-
-![Pipeline](docs/pipeline-success.png)
-![SonarCloud](docs/sonarcloud.png)
-![Snyk](docs/snyk.png)
-
-</details>
-
 > Les images Docker validées (`medical-backend`, `medical-frontend`) sont publiées sur Docker Hub, sans secret ni donnée médicale.
-
-## 🖼️ Aperçu de l'application
-
-| Double authentification | Assistant clinique (LLM local) |
-|---|---|
-| ![2FA](docs/login-2fa.png) | ![Assistant](docs/clinical-assistant.png) |
-
-| Registre des patients | Journal d'audit |
-|---|---|
-| ![Registre](docs/patient-registry.png) | ![Audit](docs/audit-log.png) |
-
-<details>
-<summary>Gestion des comptes cliniques</summary>
-
-![Comptes](docs/accounts-validation.png)
-
-</details>
 
 ## 🧠 Assistant clinique à inférence locale
 
@@ -135,16 +110,7 @@ Pipeline **GitHub Actions** exécuté en environ **6 minutes** (5 min 57 s lors 
 
 - **Prometheus + Grafana** : métriques JVM et JDBC via Spring Boot Actuator
 
-![Grafana](docs/grafana.png)
-
 - **Suite ELK** : journaux applicatifs centralisés, distincts de la table d'audit médico-légale MySQL
-
-<details>
-<summary>Console Kibana</summary>
-
-![Kibana](docs/kibana.png)
-
-</details>
 
 ## 📁 Structure du dépôt
 
